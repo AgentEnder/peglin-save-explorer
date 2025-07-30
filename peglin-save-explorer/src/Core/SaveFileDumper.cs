@@ -6,31 +6,38 @@ using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OdinSerializer;
+using peglin_save_explorer.Utils;
 
-namespace peglin_save_explorer
+namespace peglin_save_explorer.Core
 {
     public class SaveFileDumper
     {
         private Assembly? peglinAssembly;
         private readonly ConfigurationManager? _configManager;
-        
+
         public SaveFileDumper(ConfigurationManager? configManager = null)
         {
             _configManager = configManager;
         }
-        
+
+        private bool IsSuppressed()
+        {
+            // Check if console output should be suppressed (when in widget mode)
+            return Program.suppressConsoleOutput;
+        }
+
         public string DumpSaveFile(byte[] saveData)
         {
             var result = new JObject();
-            
+
             try
             {
                 // Load Peglin assembly for type definitions first
                 LoadPeglinAssembly();
-                
+
                 // Try to deserialize using OdinSerializer
                 using var stream = new MemoryStream(saveData);
-                
+
                 // First try binary format with different approaches
                 try
                 {
@@ -41,7 +48,7 @@ namespace peglin_save_explorer
                     result["dataType"] = binaryData?.GetType()?.FullName ?? "null";
                     result["dataIsNull"] = binaryData == null;
                     result["data"] = ConvertToJson(binaryData);
-                    
+
                     // Try deserializing without specifying generic type - let OdinSerializer auto-detect
                     try
                     {
@@ -60,7 +67,7 @@ namespace peglin_save_explorer
                     {
                         result["autoDeserializationError"] = autoEx.Message;
                     }
-                    
+
                     // Try with Unity context if basic fails
                     if (binaryData == null)
                     {
@@ -81,9 +88,9 @@ namespace peglin_save_explorer
                             result["unityContextError"] = unityEx.Message;
                         }
                     }
-                    
+
                     // If data is still empty/null, add raw analysis for comparison
-                    if (binaryData == null || 
+                    if (binaryData == null ||
                         (binaryData is object && binaryData.ToString() == binaryData.GetType().ToString()))
                     {
                         result["rawAnalysisForComparison"] = AnalyzeRawData(saveData);
@@ -92,7 +99,7 @@ namespace peglin_save_explorer
                 catch (Exception binaryEx)
                 {
                     result["binaryError"] = binaryEx.Message;
-                    
+
                     // Try JSON format
                     try
                     {
@@ -105,31 +112,31 @@ namespace peglin_save_explorer
                     {
                         result["jsonError"] = jsonEx.Message;
                         result["success"] = false;
-                        
+
                         // Fall back to raw analysis
                         result["rawAnalysis"] = AnalyzeRawData(saveData);
                     }
                 }
-                
+
                 // Always try with Peglin types if we have the assembly loaded (regardless of basic deserialization results)
                 result["peglinAssemblyLoaded"] = peglinAssembly != null;
                 if (peglinAssembly != null)
                 {
                     result["peglinAssemblyName"] = peglinAssembly.FullName;
-                    
+
                     // Try to find known save data types from the hex analysis
                     var potentialTypes = new[]
                     {
                         "SaveObjectData",
-                        "SaveManager+SaveVersion", 
+                        "SaveManager+SaveVersion",
                         "PersistentPlayerSaveData",
                         "SaveData",
                         "GameSave",
                         "PlayerSave"
                     };
-                    
+
                     var peglinDeserializationAttempts = new JArray();
-                    
+
                     foreach (var typeName in potentialTypes)
                     {
                         try
@@ -140,14 +147,14 @@ namespace peglin_save_explorer
                                 var attempt = new JObject();
                                 attempt["typeName"] = typeName;
                                 attempt["fullTypeName"] = saveType.FullName;
-                                
+
                                 try
                                 {
                                     // Use reflection to call SerializationUtility.DeserializeValue<T>
                                     var method = typeof(SerializationUtility)
                                         .GetMethod(nameof(SerializationUtility.DeserializeValue), new[] { typeof(byte[]), typeof(DataFormat) })
                                         ?.MakeGenericMethod(saveType);
-                                        
+
                                     if (method != null)
                                     {
                                         var peglinData = method.Invoke(null, new object[] { saveData, DataFormat.Binary });
@@ -172,7 +179,7 @@ namespace peglin_save_explorer
                                     attempt["success"] = false;
                                     attempt["error"] = typeEx.Message;
                                 }
-                                
+
                                 peglinDeserializationAttempts.Add(attempt);
                             }
                         }
@@ -181,7 +188,7 @@ namespace peglin_save_explorer
                             // Type not found, continue
                         }
                     }
-                    
+
                     result["peglinTypeAttempts"] = peglinDeserializationAttempts;
                 }
             }
@@ -191,14 +198,14 @@ namespace peglin_save_explorer
                 result["success"] = false;
                 result["rawAnalysis"] = AnalyzeRawData(saveData);
             }
-            
+
             return result.ToString(Formatting.Indented);
         }
-        
+
         private JToken ConvertToJson(object? obj)
         {
             if (obj == null) return JValue.CreateNull();
-            
+
             try
             {
                 // Use Newtonsoft.Json's serialization with custom settings
@@ -209,7 +216,7 @@ namespace peglin_save_explorer
                     DateFormatHandling = DateFormatHandling.IsoDateFormat,
                     TypeNameHandling = TypeNameHandling.Auto
                 };
-                
+
                 var jsonString = JsonConvert.SerializeObject(obj, Formatting.None, settings);
                 return JToken.Parse(jsonString);
             }
@@ -223,15 +230,15 @@ namespace peglin_save_explorer
                 return fallback;
             }
         }
-        
+
         private JObject AnalyzeRawData(byte[] data)
         {
             var analysis = new JObject();
-            
+
             // Basic stats
             analysis["fileSize"] = data.Length;
             analysis["fileSizeKB"] = Math.Round(data.Length / 1024.0, 2);
-            
+
             // Check for common OdinSerializer markers
             var markers = new[]
             {
@@ -239,7 +246,7 @@ namespace peglin_save_explorer
                 new byte[] { 0x00, 0x01, 0x00, 0x00 }, // Common version markers
                 new byte[] { 0x01, 0x00, 0x00, 0x00 }, // Little-endian int 1
             };
-            
+
             var markerInfo = new JArray();
             foreach (var marker in markers)
             {
@@ -253,21 +260,21 @@ namespace peglin_save_explorer
                 }
             }
             analysis["binaryMarkers"] = markerInfo;
-            
+
             // Hex dump of first 1000 bytes
             var hexDump = BitConverter.ToString(data, 0, Math.Min(1000, data.Length)).Replace("-", " ");
             analysis["hexDumpFirst1000"] = hexDump;
-            
+
             // Try to detect the data format
             analysis["formatDetection"] = DetectFormat(data);
-            
+
             return analysis;
         }
-        
+
         private int[] FindByteSequence(byte[] data, byte[] sequence)
         {
             var positions = new System.Collections.Generic.List<int>();
-            
+
             for (int i = 0; i <= data.Length - sequence.Length; i++)
             {
                 bool found = true;
@@ -279,26 +286,26 @@ namespace peglin_save_explorer
                         break;
                     }
                 }
-                
+
                 if (found)
                 {
                     positions.Add(i);
                 }
             }
-            
+
             return positions.ToArray();
         }
-        
+
         private JObject DetectFormat(byte[] data)
         {
             var detection = new JObject();
-            
+
             // Check if it starts with JSON-like characters
             if (data.Length > 0 && (data[0] == '{' || data[0] == '['))
             {
                 detection["likelyJSON"] = true;
             }
-            
+
             // Check for binary format indicators
             if (data.Length >= 4)
             {
@@ -306,13 +313,13 @@ namespace peglin_save_explorer
                 detection["first4BytesAsInt"] = first4;
                 detection["first4BytesAsHex"] = BitConverter.ToString(data, 0, 4);
             }
-            
+
             // Check entropy to determine if it's compressed/encrypted
             detection["entropy"] = CalculateEntropy(data);
-            
+
             return detection;
         }
-        
+
         private double CalculateEntropy(byte[] data)
         {
             var frequency = new int[256];
@@ -320,10 +327,10 @@ namespace peglin_save_explorer
             {
                 frequency[b]++;
             }
-            
+
             double entropy = 0.0;
             double length = data.Length;
-            
+
             for (int i = 0; i < 256; i++)
             {
                 if (frequency[i] > 0)
@@ -332,22 +339,22 @@ namespace peglin_save_explorer
                     entropy -= probability * Math.Log2(probability);
                 }
             }
-            
+
             return entropy;
         }
-        
+
         private void LoadPeglinAssembly()
         {
             if (peglinAssembly != null) return;
-            
+
             // Set up assembly resolution handler for missing Unity dependencies
             AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
-            
+
             try
             {
                 // Try multiple possible paths
                 var assemblyPaths = new List<string>();
-                
+
                 // First check if we have a configured path
                 if (_configManager != null)
                 {
@@ -361,14 +368,14 @@ namespace peglin_save_explorer
                         }
                     }
                 }
-                
+
                 // Then try the actual Peglin installation
                 var peglinInstallPath = @"G:\SteamLibrary\steamapps\common\Peglin\Peglin_Data\Managed\Assembly-CSharp.dll";
                 if (File.Exists(peglinInstallPath) && !assemblyPaths.Contains(peglinInstallPath))
                 {
                     assemblyPaths.Add(peglinInstallPath);
                 }
-                
+
                 // Try common Steam installation paths
                 var steamPaths = new[]
                 {
@@ -376,9 +383,9 @@ namespace peglin_save_explorer
                     @"C:\Program Files\Steam\steamapps\common\Peglin\Peglin_Data\Managed\Assembly-CSharp.dll",
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Steam\steamapps\common\Peglin\Peglin_Data\Managed\Assembly-CSharp.dll")
                 };
-                
+
                 assemblyPaths.AddRange(steamPaths.Where(File.Exists).Where(p => !assemblyPaths.Contains(p)));
-                
+
                 // Fall back to local PeglinDLLs directory for development
                 var basePaths = new[]
                 {
@@ -386,7 +393,7 @@ namespace peglin_save_explorer
                     Directory.GetCurrentDirectory(),
                     Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ""
                 };
-                
+
                 foreach (var basePath in basePaths)
                 {
                     var localPath = Path.Combine(basePath, "PeglinDLLs", "Assembly-CSharp.dll");
@@ -395,28 +402,28 @@ namespace peglin_save_explorer
                         assemblyPaths.Add(localPath);
                     }
                 }
-                
+
                 // Try to load from the first available path
                 foreach (var assemblyPath in assemblyPaths)
                 {
-                    Console.WriteLine($"Trying assembly path: {assemblyPath}");
-                    
+                    Logger.Debug($"Trying assembly path: {assemblyPath}");
+
                     if (File.Exists(assemblyPath))
                     {
-                        Console.WriteLine($"Found assembly at: {assemblyPath}");
+                        Logger.Debug($"Found assembly at: {assemblyPath}");
                         peglinAssembly = Assembly.LoadFrom(assemblyPath);
-                        Console.WriteLine($"Successfully loaded assembly: {peglinAssembly.FullName}");
+                        Logger.Debug($"Successfully loaded assembly: {peglinAssembly.FullName}");
                         return;
                     }
                 }
-                
-                Console.WriteLine("Assembly-CSharp.dll not found in any expected location");
-                Console.WriteLine("Please ensure Peglin is installed via Steam");
+
+                Logger.Warning("Assembly-CSharp.dll not found in any expected location");
+                Logger.Info("Please ensure Peglin is installed via Steam");
             }
             catch (Exception ex)
             {
                 // Assembly loading failed, continue without it
-                Console.WriteLine($"Warning: Could not load Peglin assembly: {ex.Message}");
+                Logger.Warning($"Could not load Peglin assembly: {ex.Message}");
             }
             finally
             {
@@ -424,13 +431,13 @@ namespace peglin_save_explorer
                 AppDomain.CurrentDomain.AssemblyResolve -= OnAssemblyResolve;
             }
         }
-        
+
         private Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args)
         {
             // Ignore Unity and other game-specific assemblies
             var assemblyName = new AssemblyName(args.Name).Name;
-            if (assemblyName != null && 
-                (assemblyName.StartsWith("UnityEngine") || 
+            if (assemblyName != null &&
+                (assemblyName.StartsWith("UnityEngine") ||
                  assemblyName.StartsWith("Unity.") ||
                  assemblyName.StartsWith("DOTween") ||
                  assemblyName.StartsWith("Rewired") ||
@@ -440,20 +447,20 @@ namespace peglin_save_explorer
                 // Return null to indicate we can't resolve these
                 return null;
             }
-            
+
             return null;
         }
-        
+
         private Type? FindTypeInAssembly(string typeName)
         {
             if (peglinAssembly == null) return null;
-            
+
             try
             {
                 // Try exact name first
                 var type = peglinAssembly.GetType(typeName);
                 if (type != null) return type;
-                
+
                 // Try searching all types for partial matches
                 var types = peglinAssembly.GetTypes();
                 foreach (var t in types)
@@ -468,7 +475,7 @@ namespace peglin_save_explorer
             {
                 // Type search failed
             }
-            
+
             return null;
         }
     }

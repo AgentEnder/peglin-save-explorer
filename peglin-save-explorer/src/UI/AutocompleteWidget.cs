@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using peglin_save_explorer.Utils;
 
-namespace peglin_save_explorer
+namespace peglin_save_explorer.UI
 {
     public class AutocompleteWidget : ConsoleWidget
     {
@@ -36,18 +37,22 @@ namespace peglin_save_explorer
         {
             base.SetTerminal(terminal);
 
-            // Calculate display area based on terminal size
-            this.maxDisplayItems = Math.Max(5, Math.Min(15, terminal.Height - 15)); // Leave room for header and other UI
-            this.Height = 3 + maxDisplayItems + 1; // prompt + instructions + empty + items + status
+            // Calculate display area based on terminal size and widget position
+            // Reserve space for: prompt(1) + instructions(1) + empty(1) + filter(1) + status(1) = 5 lines
+            var availableHeight = terminal.Height - Y - 5; // Account for Y position and widget overhead
+            this.maxDisplayItems = Math.Max(5, Math.Min(20, availableHeight)); // Conservative max of 20
+            this.Height = 5 + maxDisplayItems; // 5 overhead lines + item lines
         }
 
         public override void OnResize()
         {
             if (Terminal != null)
             {
-                // Recalculate display area based on new terminal size
-                this.maxDisplayItems = Math.Max(5, Math.Min(15, Terminal.Height - 15)); // Leave room for header and other UI
-                this.Height = 3 + maxDisplayItems + 1; // prompt + instructions + empty + items + status
+                // Recalculate display area based on new terminal size and widget position
+                // Reserve space for: prompt(1) + instructions(1) + empty(1) + filter(1) + status(1) = 5 lines
+                var availableHeight = Terminal.Height - Y - 5; // Account for Y position and widget overhead
+                this.maxDisplayItems = Math.Max(5, Math.Min(20, availableHeight)); // Conservative max of 20
+                this.Height = 5 + maxDisplayItems; // 5 overhead lines + item lines
 
                 // Adjust scroll offset if necessary
                 if (filteredItems.Count > 0)
@@ -82,6 +87,21 @@ namespace peglin_save_explorer
         public override void Render()
         {
             if (Terminal == null) return;
+
+            // Clear the entire widget area first to prevent background color artifacts
+            var widgetWidth = Math.Min(Terminal.Width - X, 80); // Match the max width used below
+            var clearLine = new FormattedString(new string(' ', widgetWidth), TextFormat.Default);
+
+            // Calculate actual lines needed: 4 header lines + actual items displayed + 1 status line
+            var actualItemsDisplayed = Math.Min(maxDisplayItems, filteredItems.Count);
+            var totalLines = 4 + actualItemsDisplayed + 1; // 4 for header lines, actual items, +1 for status
+
+            // Clear all lines that will be used by this widget, plus a few extra to clear previous artifacts
+            var linesToClear = Math.Max(totalLines, Height); // Use Height property to ensure we clear the widget's full allocated space
+            for (int i = 0; i < linesToClear && (Y + i) < Terminal.Height; i++)
+            {
+                Terminal.WriteAt(X, Y + i, clearLine);
+            }
 
             int currentY = Y;
 
@@ -133,14 +153,6 @@ namespace peglin_save_explorer
                     {
                         var normalText = new FormattedString($"  {item.DisplayText}", TextFormat.Default);
                         Terminal.WriteAt(X, currentY, normalText);
-                        // Explicitly clear the remainder of the line to ensure no background artifacts
-                        var lineWidth = Math.Min(Terminal.Width - X, 80); // Reasonable max width
-                        var padding = Math.Max(0, lineWidth - normalText.Length);
-                        if (padding > 0)
-                        {
-                            var paddingText = new FormattedString(new string(' ', padding), TextFormat.Default);
-                            Terminal.WriteAt(X + normalText.Length, currentY, paddingText);
-                        }
                         currentY++;
                     }
                 }

@@ -1,6 +1,6 @@
 using System;
 
-namespace peglin_save_explorer
+namespace peglin_save_explorer.UI
 {
     public class HeaderWidget : ConsoleWidget
     {

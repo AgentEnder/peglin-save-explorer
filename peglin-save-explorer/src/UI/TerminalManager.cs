@@ -1,7 +1,8 @@
 using System;
 using System.Text;
+using peglin_save_explorer.Utils;
 
-namespace peglin_save_explorer
+namespace peglin_save_explorer.UI
 {
     public class TerminalManager
     {
@@ -76,6 +77,20 @@ namespace peglin_save_explorer
                 Console.Write("\x1b[?1049l"); // Exit alt screen
                 Console.CursorVisible = true;
                 inAltScreen = false;
+            }
+        }
+
+        public void SetCursorVisible(bool visible)
+        {
+            try
+            {
+                Console.CursorVisible = visible;
+                // Force a flush to ensure the change takes effect immediately
+                Console.Out.Flush();
+            }
+            catch
+            {
+                // Ignore errors if cursor visibility can't be set in this environment
             }
         }
 
@@ -198,6 +213,12 @@ namespace peglin_save_explorer
             }
 
             Console.Write(output.ToString());
+
+            // Ensure cursor stays hidden after presenting
+            if (inAltScreen)
+            {
+                Console.CursorVisible = false;
+            }
         }
 
         public void Dispose()

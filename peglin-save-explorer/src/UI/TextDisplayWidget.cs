@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
+using peglin_save_explorer.Utils;
 
-namespace peglin_save_explorer
+namespace peglin_save_explorer.UI
 {
     public class TextDisplayWidget : ConsoleWidget
     {

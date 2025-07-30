@@ -1,189 +1,140 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.CommandLine;
-using System.Threading.Tasks;
-using System.Linq;
-using Newtonsoft.Json.Linq;
+using peglin_save_explorer.Commands;
+using peglin_save_explorer.Core;
+using peglin_save_explorer.Utils;
 
 namespace peglin_save_explorer
 {
     class Program
     {
-        private static readonly ConfigurationManager configManager = new ConfigurationManager();
-        
+        internal static bool suppressConsoleOutput = false;
+        private static bool isInteractiveMode = false;
+
         static async Task<int> Main(string[] args)
         {
-            // Add widget test command for debugging
+            // Set up signal handlers to ensure proper terminal cleanup
+            Console.CancelKeyPress += OnCancelKeyPress;
+            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+
+            // Handle legacy test commands
             if (args.Length > 0 && args[0] == "widget-test")
             {
                 Console.WriteLine("Widget test functionality not implemented yet.");
                 return 0;
             }
-            
+
+            if (args.Length > 0 && args[0] == "test-assetripper")
+            {
+                Console.WriteLine("AssetRipper extraction test removed. Use 'peglin-save-explorer extract-relics' command instead.");
+                return 0;
+            }
+
             var rootCommand = new RootCommand("Peglin Save Explorer - Parse and explore Peglin save files using OdinSerializer");
 
+            // Add global verbose option
+            var verboseOption = new Option<bool>(
+                new[] { "--verbose", "-v" },
+                description: "Show verbose output including debug information",
+                getDefaultValue: () => false);
+            rootCommand.AddGlobalOption(verboseOption);
+
+            // Register all commands automatically
+            CommandRegistry.RegisterAllCommands(rootCommand);
+
+            // Default handler for backwards compatibility (show summary)
             var fileOption = new Option<FileInfo?>(
                 new[] { "--file", "-f" },
                 description: "Path to the Peglin save file")
             {
-                IsRequired = false // Make it optional since we can use defaults
+                IsRequired = false
             };
-
-            // Analysis commands
-            var summaryCommand = new Command("summary", "Show player statistics summary")
+            rootCommand.Add(fileOption);
+            rootCommand.SetHandler((FileInfo? file, bool verbose) => 
             {
-                fileOption
-            };
-            summaryCommand.SetHandler((FileInfo? file) => CommandHandlers.ShowSummary(file), fileOption);
-
-            var orbsCommand = new Command("orbs", "Analyze orb usage and performance")
-            {
-                fileOption
-            };
-            var topCountOption = new Option<int>(
-                new[] { "--top", "-t" },
-                description: "Show top N orbs by criteria",
-                getDefaultValue: () => 10);
-            var sortByOption = new Option<string>(
-                new[] { "--sort", "-s" },
-                description: "Sort by: damage, usage, efficiency, cruciball",
-                getDefaultValue: () => "damage");
-            orbsCommand.Add(topCountOption);
-            orbsCommand.Add(sortByOption);
-            orbsCommand.SetHandler((FileInfo? file, int top, string sortBy) => CommandHandlers.AnalyzeOrbs(file, top, sortBy), fileOption, topCountOption, sortByOption);
-
-            var statsCommand = new Command("stats", "Show detailed player statistics")
-            {
-                fileOption
-            };
-            statsCommand.SetHandler((FileInfo? file) => CommandHandlers.ShowDetailedStats(file), fileOption);
-
-            var searchCommand = new Command("search", "Search for specific data in save file")
-            {
-                fileOption
-            };
-            var queryOption = new Option<string>(
-                new[] { "--query", "-q" },
-                description: "Search query (orb name, achievement, etc.)")
-            {
-                IsRequired = true
-            };
-            searchCommand.Add(queryOption);
-            searchCommand.SetHandler((FileInfo? file, string query) => CommandHandlers.SearchSaveData(file, query), fileOption, queryOption);
-
-            // Interactive mode command
-            var interactiveCommand = new Command("interactive", "Start interactive exploration mode")
-            {
-                fileOption
-            };
-            interactiveCommand.SetHandler((FileInfo? file) => StartInteractiveMode(file), fileOption);
-
-            // Run history command
-            var runHistoryCommand = new Command("runs", "View and manage run history")
-            {
-                fileOption
-            };
-            var exportOption = new Option<string>(
-                new[] { "--export", "-e" },
-                description: "Export run history to file");
-            var importOption = new Option<string>(
-                new[] { "--import", "-i" },
-                description: "Import run history from file");
-            var updateSaveOption = new Option<bool>(
-                new[] { "--update-save", "-u" },
-                description: "Update save file with imported runs (experimental)",
-                getDefaultValue: () => false);
-            var dumpRawOption = new Option<string>(
-                new[] { "--dump-raw", "-d" },
-                description: "Dump raw run history data to file for analysis");
-            runHistoryCommand.Add(exportOption);
-            runHistoryCommand.Add(importOption);
-            runHistoryCommand.Add(updateSaveOption);
-            runHistoryCommand.Add(dumpRawOption);
-            runHistoryCommand.SetHandler((FileInfo? file, string export, string import, bool updateSave, string dumpRaw) => 
-                CommandHandlers.HandleRunHistory(file, export, import, updateSave, dumpRaw), 
-                fileOption, exportOption, importOption, updateSaveOption, dumpRawOption);
-
-            // Legacy dump command
-            var dumpCommand = new Command("dump", "Dump raw save file structure")
-            {
-                fileOption
-            };
-            var outputOption = new Option<string>(
-                new[] { "--output", "-o" },
-                description: "Output file path");
-            dumpCommand.Add(outputOption);
-            dumpCommand.SetHandler((FileInfo? file, string output) => CommandHandlers.DumpSaveFile(file, output), fileOption, outputOption);
-
-            rootCommand.Add(summaryCommand);
-            rootCommand.Add(orbsCommand);
-            rootCommand.Add(statsCommand);
-            rootCommand.Add(searchCommand);
-            rootCommand.Add(runHistoryCommand);
-            rootCommand.Add(interactiveCommand);
-            rootCommand.Add(dumpCommand);
-
-            // Default handler for backwards compatibility
-            rootCommand.SetHandler((FileInfo? file) => CommandHandlers.ShowSummary(file), fileOption);
+                SetupLogging(verbose);
+                ShowDefaultSummary(file);
+            }, fileOption, verboseOption);
 
             return await rootCommand.InvokeAsync(args);
         }
 
-        internal static JObject? LoadSaveData(FileInfo? file)
+        private static void SetupLogging(bool verbose)
         {
-            // Try to get effective file path
-            string? filePath = null;
-            
-            if (file != null && file.Exists)
+            Logger.SetLogLevel(verbose ? LogLevel.Verbose : LogLevel.Info);
+        }
+
+        private static void ShowDefaultSummary(FileInfo? file)
+        {
+            var summaryCommand = new SummaryCommand();
+            var command = summaryCommand.CreateCommand();
+            // For the default handler, we'll just call the summary command logic directly
+            // This is a bit of a workaround since we can't easily invoke the command directly
+            Console.WriteLine("Showing summary (default command). Use --help to see all available commands.");
+            var saveData = SaveDataLoader.LoadSaveData(file);
+            if (saveData != null)
             {
-                filePath = file.FullName;
+                // Simple summary output
+                Console.WriteLine("Save data loaded successfully. Use 'summary' command for detailed view.");
+            }
+        }
+
+        internal static void SetConsoleOutputSuppression(bool suppress)
+        {
+            suppressConsoleOutput = suppress;
+            if (suppress)
+            {
+                isInteractiveMode = true;
             }
             else
             {
-                filePath = configManager.GetEffectiveSaveFilePath();
-                if (string.IsNullOrEmpty(filePath))
-                {
-                    Console.WriteLine("Error: No save file specified and no default save file found.");
-                    Console.WriteLine("Please specify a save file with -f or configure a default in settings.");
-                    return null;
-                }
-                Console.WriteLine($"Using default save file: {filePath}");
+                isInteractiveMode = false;
             }
-            
-            if (!File.Exists(filePath))
+        }
+
+        internal static void WriteToConsole(string message)
+        {
+            if (!suppressConsoleOutput)
             {
-                Console.WriteLine($"Error: File '{filePath}' does not exist.");
-                return null;
+                Console.WriteLine(message);
             }
+        }
+
+        private static void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
+        {
+            // Prevent the process from terminating immediately
+            e.Cancel = true;
+
+            // Do basic terminal cleanup
+            CleanupTerminal();
+
+            // Now allow the process to exit
+            Environment.Exit(0);
+        }
+
+        private static void OnProcessExit(object? sender, EventArgs e)
+        {
+            // Do basic terminal cleanup when process exits
+            CleanupTerminal();
+        }
+
+        private static void CleanupTerminal()
+        {
+            // Only do terminal cleanup if we're in interactive mode
+            // CLI commands should not manipulate terminal state
+            if (!isInteractiveMode)
+                return;
 
             try
             {
-                byte[] saveData = File.ReadAllBytes(filePath);
-                var dumper = new SaveFileDumper(configManager);
-                var result = dumper.DumpSaveFile(saveData);
-                return JObject.Parse(result);
+                // Basic terminal restoration without relying on tracked TerminalManager
+                Console.Write("\x1b[?1049l"); // Exit alternate screen
+                Console.ResetColor();
+                Console.CursorVisible = true;
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"Error loading save file: {ex.Message}");
-                return null;
+                // Ignore errors during cleanup
             }
         }
-
-
-
-
-
-
-
-        static void StartInteractiveMode(FileInfo? file)
-        {
-            // Pass null saveData so ConsoleSession.Run() handles file loading and sets up fileInfo properly
-            var session = new ConsoleSession(null, file);
-            session.Run();
-        }
-
     }
-
 }

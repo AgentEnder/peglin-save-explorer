@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
+using peglin_save_explorer.Core;
+using peglin_save_explorer.Data;
 
-namespace peglin_save_explorer
+namespace peglin_save_explorer.UI
 {
     public class ConsoleSession
     {
@@ -16,6 +18,7 @@ namespace peglin_save_explorer
         private JArray? orbData;
         private readonly ConfigurationManager configManager;
         private readonly RunHistoryManager runHistoryManager;
+        private readonly RelicMappingCache relicCache;
         private bool isRunning = true;
 
         public ConsoleSession(JObject? saveData, FileInfo? fileInfo)
@@ -25,6 +28,25 @@ namespace peglin_save_explorer
             this.fileName = fileInfo?.Name ?? "Unknown";
             this.configManager = new ConfigurationManager();
             this.runHistoryManager = new RunHistoryManager(configManager);
+            this.relicCache = new RelicMappingCache();
+
+            // Load relic cache for name resolution
+            try
+            {
+                // First try to get/regenerate the cache from AssetRipper extraction
+                var peglinPath = this.configManager.GetEffectivePeglinPath();
+                if (!string.IsNullOrEmpty(peglinPath))
+                {
+                    RelicMappingCache.EnsureCacheFromAssetRipper(peglinPath);
+                }
+                
+                // Now load the refreshed cache into our instance
+                this.relicCache.LoadFromDisk();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not load relic cache: {ex.Message}");
+            }
 
             if (saveData != null)
             {
@@ -50,7 +72,7 @@ namespace peglin_save_explorer
                     }
                 }
 
-                saveData = Program.LoadSaveData(fileInfo);
+                saveData = SaveDataLoader.LoadSaveData(fileInfo);
                 if (saveData == null)
                 {
                     Console.WriteLine("Failed to load save data.");
@@ -309,7 +331,7 @@ namespace peglin_save_explorer
                     var status = run.Won ? "WIN" : "LOSS";
                     var className = run.CharacterClass.Length > 10 ? run.CharacterClass.Substring(0, 10) : run.CharacterClass;
                     var duration = run.Duration.TotalMinutes > 0 ? $"{run.Duration.TotalMinutes:F0}m" : "--";
-                    var runDisplay = $"{run.Timestamp:MM/dd HH:mm} | {status} | {className} | {run.DamageDealt:N0} dmg | {duration}";
+                    var runDisplay = $"{run.Timestamp:MM/dd HH:mm} | {status.PadRight(4)} | {className.PadRight(10)} | {run.DamageDealt.ToString("N0").PadLeft(8)} dmg | {duration.PadLeft(3)}";
 
                     menuItems.Add(new AutocompleteMenuItem(runDisplay, "run", run));
                 }
@@ -373,19 +395,19 @@ namespace peglin_save_explorer
             textWidget.Y = 0; // Start at top to maximize space
 
             // Add header row
-            textWidget.AddLine("Date/Time        | Result | Class      | Cruci | Dmg      | HP    | Duration");
-            textWidget.AddLine("─────────────────┼────────┼────────────┼───────┼──────────┼───────┼─────────");
+            textWidget.AddLine("Date/Time        | Result | Class      | Cruci | Damage     | HP    | Duration");
+            textWidget.AddLine("─────────────────┼────────┼────────────┼───────┼────────────┼───────┼─────────");
 
             // Add run data
             foreach (var run in runs)
             {
-                var status = run.Won ? "WIN " : "LOSS";
+                var status = run.Won ? "WIN" : "LOSS";
                 var className = run.CharacterClass.Length > 10 ? run.CharacterClass.Substring(0, 10) : run.CharacterClass;
                 var cruci = run.CruciballLevel > 0 ? $"C{run.CruciballLevel}" : "C0";
                 var duration = run.Duration.TotalMinutes > 0 ? $"{run.Duration.TotalMinutes:F0}m" : "--";
                 var hp = run.MaxHp > 0 ? $"{run.FinalHp}/{run.MaxHp}" : "--";
 
-                textWidget.AddLine($"{run.Timestamp:MM/dd HH:mm:ss} | {status}  | {className.PadRight(10)} | {cruci.PadRight(5)} | {run.DamageDealt.ToString("N0").PadLeft(8)} | {hp.PadLeft(5)} | {duration.PadLeft(7)}");
+                textWidget.AddLine($"{run.Timestamp:MM/dd HH:mm:ss} | {status.PadRight(6)} | {className.PadRight(10)} | {cruci.PadRight(5)} | {run.DamageDealt.ToString("N0").PadLeft(10)} | {hp.PadLeft(5)} | {duration.PadLeft(7)}");
             }
 
             widgetManager.AddWidget(textWidget);
@@ -568,31 +590,107 @@ namespace peglin_save_explorer
             dataWidget.AddItem("Result", run.Won ? "WIN" : "LOSS");
             dataWidget.AddItem("Character Class", run.CharacterClass);
             dataWidget.AddItem("Cruciball Level", run.CruciballLevel.ToString());
+            if (!string.IsNullOrEmpty(run.Seed))
+            {
+                dataWidget.AddItem("Seed", run.Seed);
+            }
             dataWidget.AddEmptyLine();
 
             // Combat statistics section
             dataWidget.AddSection("Combat Statistics:");
             dataWidget.AddItem("  Damage Dealt", run.DamageDealt.ToString("N0"));
+            dataWidget.AddItem("  Most Damage in Single Attack", run.MostDamageDealtWithSingleAttack.ToString("N0"));
             dataWidget.AddItem("  Final HP", $"{run.FinalHp}/{run.MaxHp}");
+            dataWidget.AddItem("  Damage Negated", run.TotalDamageNegated.ToString("N0"));
             dataWidget.AddItem("  Duration", run.Duration.TotalMinutes > 0 ? $"{run.Duration.TotalMinutes:F1} minutes" : "Unknown");
             dataWidget.AddEmptyLine();
 
-            // Game statistics section
-            dataWidget.AddSection("Game Statistics:");
-            dataWidget.AddItem("  Pegs Hit", run.PegsHit.ToString("N0"));
-            dataWidget.AddItem("  Bombs Thrown", run.BombsThrown.ToString());
-            dataWidget.AddItem("  Pegs Refreshed", run.PegsRefreshed.ToString());
+            // Detailed game statistics section
+            dataWidget.AddSection("Detailed Statistics:");
+            dataWidget.AddItem("  Pegs Hit", $"{run.PegsHit:N0} (Crit: {run.PegsHitCrit}, Refresh: {run.PegsHitRefresh})");
+            dataWidget.AddItem("  Shots Taken", $"{run.ShotsTaken} (Crit: {run.CritShotsTaken})");
+            dataWidget.AddItem("  Bombs Thrown", $"{run.BombsThrown} (Rigged: {run.BombsThrownRigged})");
+            dataWidget.AddItem("  Most Pegs in One Turn", run.MostPegsHitInOneTurn.ToString("N0"));
+            dataWidget.AddItem("  Coins", $"Earned: {run.CoinsEarned:N0}, Spent: {Math.Abs(run.CoinsSpent):N0}");
+            dataWidget.AddEmptyLine();
+
+            // Relics section
+            if (run.RelicNames.Count > 0)
+            {
+                dataWidget.AddSection("Relics Collected:");
+                foreach (var relic in run.RelicNames)
+                {
+                    // Try to resolve relic name if it's in "Unknown Relic" format
+                    var resolvedName = relicCache.ResolveRelicName(relic);
+                    dataWidget.AddItem("  • " + resolvedName, "");
+                }
+                dataWidget.AddEmptyLine();
+            }
+
+            // Bosses section
+            if (run.BossNames.Count > 0)
+            {
+                dataWidget.AddSection("Bosses Defeated:");
+                foreach (var boss in run.BossNames)
+                {
+                    dataWidget.AddItem("  • " + boss, "");
+                }
+                dataWidget.AddEmptyLine();
+            }
+
+            // Room statistics section
+            if (run.RoomTypeStatistics.Count > 0)
+            {
+                dataWidget.AddSection("Room Visits:");
+                foreach (var kvp in run.RoomTypeStatistics.OrderByDescending(x => x.Value))
+                {
+                    dataWidget.AddItem($"  {kvp.Key}", kvp.Value.ToString());
+                }
+                dataWidget.AddEmptyLine();
+            }
+
+            // Status effects section
+            if (run.ActiveStatusEffects.Count > 0)
+            {
+                dataWidget.AddSection("Status Effects (Final):");
+                foreach (var effect in run.ActiveStatusEffects)
+                {
+                    dataWidget.AddItem("  • " + effect, "");
+                }
+                dataWidget.AddEmptyLine();
+            }
+
+            // Slime pegs section
+            if (run.ActiveSlimePegs.Count > 0)
+            {
+                dataWidget.AddSection("Slime Pegs (Final):");
+                foreach (var slime in run.ActiveSlimePegs)
+                {
+                    dataWidget.AddItem("  • " + slime, "");
+                }
+                dataWidget.AddEmptyLine();
+            }
+
+            // Orbs used section
+            if (run.OrbsUsed.Count > 0)
+            {
+                dataWidget.AddSection("Orbs Used:");
+                foreach (var orb in run.OrbsUsed)
+                {
+                    dataWidget.AddItem("  • " + orb, "");
+                }
+                dataWidget.AddEmptyLine();
+            }
 
             // Additional info
             if (!run.Won && !string.IsNullOrEmpty(run.DefeatedBy))
             {
-                dataWidget.AddEmptyLine();
                 dataWidget.AddItem("Defeated By", run.DefeatedBy);
+                dataWidget.AddEmptyLine();
             }
 
             if (run.IsCustomRun)
             {
-                dataWidget.AddEmptyLine();
                 dataWidget.AddItem("Special", "Custom Run");
             }
 

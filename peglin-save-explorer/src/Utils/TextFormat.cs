@@ -1,6 +1,6 @@
 using System;
 
-namespace peglin_save_explorer
+namespace peglin_save_explorer.Utils
 {
     public struct TextFormat : IEquatable<TextFormat>
     {

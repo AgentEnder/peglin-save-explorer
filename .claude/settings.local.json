@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build)",
+      "Bash(dotnet run:*)",
+      "Bash(git submodule add:*)",
+      "Bash(dotnet build:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(true)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(cp:*)",
+      "Bash(grep:*)",
+      "Bash(dotnet list package:*)",
+      "Bash(dotnet --list-sdks)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:gui-cs.github.io)",
+      "Bash(rm:*)",
+      "Bash(taskkill:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(csc:*)",
+      "Bash(./peglin-save-explorer.exe widget-test)",
+      "Bash(./bin/Debug/net8.0/peglin-save-explorer.exe:*)",
+      "Bash(./bin/Debug/net8.0/peglin-save-explorer.exe extract-fragmented -p \"G:\\SteamLibrary\\steamapps\\common\\Peglin\\Peglin_Data\\StreamingAssets\\aa\\StandaloneWindows64\" -o \"fragmented-relic-extraction.txt\")",
+      "Bash(./bin/Debug/net8.0/peglin-save-explorer.exe parse-comprehensive-assets -p \"G:\\SteamLibrary\\steamapps\\common\\Peglin\" -o \"comprehensive-unity-assets.json\")"
+    ],
+    "deny": []
+  }
+}

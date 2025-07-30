@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace peglin_save_explorer
+namespace peglin_save_explorer.UI
 {
     public abstract class ConsoleWidget
     {
@@ -121,6 +121,8 @@ namespace peglin_save_explorer
                 return;
             }
 
+            // Ensure cursor is hidden during widget operation
+            terminal.SetCursorVisible(false);
 
             while (!shouldExit)
             {
@@ -204,6 +206,7 @@ namespace peglin_save_explorer
                     // Log error and exit since the app can't function
                     terminal.WriteAt(0, terminal.Height - 1, $"INPUT ERROR: {ex.Message}");
                     terminal.Present();
+                    terminal.SetCursorVisible(true); // Restore cursor before exiting
                     System.Threading.Thread.Sleep(2000); // Give user time to see error
                     shouldExit = true;
                     break;
@@ -213,6 +216,7 @@ namespace peglin_save_explorer
                     // Unexpected input error
                     terminal.WriteAt(0, terminal.Height - 1, $"UNEXPECTED INPUT ERROR: {ex.Message}");
                     terminal.Present();
+                    terminal.SetCursorVisible(true); // Restore cursor before exiting
                     System.Threading.Thread.Sleep(2000);
                     shouldExit = true;
                     break;
@@ -226,6 +230,8 @@ namespace peglin_save_explorer
         public void Exit()
         {
             shouldExit = true;
+            // Restore cursor visibility when exiting
+            terminal.SetCursorVisible(true);
         }
 
         private bool TestInputSystem()

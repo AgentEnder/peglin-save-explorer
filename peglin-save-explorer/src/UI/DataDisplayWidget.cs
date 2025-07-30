@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using peglin_save_explorer.Utils;
 
-namespace peglin_save_explorer
+namespace peglin_save_explorer.UI
 {
     public class DataDisplayWidget : ConsoleWidget
     {

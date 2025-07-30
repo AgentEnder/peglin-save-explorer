@@ -1,3 +1,6 @@
 [submodule "odin-serializer"]
 	path = odin-serializer
 	url = https://github.com/AgentEnder/odin-serializer.git
+[submodule "assetripper"]
+	path = assetripper
+	url = https://github.com/AssetRipper/AssetRipper.git
