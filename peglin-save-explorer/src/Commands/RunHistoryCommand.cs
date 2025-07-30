@@ -1,6 +1,7 @@
 using System.CommandLine;
 using peglin_save_explorer.Core;
 using peglin_save_explorer.Data;
+using peglin_save_explorer.Services;
 using peglin_save_explorer.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -64,8 +65,8 @@ namespace peglin_save_explorer.Commands
                     return;
                 }
 
-                // Load run history from stats file (not save file)
-                var runs = LoadRunHistoryData(file, configManager, runHistoryManager);
+                // Load run history using centralized service
+                var runs = RunDataService.LoadRunHistory(file, configManager);
 
                 if (runs.Count == 0)
                 {
@@ -73,20 +74,8 @@ namespace peglin_save_explorer.Commands
                     return;
                 }
 
-                // Ensure relic cache is up to date (GameDataMappings will use it automatically)
-                try
-                {
-                    var peglinPath = configManager.GetEffectivePeglinPath();
-                    if (!string.IsNullOrEmpty(peglinPath))
-                    {
-                        RelicMappingCache.EnsureCacheFromAssetRipper(peglinPath);
-                        Logger.Debug("Relic cache updated for name resolution.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Warning($"Could not update relic cache: {ex.Message}");
-                }
+                // Initialize game data using centralized service
+                GameDataService.InitializeGameData(configManager);
 
                 // Handle export if specified
                 if (!string.IsNullOrEmpty(export))
@@ -185,7 +174,7 @@ namespace peglin_save_explorer.Commands
                     saveFilePath = defaultPath;
                 }
 
-                var statsFilePath = GetStatsFilePath(saveFilePath);
+                var statsFilePath = RunDataService.GetStatsFilePath(saveFilePath);
                 if (string.IsNullOrEmpty(statsFilePath) || !File.Exists(statsFilePath))
                 {
                     Console.WriteLine($"Stats file not found: {statsFilePath}");
@@ -211,10 +200,10 @@ namespace peglin_save_explorer.Commands
             Console.WriteLine("================================================");
 
             var wins = runs.Count(r => r.Won);
-            var winRate = runs.Count > 0 ? (double)wins / runs.Count * 100 : 0;
+            var winRate = RunDisplayFormatter.FormatWinRate(wins, runs.Count);
 
             Console.WriteLine($"Total Runs: {runs.Count}");
-            Console.WriteLine($"Wins: {wins} ({winRate:F1}%)");
+            Console.WriteLine($"Wins: {wins} ({winRate})");
             Console.WriteLine($"Losses: {runs.Count - wins}");
 
             if (runs.Count > 0)
@@ -223,21 +212,22 @@ namespace peglin_save_explorer.Commands
                 var avgDamage = totalDamage / runs.Count;
                 var bestRun = runs.OrderByDescending(r => r.DamageDealt).First();
 
-                Console.WriteLine($"Total Damage Dealt: {totalDamage:N0}");
-                Console.WriteLine($"Average Damage per Run: {avgDamage:N0}");
-                Console.WriteLine($"Best Run: {bestRun.DamageDealt:N0} damage ({bestRun.Timestamp:yyyy-MM-dd})");
+                Console.WriteLine($"Total Damage Dealt: {RunDisplayFormatter.FormatNumber(totalDamage)}");
+                Console.WriteLine($"Average Damage per Run: {RunDisplayFormatter.FormatNumber(avgDamage)}");
+                Console.WriteLine($"Best Run: {RunDisplayFormatter.FormatNumber(bestRun.DamageDealt)} damage ({bestRun.Timestamp:yyyy-MM-dd})");
 
                 Console.WriteLine("\nRecent Runs:");
-                Console.WriteLine("Date/Time            | Result | Class      | Damage     | Duration");
-                Console.WriteLine("────────────────────┼────────┼────────────┼────────────┼─────────");
+                Console.WriteLine(RunDisplayFormatter.GetRunListHeader());
+                Console.WriteLine(RunDisplayFormatter.GetRunListSeparator());
 
                 foreach (var run in runs.Take(15))
                 {
-                    var status = run.Won ? "WIN" : "LOSS";
-                    var className = run.CharacterClass.Length > 10 ? run.CharacterClass.Substring(0, 10) : run.CharacterClass;
-                    var duration = run.Duration.TotalMinutes > 0 ? $"{run.Duration.TotalMinutes:F0}m" : "--";
+                    var status = RunDisplayFormatter.FormatRunStatus(run.Won);
+                    var className = RunDisplayFormatter.FormatCharacterClass(run.CharacterClass, 10);
+                    var duration = RunDisplayFormatter.FormatDuration(run.Duration);
+                    var damage = RunDisplayFormatter.FormatDamage(run.DamageDealt);
 
-                    Console.WriteLine($"{run.Timestamp:yyyy-MM-dd HH:mm:ss} | {status.PadRight(6)} | {className.PadRight(10)} | {run.DamageDealt.ToString("N0").PadLeft(10)} | {duration.PadLeft(7)}");
+                    Console.WriteLine($"{run.Timestamp:yyyy-MM-dd HH:mm:ss} | {status.PadRight(6)} | {className.PadRight(10)} | {damage.PadLeft(10)} | {duration.PadLeft(7)}");
                 }
 
                 // Show most used relics
@@ -265,73 +255,6 @@ namespace peglin_save_explorer.Commands
                     }
                 }
             }
-        }
-
-        private static List<RunRecord> LoadRunHistoryData(FileInfo? file, ConfigurationManager configManager, RunHistoryManager runHistoryManager)
-        {
-            try
-            {
-                // Determine save file path
-                string saveFilePath;
-                if (file != null && file.Exists)
-                {
-                    saveFilePath = file.FullName;
-                }
-                else
-                {
-                    // Use default save file path
-                    var defaultPath = configManager.GetEffectiveSaveFilePath();
-                    if (string.IsNullOrEmpty(defaultPath) || !File.Exists(defaultPath))
-                    {
-                        Logger.Error("No save file specified and no default save file found.");
-                        return new List<RunRecord>();
-                    }
-                    saveFilePath = defaultPath;
-                }
-
-                var statsFilePath = GetStatsFilePath(saveFilePath);
-                if (string.IsNullOrEmpty(statsFilePath))
-                {
-                    Logger.Error("Could not determine stats file path. Save file should be named like 'Save_0.data'.");
-                    return new List<RunRecord>();
-                }
-
-                if (!File.Exists(statsFilePath))
-                {
-                    Logger.Error($"Stats file not found: {statsFilePath}");
-                    Logger.Info("Run history is stored in the Stats file, not the Save file.");
-                    return new List<RunRecord>();
-                }
-
-                Logger.Debug($"Loading run history from: {statsFilePath}");
-                var statsBytes = File.ReadAllBytes(statsFilePath);
-                var dumper = new SaveFileDumper(configManager);
-                var statsJson = dumper.DumpSaveFile(statsBytes);
-                var statsData = JObject.Parse(statsJson);
-                var runs = runHistoryManager.ExtractRunHistory(statsData);
-
-                Logger.Debug($"Successfully loaded {runs.Count} runs from stats file.");
-                return runs;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error loading run history: {ex.Message}");
-                return new List<RunRecord>();
-            }
-        }
-
-        private static string GetStatsFilePath(string saveFilePath)
-        {
-            // Stats file has same name pattern but with Stats_ prefix
-            var saveFileName = Path.GetFileName(saveFilePath);
-            if (saveFileName.StartsWith("Save_") && saveFileName.EndsWith(".data"))
-            {
-                var saveNumber = saveFileName.Substring(5, saveFileName.Length - 10);
-                var statsFileName = $"Stats_{saveNumber}.data";
-                var saveDir = Path.GetDirectoryName(saveFilePath);
-                return Path.Combine(saveDir ?? "", statsFileName);
-            }
-            return "";
         }
     }
 }

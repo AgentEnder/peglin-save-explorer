@@ -24,6 +24,7 @@ namespace peglin_save_explorer
             public Dictionary<int, string> BossMappings { get; set; } = new();
             public Dictionary<int, string> StatusEffectMappings { get; set; } = new();
             public Dictionary<int, string> SlimePegMappings { get; set; } = new();
+            public Dictionary<int, string> CharacterClassMappings { get; set; } = new();
 
             public Assembly? LoadedAssembly { get; set; }
             public string? SourcePath { get; set; }
@@ -82,9 +83,10 @@ namespace peglin_save_explorer
                 ExtractBossMappings(assembly, result);
                 ExtractStatusEffectMappings(assembly, result);
                 ExtractSlimePegMappings(assembly, result);
+                ExtractCharacterClassMappings(assembly, result);
 
                 result.Success = true;
-                result.AddMessage($"Analysis complete - Relics: {result.RelicMappings.Count}, Rooms: {result.RoomMappings.Count}, Bosses: {result.BossMappings.Count}, Status Effects: {result.StatusEffectMappings.Count}, Slimes: {result.SlimePegMappings.Count}");
+                result.AddMessage($"Analysis complete - Relics: {result.RelicMappings.Count}, Rooms: {result.RoomMappings.Count}, Bosses: {result.BossMappings.Count}, Status Effects: {result.StatusEffectMappings.Count}, Slimes: {result.SlimePegMappings.Count}, Classes: {result.CharacterClassMappings.Count}");
             }
             catch (Exception ex)
             {
@@ -499,9 +501,31 @@ namespace peglin_save_explorer
             {
                 result.AddMessage("Extracting room mappings...");
 
-                // Look for Room, RoomType, or similar enums
+                // Look specifically for WorldMap.RoomType enum first (try both cases)
+                var worldMapRoomType = assembly.GetTypes().FirstOrDefault(t =>
+                    (t.FullName == "WorldMap.RoomType" || t.FullName == "Worldmap.RoomType") && t.IsEnum);
+
+                if (worldMapRoomType != null)
+                {
+                    result.AddMessage($"Found {worldMapRoomType.FullName} enum");
+
+                    var enumValues = Enum.GetValues(worldMapRoomType);
+                    foreach (var value in enumValues)
+                    {
+                        var intValue = Convert.ToInt32(value);
+                        var enumName = value.ToString();
+                        var cleanName = CleanupName(enumName ?? "Unknown");
+
+                        result.RoomMappings[intValue] = cleanName;
+                    }
+
+                    result.AddMessage($"Successfully loaded {result.RoomMappings.Count} room mappings from {worldMapRoomType.FullName}");
+                    return;
+                }
+
+                // Fallback: Look for Room, RoomType, or similar enums
                 var roomType = assembly.GetTypes().FirstOrDefault(t =>
-                    (t.Name == "Room" || t.Name == "RoomType" || t.Name == "RoomId" ||
+                    (t.Name == "RoomType" || t.Name == "Room" || t.Name == "RoomId" ||
                      t.Name == "LevelType" || t.Name == "SceneType") && t.IsEnum);
 
                 if (roomType != null)
@@ -572,9 +596,31 @@ namespace peglin_save_explorer
             {
                 result.AddMessage("Extracting boss mappings...");
 
-                // Look for Boss, BossType, or similar enums
+                // Look specifically for Stats.BossType enum first
+                var statsBossType = assembly.GetTypes().FirstOrDefault(t =>
+                    t.FullName == "Stats.BossType" && t.IsEnum);
+
+                if (statsBossType != null)
+                {
+                    result.AddMessage($"Found Stats.BossType enum");
+
+                    var enumValues = Enum.GetValues(statsBossType);
+                    foreach (var value in enumValues)
+                    {
+                        var intValue = Convert.ToInt32(value);
+                        var enumName = value.ToString();
+                        var cleanName = CleanupName(enumName ?? "Unknown");
+
+                        result.BossMappings[intValue] = cleanName;
+                    }
+
+                    result.AddMessage($"Successfully loaded {result.BossMappings.Count} boss mappings from Stats.BossType");
+                    return;
+                }
+
+                // Fallback: Look for Boss, BossType, or similar enums
                 var bossType = assembly.GetTypes().FirstOrDefault(t =>
-                    (t.Name == "Boss" || t.Name == "BossType" || t.Name == "BossId" ||
+                    (t.Name == "BossType" || t.Name == "Boss" || t.Name == "BossId" ||
                      t.Name == "EnemyType" || t.Name == "Enemy") && t.IsEnum);
 
                 if (bossType != null)
@@ -775,6 +821,77 @@ namespace peglin_save_explorer
             catch (Exception ex)
             {
                 result.AddError($"Error extracting slime peg mappings: {ex.Message}");
+            }
+        }
+
+        private static void ExtractCharacterClassMappings(Assembly assembly, AnalysisResult result)
+        {
+            try
+            {
+                result.AddMessage("Extracting character class mappings...");
+
+                // Look for Peglin.ClassSystem.Class enum
+                var characterClassType = assembly.GetTypes().FirstOrDefault(t =>
+                    t.FullName == "Peglin.ClassSystem.Class" && t.IsEnum);
+
+                if (characterClassType != null)
+                {
+                    result.AddMessage($"Found character class enum: {characterClassType.FullName}");
+
+                    var enumValues = Enum.GetValues(characterClassType);
+                    foreach (var value in enumValues)
+                    {
+                        var intValue = Convert.ToInt32(value);
+                        var enumName = value.ToString();
+                        var cleanName = CleanupName(enumName ?? "Unknown");
+
+                        result.CharacterClassMappings[intValue] = cleanName;
+                    }
+
+                    result.AddMessage($"Successfully loaded {result.CharacterClassMappings.Count} character class mappings");
+                }
+                else
+                {
+                    // Look for alternative class-related enums
+                    var candidateEnums = assembly.GetTypes().Where(t =>
+                        t.IsEnum &&
+                        (t.Name.ToLower().Contains("class") ||
+                         t.Name.ToLower().Contains("character") ||
+                         t.FullName?.ToLower().Contains("class") == true ||
+                         t.FullName?.ToLower().Contains("character") == true)).ToList();
+
+                    if (candidateEnums.Any())
+                    {
+                        result.AddMessage($"Found {candidateEnums.Count} candidate character class enums: {string.Join(", ", candidateEnums.Select(e => e.FullName))}");
+
+                        // Prefer enums with "Class" in the name
+                        var bestEnum = candidateEnums.FirstOrDefault(e => e.Name.ToLower().Contains("class")) ??
+                                      candidateEnums.FirstOrDefault(e => e.FullName?.ToLower().Contains("class") == true) ??
+                                      candidateEnums.First();
+
+                        result.AddMessage($"Using enum: {bestEnum.FullName} with {Enum.GetValues(bestEnum).Length} values");
+
+                        var enumValues = Enum.GetValues(bestEnum);
+                        foreach (var value in enumValues)
+                        {
+                            var intValue = Convert.ToInt32(value);
+                            var enumName = value.ToString();
+                            var cleanName = CleanupName(enumName ?? "Unknown");
+
+                            result.CharacterClassMappings[intValue] = cleanName;
+                        }
+
+                        result.AddMessage($"Successfully loaded {result.CharacterClassMappings.Count} character class mappings from {bestEnum.FullName}");
+                    }
+                    else
+                    {
+                        result.AddMessage("No character class enums found");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.AddError($"Error extracting character class mappings: {ex.Message}");
             }
         }
 

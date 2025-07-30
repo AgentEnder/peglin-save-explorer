@@ -6,6 +6,7 @@ using System.Text.Json;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OdinSerializer;
+using peglin_save_explorer.Utils;
 
 namespace peglin_save_explorer.Core
 {
@@ -84,10 +85,12 @@ namespace peglin_save_explorer.Core
             {
                 if (runToken is not JObject runObj) return null;
 
-                // Map class index to class name
-                var classNames = new[] { "Default", "Roundrel", "Cruciball", "Spinventor" };
+                // Debug: Show available fields in the run data
+                Logger.Debug($"Available fields in run data: {string.Join(", ", runObj.Properties().Select(p => p.Name))}");
+
+                // Get class index and look up the name using our assembly-extracted mappings
                 var classIndex = runObj["selectedClass"]?.Value<int>() ?? 0;
-                var className = classIndex >= 0 && classIndex < classNames.Length ? classNames[classIndex] : "Unknown";
+                var className = GameDataMappings.GetCharacterClassName(classIndex);
 
                 var run = new RunRecord
                 {
@@ -118,8 +121,17 @@ namespace peglin_save_explorer.Core
                     CoinsSpent = runObj["coinsSpent"]?.Value<long>() ?? 0,
                     ShotsTaken = runObj["shotsTaken"]?.Value<int>() ?? 0,
                     CritShotsTaken = runObj["critShotsTaken"]?.Value<int>() ?? 0,
-                    StartDate = ParseTimestamp(runObj["startDate"])
+                    StartDate = ParseTimestamp(runObj["startDate"]),
+
+                    // Additional fields from RunStats.cs structure
+                    BombsCreated = runObj["bombsCreated"]?.Value<int>() ?? 0,
+                    BombsCreatedRigged = runObj["bombsCreatedRigged"]?.Value<int>() ?? 0,
+                    DefeatedOnRoom = runObj["defeatedOnRoom"]?.Value<int>() ?? 0,
+                    VampireDealTaken = runObj["vampireDealTaken"]?.Value<bool>() ?? false
                 };
+
+                // Debug: Show values of new fields
+                Logger.Debug($"Parsed new fields - BombsCreated: {run.BombsCreated}, BombsCreatedRigged: {run.BombsCreatedRigged}, DefeatedOnRoom: {run.DefeatedOnRoom}, VampireDealTaken: {run.VampireDealTaken}");
 
                 // Parse orb play data
                 var orbPlayData = runObj["orbPlayData"] as JArray;
@@ -157,6 +169,103 @@ namespace peglin_save_explorer.Core
                 if (slimePegsArray != null)
                 {
                     run.SlimePegs = slimePegsArray.Select(s => s.Value<int>()).ToArray();
+                }
+
+                // Parse additional complex data structures from RunStats.cs
+                
+                // Parse peg upgrade events
+                var pegUpgradeEventsArray = runObj["pegUpgradeEvents"] as JArray;
+                if (pegUpgradeEventsArray != null)
+                {
+                    run.PegUpgradeEvents = pegUpgradeEventsArray.Select(p => p.Value<int>()).ToList();
+                }
+
+                // Parse status effect stacks dictionary
+                var stacksPerStatusEffect = runObj["stacksPerStatusEffect"] as JObject;
+                if (stacksPerStatusEffect != null)
+                {
+                    foreach (var kvp in stacksPerStatusEffect)
+                    {
+                        if (int.TryParse(kvp.Key, out var statusId) && kvp.Value?.Value<int>() is int stacks)
+                        {
+                            var statusName = GameDataMappings.GetStatusEffectName(statusId);
+                            run.StacksPerStatusEffect[statusName] = stacks;
+                        }
+                    }
+                }
+
+                // Parse slime pegs per type dictionary
+                var slimePegsPerSlimeType = runObj["slimePegsPerSlimeType"] as JObject;
+                if (slimePegsPerSlimeType != null)
+                {
+                    foreach (var kvp in slimePegsPerSlimeType)
+                    {
+                        if (int.TryParse(kvp.Key, out var slimeId) && kvp.Value?.Value<int>() is int count)
+                        {
+                            var slimeName = GameDataMappings.GetSlimePegName(slimeId);
+                            run.SlimePegsPerSlimeType[slimeName] = count;
+                        }
+                    }
+                }
+
+                // Parse orb stats dictionary
+                var orbStatsDict = runObj["orbStats"] as JObject;
+                if (orbStatsDict != null)
+                {
+                    foreach (var kvp in orbStatsDict)
+                    {
+                        if (kvp.Value is JObject orbData)
+                        {
+                            var orbStats = new OrbPlayData
+                            {
+                                Id = orbData["id"]?.ToString() ?? kvp.Key,
+                                Name = orbData["name"]?.ToString() ?? kvp.Key,
+                                DamageDealt = orbData["damageDealt"]?.Value<int>() ?? 0,
+                                TimesFired = orbData["timesFired"]?.Value<int>() ?? 0,
+                                TimesDiscarded = orbData["timesDiscarded"]?.Value<int>() ?? 0,
+                                TimesRemoved = orbData["timesRemoved"]?.Value<int>() ?? 0,
+                                Starting = orbData["starting"]?.Value<bool>() ?? false,
+                                AmountInDeck = orbData["amountInDeck"]?.Value<int>() ?? 0,
+                                HighestCruciballBeat = orbData["highestCruciballBeat"]?.Value<int>() ?? 0
+                            };
+
+                            // Parse level instances array
+                            var levelInstancesArray = orbData["levelInstances"] as JArray;
+                            if (levelInstancesArray != null && levelInstancesArray.Count >= 3)
+                            {
+                                orbStats.LevelInstances = new int[3]
+                                {
+                                    levelInstancesArray[0]?.Value<int>() ?? 0,
+                                    levelInstancesArray[1]?.Value<int>() ?? 0,
+                                    levelInstancesArray[2]?.Value<int>() ?? 0
+                                };
+                            }
+
+                            run.OrbStats[kvp.Key] = orbStats;
+                        }
+                    }
+                }
+
+                // Parse enemy data dictionary
+                var enemyData = runObj["enemyData"] as JObject;
+                if (enemyData != null)
+                {
+                    foreach (var kvp in enemyData)
+                    {
+                        if (kvp.Value is JObject enemy)
+                        {
+                            var enemyPlayData = new EnemyPlayData
+                            {
+                                Name = enemy["name"]?.ToString() ?? kvp.Key,
+                                AmountFought = enemy["amountFought"]?.Value<int>() ?? 0,
+                                MeleeDamageReceived = enemy["meleeDamageReceived"]?.Value<int>() ?? 0,
+                                RangedDamageReceived = enemy["rangedDamageReceived"]?.Value<int>() ?? 0,
+                                DefeatedBy = enemy["defeatedBy"]?.Value<bool>() ?? false
+                            };
+
+                            run.EnemyData[kvp.Key] = enemyPlayData;
+                        }
+                    }
                 }
 
                 return run;
@@ -1104,6 +1213,17 @@ namespace peglin_save_explorer.Core
         public int CritShotsTaken { get; set; } = 0;
         public DateTime StartDate { get; set; }
 
+        // Additional fields from RunStats.cs structure
+        public int BombsCreated { get; set; } = 0;
+        public int BombsCreatedRigged { get; set; } = 0;
+        public int DefeatedOnRoom { get; set; } = 0;
+        public bool VampireDealTaken { get; set; } = false;
+        public List<int> PegUpgradeEvents { get; set; } = new();
+        public Dictionary<string, int> StacksPerStatusEffect { get; set; } = new();
+        public Dictionary<string, int> SlimePegsPerSlimeType { get; set; } = new();
+        public Dictionary<string, OrbPlayData> OrbStats { get; set; } = new();
+        public Dictionary<string, EnemyPlayData> EnemyData { get; set; } = new();
+
         // Raw data arrays
         public int[] RelicIds { get; set; } = Array.Empty<int>();
         public int[] VisitedRooms { get; set; } = Array.Empty<int>();
@@ -1124,5 +1244,34 @@ namespace peglin_save_explorer.Core
         public DateTime ExportedAt { get; set; }
         public int TotalRuns { get; set; }
         public List<RunRecord> Runs { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Orb play data structure matching the game's OrbPlayData class
+    /// </summary>
+    public class OrbPlayData
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public int DamageDealt { get; set; } = 0;
+        public int TimesFired { get; set; } = 0;
+        public int TimesDiscarded { get; set; } = 0;
+        public int TimesRemoved { get; set; } = 0;
+        public bool Starting { get; set; } = false;
+        public int AmountInDeck { get; set; } = 0;
+        public int[] LevelInstances { get; set; } = new int[3]; // Level 1, 2, 3 instances
+        public int HighestCruciballBeat { get; set; } = 0;
+    }
+
+    /// <summary>
+    /// Enemy play data structure matching the game's EnemyPlayData class
+    /// </summary>
+    public class EnemyPlayData
+    {
+        public string Name { get; set; } = string.Empty;
+        public int AmountFought { get; set; } = 0;
+        public int MeleeDamageReceived { get; set; } = 0;
+        public int RangedDamageReceived { get; set; } = 0;
+        public bool DefeatedBy { get; set; } = false;
     }
 }

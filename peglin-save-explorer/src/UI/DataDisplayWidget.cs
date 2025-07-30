@@ -130,12 +130,9 @@ namespace peglin_save_explorer.UI
                     }
                     else
                     {
-                        // Key-value pair
-                        var keyPart = new FormattedString($"{item.Key}: ", TextFormat.Default);
-                        var valuePart = new FormattedString(item.Value, TextFormat.Default);
-
-                        Terminal.WriteAt(X, currentY, keyPart);
-                        Terminal.WriteAt(X + keyPart.Length, currentY, valuePart);
+                        // Key-value pair - use safer rendering approach
+                        var fullLine = string.IsNullOrEmpty(item.Key) ? item.Value : $"{item.Key}: {item.Value}";
+                        Terminal.WriteAt(X, currentY, new FormattedString(fullLine, TextFormat.Default));
                         currentY++;
                     }
                 }

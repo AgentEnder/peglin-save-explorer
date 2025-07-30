@@ -54,21 +54,21 @@ namespace peglin_save_explorer.Data
                 // Check if cache is valid
                 if (!forceRefresh && IsCacheValid(peglinPath))
                 {
-                    Console.WriteLine("Loading relic mappings from cache...");
+                    Logger.Debug("Loading relic mappings from cache...");
                     var cachedMappings = LoadFromCache();
                     if (cachedMappings.Any())
                     {
-                        Console.WriteLine($"Loaded {cachedMappings.Count} relic mappings from cache");
+                        Logger.Debug($"Loaded {cachedMappings.Count} relic mappings from cache");
                         return cachedMappings.ToDictionary(r => r.EffectId, r => r.DisplayName);
                     }
                 }
 
-                Console.WriteLine("Cache invalid or missing, extracting fresh relic data...");
+                Logger.Warning("Cache invalid or missing, extracting fresh relic data...");
                 return ExtractAndCacheRelicMappings(peglinPath);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error getting relic mappings: {ex.Message}");
+                Logger.Error($"Error getting relic mappings: {ex.Message}");
                 return new Dictionary<int, string>();
             }
         }
@@ -102,7 +102,7 @@ namespace peglin_save_explorer.Data
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error getting detailed relic mappings: {ex.Message}");
+                Logger.Error($"Error getting detailed relic mappings: {ex.Message}");
                 return new List<RelicMapping>();
             }
         }
@@ -125,14 +125,14 @@ namespace peglin_save_explorer.Data
                 // Check if Peglin path matches
                 if (!string.Equals(metadata.PeglinPath, peglinPath, StringComparison.OrdinalIgnoreCase))
                 {
-                    Console.WriteLine("Cache invalid: Peglin path changed");
+                    Logger.Warning("Cache invalid: Peglin path changed");
                     return false;
                 }
 
                 // Check if cache is too old (older than 7 days)
                 if ((DateTime.Now - metadata.LastUpdated).TotalDays > 7)
                 {
-                    Console.WriteLine("Cache invalid: older than 7 days");
+                    Logger.Warning("Cache invalid: older than 7 days");
                     return false;
                 }
 
@@ -140,7 +140,7 @@ namespace peglin_save_explorer.Data
                 var bundleDirectory = Path.Combine(peglinPath, "Peglin_Data", "StreamingAssets", "aa", "StandaloneWindows64");
                 if (!Directory.Exists(bundleDirectory))
                 {
-                    Console.WriteLine("Cache invalid: bundle directory not found");
+                    Logger.Warning("Cache invalid: bundle directory not found");
                     return false;
                 }
 
@@ -149,14 +149,14 @@ namespace peglin_save_explorer.Data
                     var bundlePath = Path.Combine(bundleDirectory, sourceBundle);
                     if (!File.Exists(bundlePath))
                     {
-                        Console.WriteLine($"Cache invalid: source bundle not found: {sourceBundle}");
+                        Logger.Warning($"Cache invalid: source bundle not found: {sourceBundle}");
                         return false;
                     }
 
                     // Check if bundle was modified after cache creation
                     if (File.GetLastWriteTime(bundlePath) > metadata.LastUpdated)
                     {
-                        Console.WriteLine($"Cache invalid: source bundle modified: {sourceBundle}");
+                        Logger.Warning($"Cache invalid: source bundle modified: {sourceBundle}");
                         return false;
                     }
                 }
@@ -186,11 +186,11 @@ namespace peglin_save_explorer.Data
                 try
                 {
                     var bundleDirectory = Path.Combine(peglinPath, "Peglin_Data", "StreamingAssets", "aa", "StandaloneWindows64");
-                    
+
                     // Use AssetRipper extractor instead of ImprovedRelicExtractor
                     var extractor = new AssetRipperRelicExtractor(null);
                     var allRelics = new Dictionary<string, AssetRipperRelicExtractor.RelicData>();
-                    
+
                     var bundleFiles = Directory.GetFiles(bundleDirectory, "*.bundle", SearchOption.AllDirectories);
                     foreach (var bundleFile in bundleFiles)
                     {
@@ -200,7 +200,7 @@ namespace peglin_save_explorer.Data
                             allRelics[kvp.Key] = kvp.Value;
                         }
                     }
-                    
+
                     // Save to temporary JSON file for processing
                     var tempJsonFile = Path.Combine(tempOutputDir, "assetripper_relics.json");
                     var json = JsonConvert.SerializeObject(allRelics, Formatting.Indented);
@@ -212,7 +212,7 @@ namespace peglin_save_explorer.Data
                     // Save to cache
                     SaveToCache(relicMappings, peglinPath, GetSourceBundles(bundleDirectory));
 
-                    Console.WriteLine($"Successfully cached {relicMappings.Count} relic mappings");
+                    Logger.Debug($"Successfully cached {relicMappings.Count} relic mappings");
                     return relicMappings.ToDictionary(r => r.EffectId, r => r.DisplayName);
                 }
                 finally
@@ -226,7 +226,7 @@ namespace peglin_save_explorer.Data
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error extracting and caching relic mappings: {ex.Message}");
+                Logger.Error($"Error extracting and caching relic mappings: {ex.Message}");
                 return new Dictionary<int, string>();
             }
         }
@@ -240,12 +240,12 @@ namespace peglin_save_explorer.Data
                 foreach (var kvp in allRelics)
                 {
                     var relic = kvp.Value;
-                    
+
                     // Try to extract effect ID from the effect field
                     if (int.TryParse(relic.Effect, out int effectId) && effectId != 0)
                     {
                         var displayName = GetBestDisplayNameFromAssetRipper(relic);
-                        
+
                         if (!string.IsNullOrEmpty(displayName))
                         {
                             relicMappings.Add(new RelicMapping
@@ -259,12 +259,12 @@ namespace peglin_save_explorer.Data
                     }
                 }
 
-                Console.WriteLine($"Processed {relicMappings.Count} relic mappings from AssetRipper data");
+                Logger.Debug($"Processed {relicMappings.Count} relic mappings from AssetRipper data");
                 return relicMappings;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error processing AssetRipper relic data: {ex.Message}");
+                Logger.Error($"Error processing AssetRipper relic data: {ex.Message}");
                 return relicMappings;
             }
         }
@@ -319,11 +319,11 @@ namespace peglin_save_explorer.Data
                                     };
 
                                     relicsWithEffectIds[effectId] = mapping;
-                                    Console.WriteLine($"Using real Effect ID {effectId} for {mapping.DisplayName}");
+                                    Logger.Debug($"Using real Effect ID {effectId} for {mapping.DisplayName}");
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"Skipping duplicate Effect ID {effectId} for {GetBestDisplayName(relic)} (already have {relicsWithEffectIds[effectId].DisplayName})");
+                                    Logger.Debug($"Skipping duplicate Effect ID {effectId} for {GetBestDisplayName(relic)} (already have {relicsWithEffectIds[effectId].DisplayName})");
                                 }
                             }
                             else
@@ -356,21 +356,21 @@ namespace peglin_save_explorer.Data
 
                             relicMappings.Add(mapping);
                             relicsWithEffectIds[fallbackEffectId] = mapping; // Track for future duplicates
-                            Console.WriteLine($"Using fallback Effect ID {fallbackEffectId} for {mapping.DisplayName} (no Effect ID found in data)");
+                            Logger.Debug($"Using fallback Effect ID {fallbackEffectId} for {mapping.DisplayName} (no Effect ID found in data)");
                             fallbackEffectId++;
                         }
 
-                        Console.WriteLine($"Processed {uniqueRelics.Count} unique relics into effect mappings");
+                        Logger.Debug($"Processed {uniqueRelics.Count} unique relics into effect mappings");
                     }
                 }
                 else
                 {
-                    Console.WriteLine("No combined results file found in extraction directory");
+                    Logger.Warning("No combined results file found in extraction directory");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error processing extracted relic data: {ex.Message}");
+                Logger.Error($"Error processing extracted relic data: {ex.Message}");
             }
 
             return relicMappings;
@@ -553,7 +553,7 @@ namespace peglin_save_explorer.Data
             {
                 _cachedMappings = LoadFromCache();
                 _idToNameMap = _cachedMappings.ToDictionary(r => r.EffectId, r => r.DisplayName);
-                
+
                 // Create patterns for resolving "Unknown Relic (ID)" patterns
                 BuildUnknownRelicPatternMap();
             }
@@ -581,7 +581,7 @@ namespace peglin_save_explorer.Data
 
                 // Check if we need to update the cache
                 var shouldUpdate = false;
-                
+
                 if (!File.Exists(CacheFilePath) || !File.Exists(MetadataFilePath))
                 {
                     shouldUpdate = true;
@@ -612,7 +612,7 @@ namespace peglin_save_explorer.Data
                     Console.WriteLine("Extracting relic data from Peglin installation...");
                     var extractor = new AssetRipperRelicExtractor(null);
                     var assetRipperData = extractor.ExtractAllRelicsFromPeglinInstall(peglinPath);
-                    
+
                     if (assetRipperData != null && assetRipperData.Count > 0)
                     {
                         var relicMappings = ProcessAssetRipperDirectData(assetRipperData);
@@ -644,12 +644,12 @@ namespace peglin_save_explorer.Data
                 foreach (var kvp in assetRipperData)
                 {
                     var relic = kvp.Value;
-                    
+
                     // Try to extract effect ID from the effect field
                     if (int.TryParse(relic.Effect, out int effectId) && effectId > 0)
                     {
                         var displayName = !string.IsNullOrWhiteSpace(relic.Name) ? relic.Name : CleanDisplayName(relic.Id);
-                        
+
                         if (!string.IsNullOrEmpty(displayName))
                         {
                             relicMappings.Add(new RelicMapping
@@ -683,12 +683,12 @@ namespace peglin_save_explorer.Data
                 foreach (var kvp in assetRipperData)
                 {
                     var relic = kvp.Value;
-                    
+
                     // Try to extract effect ID from the effect field
                     if (int.TryParse(relic.Effect, out int effectId) && effectId > 0)
                     {
                         var displayName = !string.IsNullOrWhiteSpace(relic.Name) ? relic.Name : CleanDisplayName(relic.Id);
-                        
+
                         if (!string.IsNullOrEmpty(displayName))
                         {
                             relicMappings.Add(new RelicMapping
@@ -786,13 +786,13 @@ namespace peglin_save_explorer.Data
         private void BuildUnknownRelicPatternMap()
         {
             _unknownRelicPatternMap.Clear();
-            
+
             // Pre-populate common patterns that we might encounter
             foreach (var mapping in _cachedMappings)
             {
                 var unknownPatternWithParens = $"Unknown Relic ({mapping.EffectId})";
                 var unknownPatternWithoutParens = $"Unknown Relic {mapping.EffectId}";
-                
+
                 _unknownRelicPatternMap[unknownPatternWithParens] = mapping.DisplayName;
                 _unknownRelicPatternMap[unknownPatternWithoutParens] = mapping.DisplayName;
             }

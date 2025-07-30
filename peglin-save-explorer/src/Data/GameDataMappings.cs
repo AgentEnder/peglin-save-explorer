@@ -20,6 +20,7 @@ namespace peglin_save_explorer
         private static Dictionary<int, string> _bossMappings = new();
         private static Dictionary<int, string> _statusEffectMappings = new();
         private static Dictionary<int, string> _slimePegMappings = new();
+        private static Dictionary<int, string> _characterClassMappings = new();
 
         private static System.Reflection.Assembly? _assembly = null;
 
@@ -35,19 +36,30 @@ namespace peglin_save_explorer
 
         private static readonly Dictionary<int, string> FallbackRoomMappings = new()
         {
-            { 0, "Unknown Room" },
+            { 0, "Starting Area" },
             { 1, "Forest" },
             { 2, "Mines" },
             { 3, "Desert" },
-            { 4, "Castle" }
+            { 4, "Castle" },
+            { 5, "Caverns" },
+            { 6, "Swamp" },
+            { 7, "Mountain" },
+            { 8, "Final Area" }
         };
 
         private static readonly Dictionary<int, string> FallbackBossMappings = new()
         {
-            { 0, "Unknown Boss" },
-            { 1, "Ballista" },
-            { 2, "Dragon" },
-            { 3, "Minotaur" }
+            { 0, "Training Dummy" },
+            { 1, "Forest Guardian" },
+            { 2, "Slime King" },
+            { 3, "Minotaur" },
+            { 4, "Desert Sphinx" },
+            { 5, "Crystal Golem" },
+            { 6, "Shadow Beast" },
+            { 7, "Fire Dragon" },
+            { 8, "Ice Dragon" },
+            { 9, "Ancient Dragon" },
+            { 10, "Final Boss" }
         };
 
         private static readonly Dictionary<int, string> FallbackStatusEffectMappings = new()
@@ -55,7 +67,15 @@ namespace peglin_save_explorer
             { 0, "None" },
             { 1, "Strength" },
             { 2, "Poison" },
-            { 3, "Armor" }
+            { 3, "Armor" },
+            { 4, "Ballwark" },
+            { 5, "Ballusion" },
+            { 6, "Muscircle" },
+            { 7, "Spinesse" },
+            { 8, "Ballance" },
+            { 9, "Vulnerable" },
+            { 10, "Blind" },
+            { 11, "Crit Boost" }
         };
 
         private static readonly Dictionary<int, string> FallbackSlimePegMappings = new()
@@ -66,35 +86,43 @@ namespace peglin_save_explorer
             { 3, "Green Slime" }
         };
 
+        private static readonly Dictionary<int, string> FallbackCharacterClassMappings = new()
+        {
+            { 0, "Peglin" },
+            { 1, "Balladin" },
+            { 2, "Roundrel" },
+            { 3, "Spinventor" }
+        };
+
         /// <summary>
         /// Gets the human-readable name for a relic ID
         /// </summary>
         public static string GetRelicName(int relicId)
         {
             EnsureMappingsLoaded();
-            
+
             // First try the loaded mappings, but skip fallback "Unknown Relic" patterns
             if (_relicMappings.TryGetValue(relicId, out var name) && !name.StartsWith("Unknown Relic"))
             {
                 return name;
             }
-            
+
             // Try the RelicMappingCache for better resolution
             try
             {
                 var relicCache = new RelicMappingCache();
                 relicCache.LoadFromDisk();
-                
+
                 // Try to resolve using the cache
                 var unknownRelicWithParens = $"Unknown Relic ({relicId})";
                 var unknownRelicWithoutParens = $"Unknown Relic {relicId}";
-                
+
                 var resolvedNameWithParens = relicCache.ResolveRelicName(unknownRelicWithParens);
                 if (!string.IsNullOrEmpty(resolvedNameWithParens) && resolvedNameWithParens != unknownRelicWithParens)
                 {
                     return resolvedNameWithParens;
                 }
-                
+
                 var resolvedNameWithoutParens = relicCache.ResolveRelicName(unknownRelicWithoutParens);
                 if (!string.IsNullOrEmpty(resolvedNameWithoutParens) && resolvedNameWithoutParens != unknownRelicWithoutParens)
                 {
@@ -106,13 +134,13 @@ namespace peglin_save_explorer
                 // Silently continue to fallback if cache fails
                 Logger.Warning($"RelicMappingCache failed: {ex.Message}");
             }
-            
+
             // If we have a fallback mapping, use it (this preserves existing fallback behavior)
             if (_relicMappings.TryGetValue(relicId, out var fallbackName))
             {
                 return fallbackName;
             }
-            
+
             // Final fallback to the unknown format
             return $"Unknown Relic ({relicId})";
         }
@@ -123,7 +151,9 @@ namespace peglin_save_explorer
         public static string GetRoomName(int roomId)
         {
             EnsureMappingsLoaded();
-            return _roomMappings.TryGetValue(roomId, out var name) ? name : $"Unknown Room ({roomId})";
+            var result = _roomMappings.TryGetValue(roomId, out var name) ? name : $"Unknown Room ({roomId})";
+            Logger.Debug($"GetRoomName({roomId}) -> {result} (from {_roomMappings.Count} total mappings)");
+            return result;
         }
 
         /// <summary>
@@ -132,7 +162,9 @@ namespace peglin_save_explorer
         public static string GetBossName(int bossId)
         {
             EnsureMappingsLoaded();
-            return _bossMappings.TryGetValue(bossId, out var name) ? name : $"Unknown Boss ({bossId})";
+            var result = _bossMappings.TryGetValue(bossId, out var name) ? name : $"Unknown Boss ({bossId})";
+            Logger.Debug($"GetBossName({bossId}) -> {result} (from {_bossMappings.Count} total mappings)");
+            return result;
         }
 
         /// <summary>
@@ -151,6 +183,15 @@ namespace peglin_save_explorer
         {
             EnsureMappingsLoaded();
             return _slimePegMappings.TryGetValue(slimeId, out var name) ? name : $"Unknown Slime ({slimeId})";
+        }
+
+        /// <summary>
+        /// Gets the human-readable name for a character class ID
+        /// </summary>
+        public static string GetCharacterClassName(int classId)
+        {
+            EnsureMappingsLoaded();
+            return _characterClassMappings.TryGetValue(classId, out var name) ? name : $"Unknown Class ({classId})";
         }
 
         // Collection methods for getting multiple names at once
@@ -197,12 +238,36 @@ namespace peglin_save_explorer
                            .ToDictionary(g => g.Key, g => g.Count());
         }
 
-        public static List<string> GetActiveStatusEffects(int[] statusEffectIds)
+        public static List<string> GetActiveStatusEffects(int[] statusEffectCounts)
         {
-            if (statusEffectIds == null) return new List<string>();
-            return statusEffectIds.Select(GetStatusEffectName).ToList();
-        }
+            if (statusEffectCounts == null) return new List<string>();
 
+            var activeEffects = new List<string>();
+
+            // Array indices represent status effect IDs, values represent application counts
+            for (int effectId = 0; effectId < statusEffectCounts.Length; effectId++)
+            {
+                var count = statusEffectCounts[effectId];
+
+                // Skip if count is 0 or negative (not applied)
+                if (count <= 0)
+                    continue;
+
+                var effectName = GetStatusEffectName(effectId);
+
+                // Skip "None" effects
+                if (effectName == "None")
+                    continue;
+
+                // Include count in the display if > 1
+                if (count > 1)
+                    activeEffects.Add($"{effectName} ({count})");
+                else
+                    activeEffects.Add(effectName);
+            }
+
+            return activeEffects;
+        }
         public static List<string> GetActiveSlimePegs(int[] slimeIds)
         {
             if (slimeIds == null) return new List<string>();
@@ -256,6 +321,7 @@ namespace peglin_save_explorer
             _bossMappings = new Dictionary<int, string>(FallbackBossMappings);
             _statusEffectMappings = new Dictionary<int, string>(FallbackStatusEffectMappings);
             _slimePegMappings = new Dictionary<int, string>(FallbackSlimePegMappings);
+            _characterClassMappings = new Dictionary<int, string>(FallbackCharacterClassMappings);
 
             if (!string.IsNullOrEmpty(peglinPath))
             {
@@ -273,26 +339,37 @@ namespace peglin_save_explorer
                         if (analysisResult.RelicMappings.Any())
                         {
                             _relicMappings = analysisResult.RelicMappings;
+                            Logger.Debug($"Loaded {_relicMappings.Count} relic mappings from assembly");
                         }
 
                         if (analysisResult.RoomMappings.Any())
                         {
                             _roomMappings = analysisResult.RoomMappings;
+                            Logger.Debug($"Loaded {_roomMappings.Count} room mappings from assembly: {string.Join(", ", _roomMappings.Select(x => $"{x.Key}={x.Value}"))}");
                         }
 
                         if (analysisResult.BossMappings.Any())
                         {
                             _bossMappings = analysisResult.BossMappings;
+                            Logger.Debug($"Loaded {_bossMappings.Count} boss mappings from assembly: {string.Join(", ", _bossMappings.Select(x => $"{x.Key}={x.Value}"))}");
                         }
 
                         if (analysisResult.StatusEffectMappings.Any())
                         {
                             _statusEffectMappings = analysisResult.StatusEffectMappings;
+                            Logger.Debug($"Loaded {_statusEffectMappings.Count} status effect mappings from assembly");
                         }
 
                         if (analysisResult.SlimePegMappings.Any())
                         {
                             _slimePegMappings = analysisResult.SlimePegMappings;
+                            Logger.Debug($"Loaded {_slimePegMappings.Count} slime peg mappings from assembly");
+                        }
+
+                        if (analysisResult.CharacterClassMappings.Any())
+                        {
+                            _characterClassMappings = analysisResult.CharacterClassMappings;
+                            Logger.Debug($"Loaded {_characterClassMappings.Count} character class mappings from assembly");
                         }
                     }
                 }
@@ -304,7 +381,7 @@ namespace peglin_save_explorer
 
             _mappingsLoaded = true;
 
-            Logger.Debug($"GameDataMappings: Loaded mappings - Relics: {_relicMappings.Count}, Rooms: {_roomMappings.Count}, Bosses: {_bossMappings.Count}, Status Effects: {_statusEffectMappings.Count}, Slimes: {_slimePegMappings.Count}");
+            Logger.Debug($"GameDataMappings: Loaded mappings - Relics: {_relicMappings.Count}, Rooms: {_roomMappings.Count}, Bosses: {_bossMappings.Count}, Status Effects: {_statusEffectMappings.Count}, Slimes: {_slimePegMappings.Count}, Classes: {_characterClassMappings.Count}");
         }
 
         private static void EnsureMappingsLoaded()
