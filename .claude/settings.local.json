@@ -23,7 +23,12 @@
       "Bash(./peglin-save-explorer.exe widget-test)",
       "Bash(./bin/Debug/net8.0/peglin-save-explorer.exe:*)",
       "Bash(./bin/Debug/net8.0/peglin-save-explorer.exe extract-fragmented -p \"G:\\SteamLibrary\\steamapps\\common\\Peglin\\Peglin_Data\\StreamingAssets\\aa\\StandaloneWindows64\" -o \"fragmented-relic-extraction.txt\")",
-      "Bash(./bin/Debug/net8.0/peglin-save-explorer.exe parse-comprehensive-assets -p \"G:\\SteamLibrary\\steamapps\\common\\Peglin\" -o \"comprehensive-unity-assets.json\")"
+      "Bash(./bin/Debug/net8.0/peglin-save-explorer.exe parse-comprehensive-assets -p \"G:\\SteamLibrary\\steamapps\\common\\Peglin\" -o \"comprehensive-unity-assets.json\")",
+      "Bash(~/.dotnet/dotnet build:*)",
+      "Bash(~/.dotnet/dotnet run:*)",
+      "Bash(./bin/Debug/net9.0/peglin-save-explorer.exe view-run:*)",
+      "Bash(./bin/Debug/net9.0/peglin-save-explorer view-run:*)",
+      "Bash(./bin/Debug/net9.0/peglin-save-explorer:*)"
     ],
     "deny": []
   }
