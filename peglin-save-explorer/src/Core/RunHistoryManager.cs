@@ -2,17 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OdinSerializer;
 using peglin_save_explorer.Utils;
+using peglin_save_explorer.Services;
+using peglin_save_explorer.Data;
 
 namespace peglin_save_explorer.Core
 {
     public class RunHistoryManager
     {
         private readonly ConfigurationManager configManager;
+        private Assembly? peglinAssembly;
 
         public RunHistoryManager(ConfigurationManager? configManager = null)
         {
@@ -41,31 +47,34 @@ namespace peglin_save_explorer.Core
                         var run = ParseStatsFileRun(runToken);
                         if (run != null) runs.Add(run);
                     }
-                    return runs.OrderByDescending(r => r.Timestamp).ToList();
+                    // Continue to process with persistent database merge
                 }
-
-                // Otherwise, check standard save file locations
-                var data = saveData["peglinData"] as JObject ?? saveData["data"] as JObject;
-                if (data == null) return runs;
-
-                // Look for run history in various possible locations
-                var runSources = new[]
+                else
                 {
-                    data["runHistory"],
-                    data["completedRuns"],
-                    data["gameHistory"],
-                    data["sessionHistory"],
-                    data["runs"],
-                    data["PermanentStats"]?["Value"]?["runHistory"],
-                    data["PermanentStats"]?["Value"]?["completedRuns"],
-                    data["gameData"]?["runHistory"]
-                };
-
-                foreach (var source in runSources)
-                {
-                    if (source != null)
+                    // Otherwise, check standard save file locations
+                    var data = saveData["peglinData"] as JObject ?? saveData["data"] as JObject;
+                    if (data != null)
                     {
-                        runs.AddRange(ParseRunData(source));
+                        // Look for run history in various possible locations
+                        var runSources = new[]
+                        {
+                            data["runHistory"],
+                            data["completedRuns"],
+                            data["gameHistory"],
+                            data["sessionHistory"],
+                            data["runs"],
+                            data["PermanentStats"]?["Value"]?["runHistory"],
+                            data["PermanentStats"]?["Value"]?["completedRuns"],
+                            data["gameData"]?["runHistory"]
+                        };
+
+                        foreach (var source in runSources)
+                        {
+                            if (source != null)
+                            {
+                                runs.AddRange(ParseRunData(source));
+                            }
+                        }
                     }
                 }
 
@@ -76,7 +85,235 @@ namespace peglin_save_explorer.Core
                 Console.WriteLine($"Error extracting run history: {ex.Message}");
             }
 
-            return runs.OrderByDescending(r => r.Timestamp).ToList();
+            var sortedRuns = runs.OrderByDescending(r => r.Timestamp).ToList();
+            
+            // Apply relic mappings to all runs
+            ApplyRelicMappings(sortedRuns);
+            
+            // Merge with persistent database and save new runs
+            var mergedRuns = MergeWithPersistentDatabase(sortedRuns);
+            
+            return mergedRuns;
+        }
+
+        /// <summary>
+        /// Apply proper relic mappings to all runs using GameDataService
+        /// </summary>
+        private void ApplyRelicMappings(List<RunRecord> runs)
+        {
+            try
+            {
+                var peglinPath = configManager.GetEffectivePeglinPath();
+                var relicMappings = GameDataService.GetRelicMappings(peglinPath);
+                
+                if (relicMappings != null && relicMappings.Count > 0)
+                {
+                    foreach (var run in runs)
+                    {
+                        run.RelicNames = run.RelicIds.Select(relicId =>
+                        {
+                            if (relicMappings.TryGetValue(relicId, out var cachedName))
+                            {
+                                return cachedName;
+                            }
+                            else
+                            {
+                                // Fallback to GameDataMappings
+                                return GameDataMappings.GetRelicName(relicId);
+                            }
+                        }).ToList();
+                    }
+                }
+                else
+                {
+                    Logger.Warning("No relic mappings available, using fallback mappings");
+                    
+                    // Fallback to GameDataMappings for all runs
+                    foreach (var run in runs)
+                    {
+                        run.RelicNames = GameDataMappings.GetRelicNames(run.RelicIds);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Error applying relic mappings: {ex.Message}");
+                
+                // Fallback to GameDataMappings for all runs
+                foreach (var run in runs)
+                {
+                    run.RelicNames = GameDataMappings.GetRelicNames(run.RelicIds);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Merge current runs with persistent database, avoiding duplicates
+        /// </summary>
+        private List<RunRecord> MergeWithPersistentDatabase(List<RunRecord> currentRuns)
+        {
+            try
+            {
+                var persistentRuns = LoadPersistentRunHistory();
+                var newRuns = new List<RunRecord>();
+                
+                foreach (var run in currentRuns)
+                {
+                    var hash = GenerateRunHash(run);
+                    run.Id = hash; // Use hash as ID for consistency
+                    
+                    // Check if this run already exists in persistent storage
+                    if (!persistentRuns.Any(r => r.Id == hash))
+                    {
+                        newRuns.Add(run);
+                        persistentRuns.Add(run);
+                        Logger.Debug($"Added new run to database: {run.Timestamp:yyyy-MM-dd HH:mm:ss} - {(run.Won ? "WIN" : "LOSS")}");
+                    }
+                }
+                
+                if (newRuns.Count > 0)
+                {
+                    SavePersistentRunHistory(persistentRuns);
+                    Logger.Info($"Saved {newRuns.Count} new runs to persistent database. Total runs: {persistentRuns.Count}");
+                }
+                
+                return persistentRuns.OrderByDescending(r => r.Timestamp).ToList();
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Error merging with persistent database: {ex.Message}");
+                return currentRuns; // Fallback to current runs only
+            }
+        }
+
+        /// <summary>
+        /// Generate a unique hash for a run to detect duplicates
+        /// </summary>
+        private string GenerateRunHash(RunRecord run)
+        {
+            // Create a string with key run data that should be unique
+            // NOTE: Excluding CharacterClass from hash due to inconsistent character class lookups causing duplicate detection to fail
+            var hashData = $"{run.Timestamp:yyyy-MM-dd-HH-mm-ss}_{run.Won}_{run.DamageDealt}_{run.Duration.TotalMilliseconds}_{run.Seed}_{run.CruciballLevel}_{string.Join(",", run.RelicIds.OrderBy(x => x))}";
+            
+            using var sha256 = SHA256.Create();
+            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(hashData));
+            return Convert.ToBase64String(hashBytes)[..16]; // Use first 16 characters for readability
+        }
+
+        /// <summary>
+        /// Get the path to the persistent run history database
+        /// </summary>
+        private string GetPersistentDatabasePath()
+        {
+            var configFilePath = configManager.GetConfigFilePath();
+            var appDataPath = Path.GetDirectoryName(configFilePath) ?? Path.GetTempPath();
+            return Path.Combine(appDataPath, "run_history.json");
+        }
+
+        /// <summary>
+        /// Load run history from persistent database
+        /// </summary>
+        private List<RunRecord> LoadPersistentRunHistory()
+        {
+            var dbPath = GetPersistentDatabasePath();
+            
+            if (!File.Exists(dbPath))
+            {
+                Logger.Debug("No persistent run history database found, starting fresh");
+                return new List<RunRecord>();
+            }
+
+            try
+            {
+                var json = File.ReadAllText(dbPath);
+                var database = JsonConvert.DeserializeObject<PersistentRunDatabase>(json);
+                
+                if (database?.Runs != null)
+                {
+                    Logger.Debug($"Loaded {database.Runs.Count} runs from persistent database");
+                    
+                    // Clean up duplicates that may exist from previous hash generation issues
+                    var cleanedRuns = CleanupDuplicateRuns(database.Runs);
+                    
+                    // If we removed duplicates, save the cleaned database
+                    if (cleanedRuns.Count != database.Runs.Count)
+                    {
+                        Logger.Info($"Cleaned up {database.Runs.Count - cleanedRuns.Count} duplicate runs from persistent database");
+                        SavePersistentRunHistory(cleanedRuns);
+                    }
+                    
+                    return cleanedRuns;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Error loading persistent run history: {ex.Message}, starting fresh");
+            }
+            
+            return new List<RunRecord>();
+        }
+
+        /// <summary>
+        /// Clean up duplicate runs by regenerating hashes and keeping the first occurrence
+        /// </summary>
+        private List<RunRecord> CleanupDuplicateRuns(List<RunRecord> runs)
+        {
+            var seenHashes = new HashSet<string>();
+            var cleanedRuns = new List<RunRecord>();
+            
+            foreach (var run in runs.OrderByDescending(r => r.Timestamp))
+            {
+                var hash = GenerateRunHash(run);
+                
+                if (!seenHashes.Contains(hash))
+                {
+                    run.Id = hash; // Update ID to use new hash
+                    seenHashes.Add(hash);
+                    cleanedRuns.Add(run);
+                }
+                // Else: Skip duplicate run
+            }
+            
+            return cleanedRuns;
+        }
+
+        /// <summary>
+        /// Save run history to persistent database
+        /// </summary>
+        private void SavePersistentRunHistory(List<RunRecord> runs)
+        {
+            var dbPath = GetPersistentDatabasePath();
+            
+            try
+            {
+                // Ensure directory exists
+                var directory = Path.GetDirectoryName(dbPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                var database = new PersistentRunDatabase
+                {
+                    Version = 1,
+                    LastUpdated = DateTime.UtcNow,
+                    TotalRuns = runs.Count,
+                    Runs = runs.OrderByDescending(r => r.Timestamp).ToList()
+                };
+
+                var json = JsonConvert.SerializeObject(database, Formatting.Indented, new JsonSerializerSettings
+                {
+                    DateFormatHandling = DateFormatHandling.IsoDateFormat,
+                    DateTimeZoneHandling = DateTimeZoneHandling.Utc
+                });
+
+                File.WriteAllText(dbPath, json);
+                Logger.Debug($"Saved {runs.Count} runs to persistent database at {dbPath}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error saving persistent run history: {ex.Message}");
+            }
         }
 
         private RunRecord? ParseStatsFileRun(JToken runToken)
@@ -135,9 +372,49 @@ namespace peglin_save_explorer.Core
 
                 // Parse orb play data
                 var orbPlayData = runObj["orbPlayData"] as JArray;
-                if (orbPlayData != null)
+                Logger.Debug($"orbPlayData found: {orbPlayData != null}, Count: {orbPlayData?.Count ?? 0}");
+                if (orbPlayData != null && orbPlayData.Count > 0)
                 {
                     run.OrbsUsed = orbPlayData.Select(o => o["name"]?.ToString() ?? o["id"]?.ToString() ?? "Unknown").ToList();
+                    
+                    // Also parse detailed orb statistics from orbPlayData if available
+                    foreach (var orbToken in orbPlayData)
+                    {
+                        if (orbToken is JObject orbData)
+                        {
+                            var orbName = orbData["name"]?.ToString() ?? orbData["id"]?.ToString() ?? "Unknown";
+                            var orbStats = new OrbPlayData
+                            {
+                                Id = orbData["id"]?.ToString() ?? orbName,
+                                Name = orbName,
+                                DamageDealt = orbData["damageDealt"]?.Value<int>() ?? 0,
+                                TimesFired = orbData["timesFired"]?.Value<int>() ?? 0,
+                                TimesDiscarded = orbData["timesDiscarded"]?.Value<int>() ?? 0,
+                                TimesRemoved = orbData["timesRemoved"]?.Value<int>() ?? 0,
+                                Starting = orbData["starting"]?.Value<bool>() ?? false,
+                                AmountInDeck = orbData["amountInDeck"]?.Value<int>() ?? 0,
+                                HighestCruciballBeat = orbData["highestCruciballBeat"]?.Value<int>() ?? 0
+                            };
+
+                            // Parse level instances array
+                            var levelInstancesArray = orbData["levelInstances"] as JArray;
+                            if (levelInstancesArray != null && levelInstancesArray.Count >= 3)
+                            {
+                                orbStats.LevelInstances = new int[3]
+                                {
+                                    levelInstancesArray[0]?.Value<int>() ?? 0,
+                                    levelInstancesArray[1]?.Value<int>() ?? 0,
+                                    levelInstancesArray[2]?.Value<int>() ?? 0
+                                };
+                            }
+
+                            run.OrbStats[orbName] = orbStats;
+                        }
+                    }
+                }
+                else if (orbPlayData != null)
+                {
+                    Logger.Debug("orbPlayData exists but is empty array - this could indicate orb data loss during save file deserialization");
                 }
 
                 // Parse raw data arrays for enrichment
@@ -840,29 +1117,399 @@ namespace peglin_save_explorer.Core
                     throw new FileNotFoundException($"Save file not found: {saveFilePath}");
                 }
 
-                // Read the original save file
-                var saveData = File.ReadAllBytes(saveFilePath);
+                // Load Peglin assembly for proper type context
+                LoadPeglinAssembly();
 
-                // Deserialize the save data
-                var deserializedData = DeserializeSaveData(saveData);
-
-                // Update the run history
-                var updatedData = MergeRunHistory(deserializedData, newRuns);
-
-                // Serialize back to binary format
-                var updatedSaveData = SerializeSaveData(updatedData);
-
-                // Create backup before writing
-                var backupPath = saveFilePath + ".backup";
-                File.Copy(saveFilePath, backupPath, true);
-
-                // Write the updated save data
-                File.WriteAllBytes(saveFilePath, updatedSaveData);
+                // Use OdinSerializer with proper type context to update the save file
+                UpdateSaveFileWithOdin(saveFilePath, newRuns);
             }
             catch (Exception ex)
             {
                 throw new Exception($"Failed to update save file: {ex.Message}");
             }
+        }
+
+        private void UpdateSaveFileDirectly(string saveFilePath, List<RunRecord> newRuns)
+        {
+            // Read and deserialize the stats file using SaveFileDumper
+            var statsBytes = File.ReadAllBytes(saveFilePath);
+            var dumper = new SaveFileDumper(configManager);
+            var statsJson = dumper.DumpSaveFile(statsBytes);
+            var statsData = JObject.Parse(statsJson);
+            
+            // Extract the runs history array
+            var runsHistoryToken = statsData["data"]?["RunStatsHistory"]?["Value"]?["runsHistory"];
+            if (runsHistoryToken is not JArray runsArray)
+            {
+                throw new Exception("Could not find runsHistory array in stats file");
+            }
+
+            // Convert imported RunRecord objects back to raw stats format
+            var newRawRuns = ConvertRunRecordsToRawFormat(newRuns);
+            
+            // Replace the bottom entries (oldest runs) with new ones
+            var maxRuns = Math.Min(runsArray.Count, 20); // Stats file typically holds 20 runs
+            var runsToReplace = Math.Min(newRuns.Count, maxRuns);
+            
+            // Remove the oldest runs (from the end of the array)
+            for (int i = 0; i < runsToReplace; i++)
+            {
+                if (runsArray.Count > 0)
+                {
+                    runsArray.RemoveAt(runsArray.Count - 1);
+                }
+            }
+            
+            // Add new runs at the beginning (most recent)
+            for (int i = newRawRuns.Count - 1; i >= 0; i--)
+            {
+                runsArray.Insert(0, newRawRuns[i]);
+            }
+            
+            // Ensure we don't exceed the typical 20-run limit
+            while (runsArray.Count > 20)
+            {
+                runsArray.RemoveAt(runsArray.Count - 1);
+            }
+
+            // Update the modified data back into the stats structure
+            statsData["data"]!["RunStatsHistory"]!["Value"]!["runsHistory"] = runsArray;
+            
+            // For now, we'll document this limitation - full binary rewrite would require
+            // more complex OdinSerializer integration with the exact Unity serialization context
+            Logger.Warning("Save file updating is currently limited to displaying the structure.");
+            Logger.Warning("Full binary rewrite requires matching Unity's exact serialization context.");
+            Logger.Info($"Would replace {runsToReplace} oldest runs with {newRuns.Count} imported runs.");
+            Logger.Info("The updated structure has been prepared but not written to preserve save file integrity.");
+        }
+
+        private List<JObject> ConvertRunRecordsToRawFormat(List<RunRecord> runs)
+        {
+            var rawRuns = new List<JObject>();
+            
+            foreach (var run in runs)
+            {
+                // Convert RunRecord back to the raw stats format structure
+                var rawRun = new JObject
+                {
+                    ["runId"] = run.Id ?? Guid.NewGuid().ToString(),
+                    ["hasWon"] = run.Won,
+                    ["isCustomRun"] = run.IsCustomRun,
+                    ["selectedClass"] = GetClassIndexFromName(run.CharacterClass),
+                    ["cruciballLevel"] = run.CruciballLevel,
+                    ["defeatedBy"] = string.IsNullOrEmpty(run.DefeatedBy) ? null : run.DefeatedBy,
+                    ["finalHp"] = run.FinalHp,
+                    ["maxHp"] = run.MaxHp,
+                    ["defeatedOnLevel"] = 0, // Not stored in RunRecord
+                    ["defeatedOnRoom"] = run.DefeatedOnRoom,
+                    ["mostDamageDealtWithSingleAttack"] = run.MostDamageDealtWithSingleAttack,
+                    ["totalDamageNegated"] = run.TotalDamageNegated,
+                    ["totalDamageDealt"] = run.DamageDealt,
+                    ["pegsHit"] = run.PegsHit,
+                    ["pegsHitRefresh"] = run.PegsHitRefresh,
+                    ["pegsHitCrit"] = run.PegsHitCrit,
+                    ["pegsRefreshed"] = run.PegsRefreshed,
+                    ["bombsThrown"] = run.BombsThrown,
+                    ["bombsThrownRigged"] = run.BombsThrownRigged,
+                    ["bombsCreated"] = run.BombsCreated,
+                    ["bombsCreatedRigged"] = run.BombsCreatedRigged,
+                    ["mostPegsHitInOneTurn"] = run.MostPegsHitInOneTurn,
+                    ["coinsEarned"] = run.CoinsEarned,
+                    ["coinsSpent"] = run.CoinsSpent,
+                    ["shotsTaken"] = run.ShotsTaken,
+                    ["critShotsTaken"] = run.CritShotsTaken,
+                    ["runTimerElapsedMilliseconds"] = (long)run.Duration.TotalMilliseconds,
+                    ["startDate"] = run.StartDate.ToString("yyyy-MM-ddTHH:mm:ss.fffffffK"),
+                    ["endDate"] = run.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss.fffffffK"),
+                    ["seed"] = run.Seed ?? "",
+                };
+
+                // Add orb play data if available
+                if (run.OrbStats.Any())
+                {
+                    var orbPlayData = new JArray();
+                    foreach (var orbStat in run.OrbStats.Values)
+                    {
+                        var orbData = new JObject
+                        {
+                            ["id"] = GetOrbIdFromName(orbStat.Name), // This would need mapping
+                            ["name"] = orbStat.Name,
+                            ["damageDealt"] = orbStat.DamageDealt,
+                            ["timesFired"] = orbStat.TimesFired,
+                            ["timesDiscarded"] = orbStat.TimesDiscarded,
+                            ["timesRemoved"] = orbStat.TimesRemoved,
+                            ["starting"] = orbStat.Starting,
+                            ["amountInDeck"] = orbStat.AmountInDeck,
+                            ["levelInstances"] = new JArray(orbStat.LevelInstances ?? new int[0]),
+                            ["highestCruciballBeat"] = orbStat.HighestCruciballBeat
+                        };
+                        orbPlayData.Add(orbData);
+                    }
+                    rawRun["orbPlayData"] = orbPlayData;
+                }
+                else
+                {
+                    rawRun["orbPlayData"] = new JArray();
+                }
+
+                // Add visited rooms data
+                if (run.VisitedRooms.Any())
+                {
+                    rawRun["visitedRooms"] = new JArray(run.VisitedRooms);
+                }
+                else
+                {
+                    rawRun["visitedRooms"] = new JArray();
+                }
+
+                // Add relics data
+                if (run.RelicIds.Any())
+                {
+                    rawRun["relics"] = new JArray(run.RelicIds);
+                }
+                else
+                {
+                    rawRun["relics"] = new JArray();
+                }
+
+                rawRuns.Add(rawRun);
+            }
+            
+            return rawRuns;
+        }
+
+        private int GetClassIndexFromName(string className)
+        {
+            // Map character class names back to indices
+            return className.ToLower() switch
+            {
+                "peglin" => 0,
+                "roundrel" => 1, 
+                "balladin" => 2,
+                "spinventor" => 3,
+                _ => 0
+            };
+        }
+
+        private string GetOrbIdFromName(string orbName)
+        {
+            // Basic mapping of orb names to IDs - would need to be expanded
+            if (orbName.StartsWith("StoneOrb")) return "stone";
+            if (orbName.StartsWith("Splatorb")) return "splatorb";
+            if (orbName.StartsWith("Ballm")) return "ballm";
+            if (orbName.StartsWith("BuffOrb")) return "buff";
+            // Add more mappings as needed
+            return orbName.ToLower().Replace("-", "").Replace("orb", "");
+        }
+
+        private void LoadPeglinAssembly()
+        {
+            if (peglinAssembly != null) return;
+
+            // Set up assembly resolution handler for missing Unity dependencies
+            AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
+
+            try
+            {
+                // Use the same approach as SaveFileDumper
+                var assemblyPaths = new List<string>();
+
+                // First check if we have a configured path
+                var configuredPath = configManager.GetEffectivePeglinPath();
+                if (!string.IsNullOrEmpty(configuredPath))
+                {
+                    var dllPath = PeglinPathHelper.GetAssemblyPath(configuredPath);
+                    if (!string.IsNullOrEmpty(dllPath) && File.Exists(dllPath))
+                    {
+                        assemblyPaths.Add(dllPath);
+                    }
+                }
+
+                // Try auto-detected Peglin installations
+                var detectedInstallations = configManager.DetectPeglinInstallations();
+                foreach (var installation in detectedInstallations)
+                {
+                    var dllPath = PeglinPathHelper.GetAssemblyPath(installation);
+                    if (!string.IsNullOrEmpty(dllPath) && File.Exists(dllPath))
+                    {
+                        assemblyPaths.Add(dllPath);
+                    }
+                }
+
+                // Try to load assembly from any of the found paths
+                foreach (var path in assemblyPaths.Distinct())
+                {
+                    try
+                    {
+                        peglinAssembly = Assembly.LoadFrom(path);
+                        Logger.Debug($"Successfully loaded Peglin assembly from: {path}");
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"Failed to load assembly from {path}: {ex.Message}");
+                    }
+                }
+
+                if (peglinAssembly == null)
+                {
+                    Logger.Warning("Could not load Peglin assembly - save file updates may not work correctly");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error setting up Peglin assembly loading: {ex.Message}");
+            }
+        }
+
+        private Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args)
+        {
+            // Handle Unity assembly resolution for OdinSerializer
+            var assemblyName = new AssemblyName(args.Name);
+            
+            // Common Unity assemblies that might be requested
+            var unityAssemblies = new[] { "UnityEngine", "UnityEngine.CoreModule", "UnityEditor" };
+            
+            if (unityAssemblies.Any(name => assemblyName.Name?.StartsWith(name) == true))
+            {
+                // Try to find Unity assemblies in the odin-serializer Libraries folder
+                var unityLibPath = Path.Combine(
+                    Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "",
+                    "..", "..", "..", "odin-serializer", "Libraries", "Unity"
+                );
+                
+                if (Directory.Exists(unityLibPath))
+                {
+                    var dllPath = Path.Combine(unityLibPath, $"{assemblyName.Name}.dll");
+                    if (File.Exists(dllPath))
+                    {
+                        try
+                        {
+                            return Assembly.LoadFrom(dllPath);
+                        }
+                        catch
+                        {
+                            // Ignore load failures
+                        }
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        private void UpdateSaveFileWithOdin(string saveFilePath, List<RunRecord> newRuns)
+        {
+            try
+            {
+                // Read the original save file
+                var saveData = File.ReadAllBytes(saveFilePath);
+                
+                // Deserialize using OdinSerializer with proper context
+                object deserializedData;
+                try
+                {
+                    deserializedData = SerializationUtility.DeserializeValue<object>(saveData, DataFormat.Binary);
+                }
+                catch
+                {
+                    // Try with Unity context
+                    var context = new DeserializationContext();
+                    context.Config.SerializationPolicy = SerializationPolicies.Unity;
+                    deserializedData = SerializationUtility.DeserializeValue<object>(saveData, DataFormat.Binary, context);
+                }
+
+                if (deserializedData == null)
+                {
+                    throw new Exception("Could not deserialize save data");
+                }
+
+                // Update the run history data
+                var updatedData = UpdateRunHistoryInObject(deserializedData, newRuns);
+
+                // Serialize back with same context
+                byte[] updatedSaveData;
+                try
+                {
+                    updatedSaveData = SerializationUtility.SerializeValue(updatedData, DataFormat.Binary);
+                }
+                catch
+                {
+                    // Try with Unity context
+                    var context = new SerializationContext();
+                    context.Config.SerializationPolicy = SerializationPolicies.Unity;
+                    updatedSaveData = SerializationUtility.SerializeValue(updatedData, DataFormat.Binary, context);
+                }
+
+                // Create backup before writing
+                var backupPath = saveFilePath + ".backup";
+                File.Copy(saveFilePath, backupPath, true);
+                Logger.Info($"Created backup: {backupPath}");
+
+                // Write the updated save data
+                File.WriteAllBytes(saveFilePath, updatedSaveData);
+                Logger.Info($"Successfully updated save file with {newRuns.Count} runs");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to update save file with OdinSerializer: {ex.Message}");
+            }
+        }
+
+        private object UpdateRunHistoryInObject(object saveData, List<RunRecord> newRuns)
+        {
+            // Convert to JSON for manipulation, then back - this preserves most type information
+            var json = JsonConvert.SerializeObject(saveData, new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Auto,
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                NullValueHandling = NullValueHandling.Include
+            });
+
+            var jObject = JObject.Parse(json);
+            
+            // Find and update the runs history
+            var runsHistoryToken = jObject.SelectToken("$..RunStatsHistory.Value.runsHistory");
+            if (runsHistoryToken is JArray runsArray)
+            {
+                // Convert RunRecord objects to raw format and replace oldest entries
+                var newRawRuns = ConvertRunRecordsToRawFormat(newRuns);
+                var runsToReplace = Math.Min(newRuns.Count, runsArray.Count);
+                
+                // Remove oldest runs
+                for (int i = 0; i < runsToReplace && runsArray.Count > 0; i++)
+                {
+                    runsArray.RemoveAt(runsArray.Count - 1);
+                }
+                
+                // Add new runs at the beginning
+                for (int i = newRawRuns.Count - 1; i >= 0; i--)
+                {
+                    runsArray.Insert(0, newRawRuns[i]);
+                }
+                
+                // Ensure we don't exceed the limit
+                while (runsArray.Count > 20)
+                {
+                    runsArray.RemoveAt(runsArray.Count - 1);
+                }
+                
+                Logger.Info($"Replaced {runsToReplace} oldest runs with {newRuns.Count} imported runs");
+            }
+            else
+            {
+                throw new Exception("Could not find runsHistory array in save data");
+            }
+
+            // Convert back to the original object type
+            var originalType = saveData.GetType();
+            var updatedJson = jObject.ToString();
+            var updatedObject = JsonConvert.DeserializeObject(updatedJson, originalType, new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Auto
+            });
+
+            return updatedObject ?? throw new Exception("Failed to convert updated data back to original type");
         }
 
         private object? DeserializeSaveData(byte[] saveData)
@@ -1231,8 +1878,10 @@ namespace peglin_save_explorer.Core
         public int[] StatusEffects { get; set; } = Array.Empty<int>();
         public int[] SlimePegs { get; set; } = Array.Empty<int>();
 
-        // Enriched data properties (computed from raw data)
-        public List<string> RelicNames => GameDataMappings.GetRelicNames(RelicIds);
+        // Enriched data properties (populated by RunHistoryManager)
+        public List<string> RelicNames { get; set; } = new();
+        
+        // Computed properties (fallback if RelicNames not populated)
         public List<string> BossNames => GameDataMappings.GetBossNames(VisitedBosses);
         public Dictionary<string, int> RoomTypeStatistics => GameDataMappings.GetRoomTypeStatistics(VisitedRooms);
         public List<string> ActiveStatusEffects => GameDataMappings.GetActiveStatusEffects(StatusEffects);
@@ -1273,5 +1922,16 @@ namespace peglin_save_explorer.Core
         public int MeleeDamageReceived { get; set; } = 0;
         public int RangedDamageReceived { get; set; } = 0;
         public bool DefeatedBy { get; set; } = false;
+    }
+
+    /// <summary>
+    /// Persistent run history database structure
+    /// </summary>
+    public class PersistentRunDatabase
+    {
+        public int Version { get; set; } = 1;
+        public DateTime LastUpdated { get; set; }
+        public int TotalRuns { get; set; }
+        public List<RunRecord> Runs { get; set; } = new();
     }
 }

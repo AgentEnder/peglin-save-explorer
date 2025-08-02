@@ -17,10 +17,38 @@ namespace peglin_save_explorer.Data
         private List<RelicMapping> _cachedMappings = new();
         private Dictionary<int, string> _idToNameMap = new();
         private Dictionary<string, string> _unknownRelicPatternMap = new();
-        private static readonly string CacheDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "PeglinSaveExplorer"
-        );
+        private static readonly string CacheDirectory = GetCacheDirectory();
+
+        private static string GetCacheDirectory()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "PeglinSaveExplorer"
+                );
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Library", "Application Support", "PeglinSaveExplorer"
+                );
+            }
+            else
+            {
+                // Linux - use XDG_CONFIG_HOME or fallback to ~/.config
+                var xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+                if (string.IsNullOrEmpty(xdgConfigHome))
+                {
+                    xdgConfigHome = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        ".config"
+                    );
+                }
+                return Path.Combine(xdgConfigHome, "PeglinSaveExplorer");
+            }
+        }
 
         private static readonly string CacheFilePath = Path.Combine(CacheDirectory, "relic_mappings.json");
         private static readonly string MetadataFilePath = Path.Combine(CacheDirectory, "cache_metadata.json");
@@ -137,8 +165,8 @@ namespace peglin_save_explorer.Data
                 }
 
                 // Check if source bundles still exist and haven't been modified
-                var bundleDirectory = Path.Combine(peglinPath, "Peglin_Data", "StreamingAssets", "aa", "StandaloneWindows64");
-                if (!Directory.Exists(bundleDirectory))
+                var bundleDirectory = PeglinPathHelper.GetStreamingAssetsBundlePath(peglinPath);
+                if (string.IsNullOrEmpty(bundleDirectory) || !Directory.Exists(bundleDirectory))
                 {
                     Logger.Warning("Cache invalid: bundle directory not found");
                     return false;
@@ -185,7 +213,12 @@ namespace peglin_save_explorer.Data
 
                 try
                 {
-                    var bundleDirectory = Path.Combine(peglinPath, "Peglin_Data", "StreamingAssets", "aa", "StandaloneWindows64");
+                    var bundleDirectory = PeglinPathHelper.GetStreamingAssetsBundlePath(peglinPath);
+                    if (string.IsNullOrEmpty(bundleDirectory))
+                    {
+                        Logger.Error("Could not find platform-specific streaming assets directory");
+                        return new Dictionary<int, string>();
+                    }
 
                     // Use AssetRipper extractor instead of ImprovedRelicExtractor
                     var extractor = new AssetRipperRelicExtractor(null);

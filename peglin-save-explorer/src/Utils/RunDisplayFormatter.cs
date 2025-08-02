@@ -153,7 +153,7 @@ namespace peglin_save_explorer.Utils
         /// </summary>
         public static string GetRunListHeader()
         {
-            return "Date/Time        | Result | Class      | Damage     | Duration";
+            return "Date/Time           | Result | Class      |     Damage | Duration";
         }
 
         /// <summary>
@@ -161,7 +161,7 @@ namespace peglin_save_explorer.Utils
         /// </summary>
         public static string GetRunListSeparator()
         {
-            return "─────────────────┼────────┼────────────┼────────────┼─────────";
+            return "────────────────────┼────────┼────────────┼────────────┼─────────";
         }
 
         /// <summary>

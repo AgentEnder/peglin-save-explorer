@@ -94,11 +94,69 @@ namespace peglin_save_explorer.Commands
                     }
                 }
 
+                // Analyze Stats types for orb data debugging
+                Console.WriteLine("\n=== Analyzing Stats Types for Orb Data ===");
+                try
+                {
+                    var assemblyPath = PeglinPathHelper.GetAssemblyPath(peglinPath);
+                    if (string.IsNullOrEmpty(assemblyPath))
+                    {
+                        Logger.Error($"Could not find Assembly-CSharp.dll in: {peglinPath}");
+                        return;
+                    }
+                    var assembly = Assembly.LoadFrom(assemblyPath);
+                    
+                    // Generate detailed stats analysis
+                    var statsAnalysisPath = "peglin-stats-analysis.txt";
+                    AssemblyAnalyzer.AnalyzeStatsTypes(assembly, statsAnalysisPath);
+                    Console.WriteLine($"✓ Detailed stats types analysis written to: {statsAnalysisPath}");
+                    
+                    // Quick summary for console
+                    var allTypes = assembly.GetTypes();
+                    var statsTypes = allTypes.Where(t => 
+                        t.Name.Contains("Stats", StringComparison.OrdinalIgnoreCase) ||
+                        t.FullName?.Contains("Stats", StringComparison.OrdinalIgnoreCase) == true
+                    ).ToArray();
+                    
+                    var orbTypes = allTypes.Where(t => 
+                        t.Name.Contains("Orb", StringComparison.OrdinalIgnoreCase) ||
+                        t.FullName?.Contains("Orb", StringComparison.OrdinalIgnoreCase) == true
+                    ).ToArray();
+                    
+                    Console.WriteLine($"Stats-related types found: {statsTypes.Length}");
+                    Console.WriteLine($"Orb-related types found: {orbTypes.Length}");
+                    
+                    // Show a few key stats types in console
+                    var keyStatsTypes = statsTypes.Where(t => 
+                        t.Name.Contains("RunStats", StringComparison.OrdinalIgnoreCase) ||
+                        t.Name.Contains("OrbPlay", StringComparison.OrdinalIgnoreCase) ||
+                        t.Name.Contains("PlayData", StringComparison.OrdinalIgnoreCase)
+                    ).Take(5);
+                    
+                    if (keyStatsTypes.Any())
+                    {
+                        Console.WriteLine("\nKey Stats Types (likely related to orb data):");
+                        foreach (var type in keyStatsTypes)
+                        {
+                            Console.WriteLine($"  - {type.FullName}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error analyzing stats types: {ex.Message}");
+                }
+
                 // List all enum types for debugging
                 Console.WriteLine("\n=== Debug: All Enum Types Found ===");
                 try
                 {
-                    var assemblyPath = Path.Combine(peglinPath, "Peglin_Data", "Managed", "Assembly-CSharp.dll");
+                    var assemblyPath = PeglinPathHelper.GetAssemblyPath(peglinPath);
+                    if (string.IsNullOrEmpty(assemblyPath))
+                    {
+                        Logger.Error($"Could not find Assembly-CSharp.dll in: {peglinPath}");
+                        return;
+                    }
                     var assembly = Assembly.LoadFrom(assemblyPath);
 
                     var allEnums = assembly.GetTypes()

@@ -19,6 +19,7 @@ using AssetRipper.SourceGenerated;
 using AssetRipper.SourceGenerated.Classes.ClassID_114;
 using Newtonsoft.Json;
 using peglin_save_explorer.UI;
+using peglin_save_explorer.Utils;
 
 namespace peglin_save_explorer.Extractors
 {
@@ -58,10 +59,11 @@ namespace peglin_save_explorer.Extractors
             
             try
             {
-                var bundleDirectory = Path.Combine(peglinPath, "Peglin_Data", "StreamingAssets", "aa", "StandaloneWindows64");
-                if (!Directory.Exists(bundleDirectory))
+                var bundleDirectory = PeglinPathHelper.GetStreamingAssetsBundlePath(peglinPath);
+                if (string.IsNullOrEmpty(bundleDirectory) || !Directory.Exists(bundleDirectory))
                 {
-                    Console.WriteLine($"[AssetRipper] Bundle directory not found: {bundleDirectory}");
+                    Console.WriteLine($"[AssetRipper] Bundle directory not found for: {peglinPath}");
+                    Console.WriteLine("[AssetRipper] Checked for platform-specific streaming assets directories");
                     return allRelics;
                 }
 

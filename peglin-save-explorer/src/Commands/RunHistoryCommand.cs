@@ -19,18 +19,6 @@ namespace peglin_save_explorer.Commands
                 IsRequired = false
             };
 
-            var exportOption = new Option<string?>(
-                new[] { "--export", "-e" },
-                description: "Export run history to file");
-
-            var importOption = new Option<string?>(
-                new[] { "--import", "-i" },
-                description: "Import run history from file");
-
-            var updateSaveOption = new Option<bool>(
-                new[] { "--update-save", "-u" },
-                description: "Update save file with imported runs (experimental)",
-                getDefaultValue: () => false);
 
             var dumpRawOption = new Option<string?>(
                 new[] { "--dump-raw", "-d" },
@@ -39,32 +27,21 @@ namespace peglin_save_explorer.Commands
             var command = new Command("runs", "View and manage run history")
             {
                 fileOption,
-                exportOption,
-                importOption,
-                updateSaveOption,
                 dumpRawOption
             };
 
             command.SetHandler(Execute,
-                fileOption, exportOption, importOption, updateSaveOption, dumpRawOption);
+                fileOption, dumpRawOption);
 
             return command;
         }
 
-        private static void Execute(FileInfo? file, string? export, string? import, bool updateSave, string? dumpRaw)
+        private static void Execute(FileInfo? file, string? dumpRaw)
         {
             var configManager = new ConfigurationManager();
-            var runHistoryManager = new RunHistoryManager(configManager);
 
             try
             {
-                // Handle import first if specified
-                if (!string.IsNullOrEmpty(import))
-                {
-                    HandleImport(import, file, updateSave, configManager, runHistoryManager);
-                    return;
-                }
-
                 // Load run history using centralized service
                 var runs = RunDataService.LoadRunHistory(file, configManager);
 
@@ -76,13 +53,6 @@ namespace peglin_save_explorer.Commands
 
                 // Initialize game data using centralized service
                 GameDataService.InitializeGameData(configManager);
-
-                // Handle export if specified
-                if (!string.IsNullOrEmpty(export))
-                {
-                    HandleExport(runs, export);
-                    return;
-                }
 
                 // Handle raw dump if specified
                 if (!string.IsNullOrEmpty(dumpRaw))
@@ -104,54 +74,6 @@ namespace peglin_save_explorer.Commands
             }
         }
 
-        private static void HandleImport(string importPath, FileInfo? saveFile, bool updateSave, ConfigurationManager configManager, RunHistoryManager runHistoryManager)
-        {
-            try
-            {
-                if (!File.Exists(importPath))
-                {
-                    Logger.Error($"Import file not found: {importPath}");
-                    return;
-                }
-
-                var jsonContent = File.ReadAllText(importPath);
-                var importedRuns = JsonConvert.DeserializeObject<List<RunRecord>>(jsonContent);
-
-                if (importedRuns == null || importedRuns.Count == 0)
-                {
-                    Logger.Info("No runs found in import file.");
-                    return;
-                }
-
-                Logger.Info($"Imported {importedRuns.Count} runs from {importPath}");
-
-                if (updateSave)
-                {
-                    Logger.Warning("Save file updating is experimental and not yet implemented.");
-                }
-
-                // Display imported runs summary
-                DisplayRunHistorySummary(importedRuns);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error importing runs: {ex.Message}");
-            }
-        }
-
-        private static void HandleExport(List<RunRecord> runs, string exportPath)
-        {
-            try
-            {
-                var json = JsonConvert.SerializeObject(runs, Formatting.Indented);
-                File.WriteAllText(exportPath, json);
-                Logger.Info($"Exported {runs.Count} runs to {exportPath}");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error exporting runs: {ex.Message}");
-            }
-        }
 
         private static void HandleRawDump(FileInfo? file, string dumpPath, ConfigurationManager configManager)
         {
@@ -196,7 +118,7 @@ namespace peglin_save_explorer.Commands
 
         private static void DisplayRunHistorySummary(List<RunRecord> runs)
         {
-            Console.WriteLine($"\nRun History Summary ({runs.Count} runs):");
+            Console.WriteLine($"\nRun History Summary ({runs.Count} runs:");
             Console.WriteLine("================================================");
 
             var wins = runs.Count(r => r.Won);
@@ -230,28 +152,34 @@ namespace peglin_save_explorer.Commands
                     Console.WriteLine($"{run.Timestamp:yyyy-MM-dd HH:mm:ss} | {status.PadRight(6)} | {className.PadRight(10)} | {damage.PadLeft(10)} | {duration.PadLeft(7)}");
                 }
 
-                // Show most used relics
-                var relicUsage = new Dictionary<string, int>();
+                // Show most used relics with win rates
+                var relicUsage = new Dictionary<string, (int totalUses, int relicWins)>();
                 foreach (var run in runs)
                 {
-                    foreach (var relic in run.RelicNames)
+                    foreach (var relicName in run.RelicNames)
                     {
-                        if (!relicUsage.ContainsKey(relic))
-                            relicUsage[relic] = 0;
-                        relicUsage[relic]++;
+                        if (!relicUsage.ContainsKey(relicName))
+                            relicUsage[relicName] = (0, 0);
+                        
+                        var current = relicUsage[relicName];
+                        relicUsage[relicName] = (current.totalUses + 1, current.relicWins + (run.Won ? 1 : 0));
                     }
                 }
-
 
                 if (relicUsage.Count > 0)
                 {
                     Console.WriteLine("\nMost Used Relics:");
-                    Console.WriteLine("──────────────────────────────────────────────");
-                    var topRelics = relicUsage.OrderByDescending(kvp => kvp.Value).Take(10);
+                    Console.WriteLine("────────────────────────────────────────────────────────────────");
+                    var topRelics = relicUsage.OrderByDescending(kvp => kvp.Value.totalUses).Take(10);
                     foreach (var kvp in topRelics)
                     {
-                        var percentage = (double)kvp.Value / runs.Count * 100;
-                        Console.WriteLine($"{kvp.Key.PadRight(30)} | {kvp.Value.ToString().PadLeft(3)} runs ({percentage:F1}%)");
+                        var relicName = kvp.Key;
+                        var totalUses = kvp.Value.totalUses;
+                        var relicWins = kvp.Value.relicWins;
+                        var usagePercentage = (double)totalUses / runs.Count * 100;
+                        var relicWinRate = totalUses > 0 ? (double)relicWins / totalUses * 100 : 0;
+                        
+                        Console.WriteLine($"{relicName.PadRight(30)} | {totalUses.ToString().PadLeft(3)} runs ({usagePercentage:F1}%) | {relicWinRate:F1}% win rate");
                     }
                 }
             }

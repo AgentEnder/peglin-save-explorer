@@ -36,7 +36,16 @@ namespace peglin_save_explorer.Utils
             lock (_lock)
             {
                 // Truncate long messages to prevent wrapping
-                var maxWidth = Math.Max(80, Console.BufferWidth - 10); // Reserve space for spinner
+                int consoleWidth;
+                try
+                {
+                    consoleWidth = Console.BufferWidth;
+                }
+                catch
+                {
+                    consoleWidth = 80; // Default fallback
+                }
+                var maxWidth = Math.Max(80, consoleWidth - 10); // Reserve space for spinner
                 if (message.Length > maxWidth)
                 {
                     message = message.Substring(0, maxWidth - 3) + "...";
@@ -76,7 +85,16 @@ namespace peglin_save_explorer.Utils
                 var fullMessage = $"{spinner} {_currentMessage}";
 
                 // Calculate how many lines this message will take
-                var consoleWidth = Math.Max(1, Console.BufferWidth);
+                int bufferWidth;
+                try
+                {
+                    bufferWidth = Console.BufferWidth;
+                }
+                catch
+                {
+                    bufferWidth = 80; // Default fallback
+                }
+                var consoleWidth = Math.Max(1, bufferWidth);
                 var newLines = (fullMessage.Length / consoleWidth) + 1;
 
                 // Clear previous lines if we had any
@@ -97,7 +115,16 @@ namespace peglin_save_explorer.Utils
             {
                 for (int i = 0; i < lineCount; i++)
                 {
-                    Console.Write("\r" + new string(' ', Math.Max(1, Console.BufferWidth - 1)));
+                    int width;
+                    try
+                    {
+                        width = Console.BufferWidth;
+                    }
+                    catch
+                    {
+                        width = 80;
+                    }
+                    Console.Write("\r" + new string(' ', Math.Max(1, width - 1)));
                     if (i < lineCount - 1)
                     {
                         Console.Write("\x1b[1A"); // Move cursor up one line
@@ -108,7 +135,16 @@ namespace peglin_save_explorer.Utils
             catch
             {
                 // Ignore errors during cleanup - terminal might not support ANSI codes
-                Console.Write("\r" + new string(' ', Math.Max(1, Console.BufferWidth - 1)) + "\r");
+                int width;
+                try
+                {
+                    width = Console.BufferWidth;
+                }
+                catch
+                {
+                    width = 80;
+                }
+                Console.Write("\r" + new string(' ', Math.Max(1, width - 1)) + "\r");
             }
         }
     }

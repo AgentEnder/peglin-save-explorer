@@ -92,7 +92,7 @@ namespace peglin_save_explorer.Services
         {
             // Stats file has same name pattern but with Stats_ prefix
             var saveFileName = Path.GetFileName(saveFilePath);
-            if (saveFileName.StartsWith("Save_") && saveFileName.EndsWith(".data"))
+            if (saveFileName.StartsWith("Save_", StringComparison.OrdinalIgnoreCase) && saveFileName.EndsWith(".data", StringComparison.OrdinalIgnoreCase))
             {
                 var saveNumber = saveFileName.Substring(5, saveFileName.Length - 10);
                 var statsFileName = $"Stats_{saveNumber}.data";

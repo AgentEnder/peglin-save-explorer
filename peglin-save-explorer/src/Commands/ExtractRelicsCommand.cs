@@ -61,10 +61,12 @@ namespace peglin_save_explorer.Commands
                     return;
                 }
 
-                var bundlePath = Path.Combine(peglinPath, "Peglin_Data", "StreamingAssets", "aa", "StandaloneWindows64");
-                if (!Directory.Exists(bundlePath))
+                var bundlePath = PeglinPathHelper.GetStreamingAssetsBundlePath(peglinPath);
+                if (string.IsNullOrEmpty(bundlePath) || !Directory.Exists(bundlePath))
                 {
-                    DisplayHelper.PrintError($"Bundle directory not found at: {bundlePath}");
+                    DisplayHelper.PrintError("Platform-specific bundle directory not found");
+                    Logger.Info("This command requires access to Peglin's Unity bundle files.");
+                    Logger.Info("Make sure you're pointing to a complete Peglin installation.");
                     return;
                 }
 

@@ -12,7 +12,14 @@ namespace peglin_save_explorer.UI
             this.fileName = fileName;
             this.loadTime = loadTime;
             this.Height = 6; // Header box + filename + loaded time + separator
-            this.Width = Console.WindowWidth;
+            try
+            {
+                this.Width = Console.WindowWidth;
+            }
+            catch
+            {
+                this.Width = 80; // Default fallback
+            }
         }
 
         public override void OnResize()

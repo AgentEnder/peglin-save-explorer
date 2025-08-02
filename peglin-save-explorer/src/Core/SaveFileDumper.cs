@@ -361,30 +361,24 @@ namespace peglin_save_explorer.Core
                     var configuredPath = _configManager.GetEffectivePeglinPath();
                     if (!string.IsNullOrEmpty(configuredPath))
                     {
-                        var dllPath = Path.Combine(configuredPath, "Peglin_Data", "Managed", "Assembly-CSharp.dll");
-                        if (File.Exists(dllPath))
+                        var dllPath = PeglinPathHelper.GetAssemblyPath(configuredPath);
+                        if (!string.IsNullOrEmpty(dllPath) && File.Exists(dllPath))
                         {
                             assemblyPaths.Add(dllPath);
                         }
                     }
                 }
 
-                // Then try the actual Peglin installation
-                var peglinInstallPath = @"G:\SteamLibrary\steamapps\common\Peglin\Peglin_Data\Managed\Assembly-CSharp.dll";
-                if (File.Exists(peglinInstallPath) && !assemblyPaths.Contains(peglinInstallPath))
+                // Try auto-detected Peglin installations
+                var detectedInstallations = _configManager.DetectPeglinInstallations();
+                foreach (var installation in detectedInstallations)
                 {
-                    assemblyPaths.Add(peglinInstallPath);
+                    var dllPath = PeglinPathHelper.GetAssemblyPath(installation);
+                    if (!string.IsNullOrEmpty(dllPath) && File.Exists(dllPath) && !assemblyPaths.Contains(dllPath))
+                    {
+                        assemblyPaths.Add(dllPath);
+                    }
                 }
-
-                // Try common Steam installation paths
-                var steamPaths = new[]
-                {
-                    @"C:\Program Files (x86)\Steam\steamapps\common\Peglin\Peglin_Data\Managed\Assembly-CSharp.dll",
-                    @"C:\Program Files\Steam\steamapps\common\Peglin\Peglin_Data\Managed\Assembly-CSharp.dll",
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Steam\steamapps\common\Peglin\Peglin_Data\Managed\Assembly-CSharp.dll")
-                };
-
-                assemblyPaths.AddRange(steamPaths.Where(File.Exists).Where(p => !assemblyPaths.Contains(p)));
 
                 // Fall back to local PeglinDLLs directory for development
                 var basePaths = new[]

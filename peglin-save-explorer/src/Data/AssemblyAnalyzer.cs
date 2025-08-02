@@ -58,10 +58,10 @@ namespace peglin_save_explorer
                 return result;
             }
 
-            var assemblyPath = Path.Combine(peglinPath, "Peglin_Data", "Managed", "Assembly-CSharp.dll");
-            if (!File.Exists(assemblyPath))
+            var assemblyPath = PeglinPathHelper.GetAssemblyPath(peglinPath);
+            if (string.IsNullOrEmpty(assemblyPath) || !File.Exists(assemblyPath))
             {
-                result.AddError($"Assembly not found at: {assemblyPath}");
+                result.AddError($"Assembly not found in Peglin installation at: {peglinPath}");
                 return result;
             }
 
@@ -1071,6 +1071,172 @@ namespace peglin_save_explorer
             }
 
             writer.WriteLine();
+        }
+
+        /// <summary>
+        /// Analyzes and logs Stats-related types from the Peglin assembly to understand orb data structure
+        /// </summary>
+        public static void AnalyzeStatsTypes(Assembly assembly, string outputPath)
+        {
+            using var writer = new StreamWriter(outputPath);
+
+            writer.WriteLine("PEGLIN STATS TYPES ANALYSIS");
+            writer.WriteLine("=" + new string('=', 50));
+            writer.WriteLine($"Assembly: {assembly.FullName}");
+            writer.WriteLine($"Analysis Time: {DateTime.Now}");
+            writer.WriteLine($"Purpose: Understanding orb data structure and why orbPlayData is empty");
+            writer.WriteLine();
+
+            // Get all types that contain "Stats" in their name
+            var allTypes = assembly.GetTypes();
+            var statsTypes = allTypes.Where(t => 
+                t.Name.Contains("Stats", StringComparison.OrdinalIgnoreCase) ||
+                t.FullName?.Contains("Stats", StringComparison.OrdinalIgnoreCase) == true
+            ).ToArray();
+
+            writer.WriteLine($"STATS-RELATED TYPES FOUND: {statsTypes.Length}");
+            writer.WriteLine();
+
+            foreach (var type in statsTypes.OrderBy(t => t.FullName))
+            {
+                writer.WriteLine($"TYPE: {type.FullName}");
+                writer.WriteLine($"  Namespace: {type.Namespace}");
+                writer.WriteLine($"  Kind: {(type.IsClass ? "Class" : type.IsEnum ? "Enum" : type.IsInterface ? "Interface" : "Other")}");
+                writer.WriteLine($"  Access: {(type.IsPublic ? "Public" : "Non-Public")}");
+                
+                if (type.BaseType != null)
+                {
+                    writer.WriteLine($"  Base Type: {type.BaseType.FullName}");
+                }
+
+                // Analyze fields
+                var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                if (fields.Length > 0)
+                {
+                    writer.WriteLine($"  FIELDS ({fields.Length}):");
+                    foreach (var field in fields.OrderBy(f => f.Name))
+                    {
+                        var accessibility = field.IsPublic ? "public" : field.IsPrivate ? "private" : "protected";
+                        var staticKeyword = field.IsStatic ? "static " : "";
+                        writer.WriteLine($"    {accessibility} {staticKeyword}{field.FieldType.Name} {field.Name}");
+                        
+                        // Special attention to orb-related fields
+                        if (field.Name.Contains("orb", StringComparison.OrdinalIgnoreCase) ||
+                            field.Name.Contains("Orb", StringComparison.OrdinalIgnoreCase))
+                        {
+                            writer.WriteLine($"      *** ORB-RELATED FIELD: {field.FieldType.FullName} ***");
+                        }
+                    }
+                }
+
+                // Analyze properties
+                var properties = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                if (properties.Length > 0)
+                {
+                    writer.WriteLine($"  PROPERTIES ({properties.Length}):");
+                    foreach (var prop in properties.OrderBy(p => p.Name))
+                    {
+                        var getMethod = prop.GetGetMethod(true);
+                        var setMethod = prop.GetSetMethod(true);
+                        var accessibility = getMethod?.IsPublic == true ? "public" : getMethod?.IsPrivate == true ? "private" : "protected";
+                        var staticKeyword = getMethod?.IsStatic == true ? "static " : "";
+                        
+                        writer.WriteLine($"    {accessibility} {staticKeyword}{prop.PropertyType.Name} {prop.Name} {{ {(getMethod != null ? "get; " : "")}{(setMethod != null ? "set; " : "")}}}");
+                        
+                        // Special attention to orb-related properties
+                        if (prop.Name.Contains("orb", StringComparison.OrdinalIgnoreCase) ||
+                            prop.Name.Contains("Orb", StringComparison.OrdinalIgnoreCase))
+                        {
+                            writer.WriteLine($"      *** ORB-RELATED PROPERTY: {prop.PropertyType.FullName} ***");
+                            
+                            // If it's a generic type (like List<T>), show the generic arguments
+                            if (prop.PropertyType.IsGenericType)
+                            {
+                                var genericArgs = prop.PropertyType.GetGenericArguments();
+                                writer.WriteLine($"      Generic Arguments: {string.Join(", ", genericArgs.Select(a => a.FullName))}");
+                            }
+                        }
+                    }
+                }
+
+                // Analyze methods (focusing on orb-related ones)
+                var methods = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                var orbMethods = methods.Where(m => 
+                    m.Name.Contains("orb", StringComparison.OrdinalIgnoreCase) ||
+                    m.Name.Contains("Orb", StringComparison.OrdinalIgnoreCase)
+                ).ToArray();
+                
+                if (orbMethods.Length > 0)
+                {
+                    writer.WriteLine($"  ORB-RELATED METHODS ({orbMethods.Length}):");
+                    foreach (var method in orbMethods.OrderBy(m => m.Name))
+                    {
+                        var accessibility = method.IsPublic ? "public" : method.IsPrivate ? "private" : "protected";
+                        var staticKeyword = method.IsStatic ? "static " : "";
+                        var parameters = string.Join(", ", method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"));
+                        writer.WriteLine($"    {accessibility} {staticKeyword}{method.ReturnType.Name} {method.Name}({parameters})");
+                    }
+                }
+
+                // Look for nested types
+                var nestedTypes = type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic);
+                if (nestedTypes.Length > 0)
+                {
+                    writer.WriteLine($"  NESTED TYPES ({nestedTypes.Length}):");
+                    foreach (var nested in nestedTypes.OrderBy(n => n.Name))
+                    {
+                        writer.WriteLine($"    {nested.Name} ({(nested.IsClass ? "Class" : nested.IsEnum ? "Enum" : "Other")})");
+                    }
+                }
+
+                writer.WriteLine();
+            }
+
+            // Also look for types that might contain orb data but don't have "Stats" in the name
+            writer.WriteLine("OTHER ORB-RELATED TYPES:");
+            writer.WriteLine();
+            
+            var orbTypes = allTypes.Where(t => 
+                !t.Name.Contains("Stats", StringComparison.OrdinalIgnoreCase) &&
+                (t.Name.Contains("Orb", StringComparison.OrdinalIgnoreCase) ||
+                 t.FullName?.Contains("Orb", StringComparison.OrdinalIgnoreCase) == true)
+            ).ToArray();
+
+            foreach (var type in orbTypes.Take(20).OrderBy(t => t.FullName)) // Limit to first 20 to avoid too much output
+            {
+                writer.WriteLine($"TYPE: {type.FullName}");
+                writer.WriteLine($"  Kind: {(type.IsClass ? "Class" : type.IsEnum ? "Enum" : type.IsInterface ? "Interface" : "Other")}");
+                
+                // Show key fields/properties
+                var relevantMembers = new List<string>();
+                
+                var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+                relevantMembers.AddRange(fields.Select(f => $"Field: {f.Name} ({f.FieldType.Name})"));
+                
+                var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                relevantMembers.AddRange(properties.Select(p => $"Property: {p.Name} ({p.PropertyType.Name})"));
+                
+                if (relevantMembers.Any())
+                {
+                    writer.WriteLine($"  Members: {string.Join(", ", relevantMembers.Take(5))}");
+                    if (relevantMembers.Count > 5)
+                    {
+                        writer.WriteLine($"    ... and {relevantMembers.Count - 5} more");
+                    }
+                }
+                
+                writer.WriteLine();
+            }
+
+            if (orbTypes.Length > 20)
+            {
+                writer.WriteLine($"... and {orbTypes.Length - 20} more orb-related types");
+                writer.WriteLine();
+            }
+
+            writer.WriteLine("ANALYSIS COMPLETE");
+            writer.WriteLine($"Total Stats types analyzed: {statsTypes.Length}");
+            writer.WriteLine($"Total Orb types found: {orbTypes.Length}");
         }
     }
 }

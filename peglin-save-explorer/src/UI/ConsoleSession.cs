@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using peglin_save_explorer.Core;
 using peglin_save_explorer.Data;
@@ -342,7 +343,7 @@ namespace peglin_save_explorer.UI
                     case "run":
                         if (selectedItem.Data is RunRecord selectedRun)
                         {
-                            ShowRunDetails(selectedRun);
+                            ShowRunDetailsWithActions(selectedRun);
                         }
                         break;
                     case "all-runs":
@@ -536,31 +537,13 @@ namespace peglin_save_explorer.UI
             dataWidget.AddEmptyLine();
 
             // Relics section - use GameDataService for centralized relic mappings
-            if (run.RelicIds.Length > 0)
+            if (run.RelicNames.Count > 0)
             {
-                dataWidget.AddSection($"Relics Collected ({run.RelicIds.Length}):");
+                dataWidget.AddSection($"Relics Collected ({run.RelicNames.Count}):");
                 
-                // Load relic mappings using centralized service
-                var configManager2 = new ConfigurationManager();
-                var peglinPath = configManager2.GetEffectivePeglinPath();
-                var cachedMappings = GameDataService.GetRelicMappings(peglinPath);
-                
-                foreach (var relicId in run.RelicIds)
+                foreach (var relicName in run.RelicNames)
                 {
-                    // Try to get relic name from cache first, fallback to GameDataMappings
-                    if (cachedMappings != null)
-                    {
-                        var cachedName = cachedMappings.GetValueOrDefault(relicId);
-                        if (!string.IsNullOrEmpty(cachedName))
-                        {
-                            dataWidget.AddItem("  • " + cachedName, "");
-                            continue;
-                        }
-                    }
-
-                    // Fallback to assembly enum name
-                    var enumName = GameDataMappings.GetRelicName(relicId);
-                    dataWidget.AddItem("  • " + enumName, $"(ID: {relicId})");
+                    dataWidget.AddItem("  • " + relicName, "");
                 }
                 dataWidget.AddEmptyLine();
             }
@@ -776,6 +759,240 @@ namespace peglin_save_explorer.UI
 
             // Run the widget system
             widgetManager.Run();
+        }
+
+        private void ShowRunDetailsWithActions(RunRecord run)
+        {
+            while (true)
+            {
+                // First show the run details
+                ShowRunDetails(run);
+
+                // Then show action menu
+                var menuItems = new List<AutocompleteMenuItem>
+                {
+                    new("Export Run - Export this run to a JSON file", "export"),
+                    new("Import from Save - Import this run from save file to stats", "import-save"),
+                    new("Import from File - Import a run from a JSON file", "import-file"),
+                    new("Return - Go back to run history", "return")
+                };
+
+                var selectedItem = ShowWidgetMenu(menuItems, $"Actions for Run {run.Id?.Substring(0, 8)}:");
+
+                if (selectedItem == null || selectedItem.Value == "return")
+                {
+                    break;
+                }
+
+                switch (selectedItem.Value)
+                {
+                    case "export":
+                        HandleRunExport(run);
+                        break;
+                    case "import-save":
+                        HandleRunImportFromSave(run);
+                        break;
+                    case "import-file":
+                        HandleRunImportFromFile();
+                        break;
+                }
+            }
+        }
+
+        private void HandleRunExport(RunRecord run)
+        {
+            try
+            {
+                // Prompt for export path
+                Console.Clear();
+                Console.WriteLine("=== Export Run ===");
+                Console.WriteLine($"Exporting run: {run.Id?.Substring(0, 8)} ({run.Timestamp:yyyy-MM-dd HH:mm:ss})");
+                Console.WriteLine();
+                Console.Write("Enter export file path (or press Enter for default): ");
+                
+                var exportPath = Console.ReadLine()?.Trim();
+                if (string.IsNullOrEmpty(exportPath))
+                {
+                    exportPath = $"run-export-{run.Id?.Substring(0, 8)}-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+                }
+
+                // Get raw data for this specific run
+                var rawRunData = GetRawRunDataForSingleRun(run);
+
+                // Create enhanced export format for single run
+                var exportData = new
+                {
+                    exported = DateTime.UtcNow,
+                    runs = new[] { run }, // Single run in array format for consistency
+                    raw = rawRunData != null ? new[] { rawRunData } : null
+                };
+
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(exportData, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(exportPath, json);
+                
+                Console.WriteLine();
+                Console.WriteLine($"✓ Run exported successfully to: {exportPath}");
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"✗ Error exporting run: {ex.Message}");
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
+            }
+        }
+
+        private void HandleRunImportFromSave(RunRecord run)
+        {
+            try
+            {
+                Console.Clear();
+                Console.WriteLine("=== Import Run from Save File ===");
+                Console.WriteLine($"This will import run: {run.Id?.Substring(0, 8)} from the save file to your stats database");
+                Console.WriteLine();
+                Console.Write("Are you sure? (y/N): ");
+                
+                var confirmation = Console.ReadLine()?.Trim().ToLowerInvariant();
+                if (confirmation != "y" && confirmation != "yes")
+                {
+                    Console.WriteLine("Import cancelled.");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                // Create a single-run list for import
+                var importedRuns = new List<RunRecord> { run };
+
+                // Always update the save file when importing from save
+                var runHistoryManager = new RunHistoryManager(configManager);
+                HandleSaveFileUpdate(importedRuns, runHistoryManager);
+
+                Console.WriteLine();
+                Console.WriteLine($"✓ Successfully imported run '{run.Id?.Substring(0, 8)}' from save file and added to stats database");
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"✗ Error importing run from save file: {ex.Message}");
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
+            }
+        }
+
+        private void HandleRunImportFromFile()
+        {
+            try
+            {
+                Console.Clear();
+                Console.WriteLine("=== Import Run from File ===");
+                Console.WriteLine("Import a previously exported run from a JSON file");
+                Console.WriteLine();
+                Console.Write("Enter import file path: ");
+                
+                var importPath = Console.ReadLine()?.Trim();
+                if (string.IsNullOrEmpty(importPath))
+                {
+                    Console.WriteLine("Import cancelled - no file path provided.");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                if (!File.Exists(importPath))
+                {
+                    Console.WriteLine($"✗ Import file not found: {importPath}");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                var jsonContent = File.ReadAllText(importPath);
+                var importData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(jsonContent);
+                
+                var runs = new List<RunRecord>();
+                if (importData?.runs != null)
+                {
+                    foreach (var runToken in importData.runs)
+                    {
+                        var runRecord = Newtonsoft.Json.JsonConvert.DeserializeObject<RunRecord>(runToken.ToString());
+                        if (runRecord != null)
+                        {
+                            runs.Add(runRecord);
+                        }
+                    }
+                }
+
+                if (runs.Count == 0)
+                {
+                    Console.WriteLine("✗ No valid runs found in import file.");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                Console.WriteLine($"Found {runs.Count} run(s) in import file");
+                Console.Write("Import these runs to your stats database? (y/N): ");
+                
+                var confirmation = Console.ReadLine()?.Trim().ToLowerInvariant();
+                if (confirmation != "y" && confirmation != "yes")
+                {
+                    Console.WriteLine("Import cancelled.");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                var runHistoryManager = new RunHistoryManager(configManager);
+                HandleSaveFileUpdate(runs, runHistoryManager);
+
+                Console.WriteLine();
+                Console.WriteLine($"✓ Successfully imported {runs.Count} run(s) from {importPath}");
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"✗ Error importing run from file: {ex.Message}");
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
+            }
+        }
+
+        private JObject? GetRawRunDataForSingleRun(RunRecord run)
+        {
+            try
+            {
+                // For now, we'll export without raw data to keep things simple
+                // The run data itself contains all the important information
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Could not get raw run data: {ex.Message}");
+                return null;
+            }
+        }
+
+        private void HandleSaveFileUpdate(List<RunRecord> runs, RunHistoryManager runHistoryManager)
+        {
+            try
+            {
+                // Get the stats file path and update it
+                var statsFilePath = RunDataService.GetStatsFilePath(fileInfo?.FullName);
+                runHistoryManager.UpdateSaveFileWithRuns(statsFilePath, runs);
+                
+                Console.WriteLine($"Updated stats file with {runs.Count} run(s)");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to update save file: {ex.Message}", ex);
+            }
         }
 
         private string GetBetterBossName(int bossId)

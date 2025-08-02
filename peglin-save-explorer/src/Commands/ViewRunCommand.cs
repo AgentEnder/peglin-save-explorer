@@ -3,6 +3,7 @@ using peglin_save_explorer.Core;
 using peglin_save_explorer.Data;
 using peglin_save_explorer.Services;
 using peglin_save_explorer.Utils;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace peglin_save_explorer.Commands
@@ -18,34 +19,79 @@ namespace peglin_save_explorer.Commands
                 IsRequired = false
             };
 
-            var runIndexOption = new Option<int>(
+            var runIndexOption = new Option<int?>(
                 new[] { "--run", "-r" },
-                description: "Index of the run to view (0-based)")
+                description: "Index of the run to view (0-based). If not provided, shows interactive selection")
             {
-                IsRequired = true
+                IsRequired = false
             };
+
+            var exportOption = new Option<string?>(
+                new[] { "--export", "-e" },
+                description: "Export this run to file");
+
+            var importOption = new Option<string?>(
+                new[] { "--import", "-i" },
+                description: "Import run from file path. Use 'true' to import from current save file using --run index");
 
             var command = new Command("view-run", "View details of a specific run")
             {
                 fileOption,
-                runIndexOption
+                runIndexOption,
+                exportOption,
+                importOption
             };
 
-            command.SetHandler((FileInfo? file, int runIndex) => Execute(file, runIndex),
-                fileOption, runIndexOption);
+            command.SetHandler((FileInfo? file, int? runIndex, string? export, string? import) => Execute(file, runIndex, export, import),
+                fileOption, runIndexOption, exportOption, importOption);
             return command;
         }
 
-        private static void Execute(FileInfo? file, int runIndex)
+        private static void Execute(FileInfo? file, int? runIndex, string? export, string? import)
         {
             try
             {
-                Logger.Debug($"Loading run {runIndex} details...");
-
                 var configManager = new ConfigurationManager();
+
+                // Handle import first if specified
+                if (!string.IsNullOrEmpty(import))
+                {
+                    // Check if import is boolean flag ("true") to import from save file
+                    if (import.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!runIndex.HasValue)
+                        {
+                            Logger.Error("--run index is required when importing from save file (--import true)");
+                            return;
+                        }
+                        HandleImportFromSave(runIndex.Value, file, configManager);
+                        return;
+                    }
+                    else
+                    {
+                        // Import from file path
+                        HandleImport(import, file, configManager);
+                        return;
+                    }
+                }
+
+                Logger.Debug($"Loading run history...");
 
                 // Load run history using centralized service
                 var runs = RunDataService.LoadRunHistory(file, configManager);
+
+                // If no run index provided, show interactive selection
+                if (!runIndex.HasValue)
+                {
+                    runIndex = ShowInteractiveRunSelection(runs);
+                    if (!runIndex.HasValue)
+                    {
+                        Console.WriteLine("No run selected.");
+                        return;
+                    }
+                }
+
+                Logger.Debug($"Loading run {runIndex} details...");
 
                 if (runs.Count == 0)
                 {
@@ -60,14 +106,21 @@ namespace peglin_save_explorer.Commands
                 var relicCache = GameDataService.LoadRelicCache();
 
                 // Get specific run using centralized validation
-                var run = RunDataService.GetRunByIndex(runs, runIndex);
+                var run = RunDataService.GetRunByIndex(runs, runIndex.Value);
                 if (run == null)
                 {
-                    Console.WriteLine($"Invalid run index {runIndex}. Available runs: 0-{runs.Count - 1}");
+                    Console.WriteLine($"Invalid run index {runIndex.Value}. Available runs: 0-{runs.Count - 1}");
                     return;
                 }
 
-                Console.WriteLine($"\n=== Run {runIndex} Details ===");
+                // Handle export if specified
+                if (!string.IsNullOrEmpty(export))
+                {
+                    HandleExport(run, export, file, configManager);
+                    return;
+                }
+
+                Console.WriteLine($"\n=== Run {runIndex.Value} Details ===");
                 Console.WriteLine($"Won: {run.Won}");
                 Console.WriteLine($"Date: {run.Timestamp:yyyy-MM-dd HH:mm:ss}");
                 Console.WriteLine($"Seed: {run.Seed}");
@@ -309,30 +362,12 @@ namespace peglin_save_explorer.Commands
                     Console.WriteLine("  None");
                 }
 
-                // Load relic mappings once for efficiency using centralized service
-                var configManager2 = new ConfigurationManager();
-                var peglinPath = configManager2.GetEffectivePeglinPath();
-                var cachedMappings = GameDataService.GetRelicMappings(peglinPath);
-
-                Console.WriteLine($"\nRelics ({run.RelicIds.Length}):");
-                if (run.RelicIds.Any())
+                Console.WriteLine($"\nRelics ({run.RelicNames.Count}):");
+                if (run.RelicNames.Any())
                 {
-                    foreach (var relicId in run.RelicIds)
+                    foreach (var relicName in run.RelicNames)
                     {
-                        // Try to get relic name from cache first, fallback to GameDataMappings
-                        if (cachedMappings != null)
-                        {
-                            var cachedName = cachedMappings.GetValueOrDefault(relicId);
-                            if (!string.IsNullOrEmpty(cachedName))
-                            {
-                                Console.WriteLine($"  • {cachedName}");
-                                continue;
-                            }
-                        }
-
-                        // Fallback to assembly enum name
-                        var enumName = GameDataMappings.GetRelicName(relicId);
-                        Console.WriteLine($"  • {enumName} (ID: {relicId})");
+                        Console.WriteLine($"  • {relicName}");
                     }
                 }
                 else
@@ -463,6 +498,315 @@ namespace peglin_save_explorer.Commands
                 {
                     Logger.Debug($"Stack trace: {ex.StackTrace}");
                 }
+            }
+        }
+
+        private static void HandleExport(RunRecord run, string exportPath, FileInfo? file, ConfigurationManager configManager)
+        {
+            try
+            {
+                // Get raw data for this specific run
+                var rawRunData = GetRawRunDataForSingleRun(run, file, configManager);
+
+                // Create enhanced export format for single run
+                var exportData = new
+                {
+                    exported = DateTime.UtcNow,
+                    runs = new[] { run }, // Single run in array format for consistency
+                    raw = rawRunData != null ? new[] { rawRunData } : null
+                };
+
+                var json = JsonConvert.SerializeObject(exportData, Formatting.Indented);
+                File.WriteAllText(exportPath, json);
+                Logger.Info($"Exported run '{run.Id}' to {exportPath}");
+                Console.WriteLine($"Run exported successfully to {exportPath}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error exporting run: {ex.Message}");
+            }
+        }
+
+        private static void HandleImportFromSave(int runIndex, FileInfo? file, ConfigurationManager configManager)
+        {
+            try
+            {
+                // Load run history to get the specific run to import
+                var runs = RunDataService.LoadRunHistory(file, configManager);
+                if (runs.Count == 0)
+                {
+                    Logger.Error("No run history found to import from.");
+                    return;
+                }
+
+                var run = RunDataService.GetRunByIndex(runs, runIndex);
+                if (run == null)
+                {
+                    Logger.Error($"Invalid run index {runIndex}. Available runs: 0-{runs.Count - 1}");
+                    return;
+                }
+
+                Logger.Info($"Importing run '{run.Id}' from save file to update stats file");
+
+                // Create a single-run list for import
+                var importedRuns = new List<RunRecord> { run };
+
+                // Always update the save file when importing from save
+                var runHistoryManager = new RunHistoryManager(configManager);
+                HandleSaveFileUpdate(importedRuns, file, configManager, runHistoryManager);
+
+                Console.WriteLine($"Successfully imported run '{run.Id}' from save file and added to stats file");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error importing run from save file: {ex.Message}");
+            }
+        }
+
+        private static void HandleImport(string importPath, FileInfo? file, ConfigurationManager configManager)
+        {
+            try
+            {
+                if (!File.Exists(importPath))
+                {
+                    Logger.Error($"Import file not found: {importPath}");
+                    return;
+                }
+
+                var jsonContent = File.ReadAllText(importPath);
+                var importedRuns = ParseImportFile(jsonContent);
+
+                if (importedRuns == null || importedRuns.Count == 0)
+                {
+                    Logger.Info("No runs found in import file.");
+                    return;
+                }
+
+                Logger.Info($"Found {importedRuns.Count} runs in import file");
+
+                // Always update the save file when importing individual runs
+                var runHistoryManager = new RunHistoryManager(configManager);
+                HandleSaveFileUpdate(importedRuns, file, configManager, runHistoryManager);
+
+                Console.WriteLine($"Successfully imported {importedRuns.Count} runs and added them to save file");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error importing runs: {ex.Message}");
+            }
+        }
+
+        private static List<RunRecord>? ParseImportFile(string jsonContent)
+        {
+            try
+            {
+                // Try to parse as new format first (with runs and raw properties)
+                var jObject = JObject.Parse(jsonContent);
+                if (jObject["runs"] != null)
+                {
+                    // New format with runs property
+                    return jObject["runs"]?.ToObject<List<RunRecord>>();
+                }
+                else
+                {
+                    // Old format - direct array of RunRecord
+                    return JsonConvert.DeserializeObject<List<RunRecord>>(jsonContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error parsing import file: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static void HandleSaveFileUpdate(List<RunRecord> importedRuns, FileInfo? saveFile, ConfigurationManager configManager, RunHistoryManager runHistoryManager)
+        {
+            try
+            {
+                // Determine save file path
+                string saveFilePath;
+                if (saveFile != null && saveFile.Exists)
+                {
+                    saveFilePath = saveFile.FullName;
+                }
+                else
+                {
+                    var defaultPath = configManager.GetEffectiveSaveFilePath();
+                    if (string.IsNullOrEmpty(defaultPath) || !File.Exists(defaultPath))
+                    {
+                        Logger.Error("No save file specified and no default save file found for updating.");
+                        return;
+                    }
+                    saveFilePath = defaultPath;
+                }
+
+                var statsFilePath = RunDataService.GetStatsFilePath(saveFilePath);
+                if (string.IsNullOrEmpty(statsFilePath) || !File.Exists(statsFilePath))
+                {
+                    Logger.Error($"Stats file not found: {statsFilePath}");
+                    return;
+                }
+
+                Logger.Info($"Adding runs to stats file: {statsFilePath}");
+                Logger.Info("Creating backup before updating...");
+
+                // Use RunHistoryManager's update functionality
+                runHistoryManager.UpdateSaveFileWithRuns(statsFilePath, importedRuns);
+                
+                Logger.Info("Save file updated successfully!");
+                Logger.Info($"Added {importedRuns.Count} runs to save file (replaced oldest entries).");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error updating save file: {ex.Message}");
+            }
+        }
+
+        private static JObject? GetRawRunDataForSingleRun(RunRecord run, FileInfo? file, ConfigurationManager configManager)
+        {
+            try
+            {
+                // Get all raw run data
+                var allRawData = GetAllRawRunData(file, configManager);
+                if (allRawData == null) return null;
+
+                // Find the matching raw run by ID, timestamp, or other unique characteristics
+                foreach (JObject rawRun in allRawData)
+                {
+                    var runId = rawRun["runId"]?.ToString();
+                    var hasWon = rawRun["hasWon"]?.Value<bool>() ?? false;
+                    var totalDamageDealt = rawRun["totalDamageDealt"]?.Value<long>() ?? 0;
+                    var endDateStr = rawRun["endDate"]?.ToString();
+
+                    // Match by ID first
+                    if (!string.IsNullOrEmpty(runId) && runId == run.Id)
+                    {
+                        return rawRun;
+                    }
+
+                    // Fallback: match by key characteristics
+                    if (hasWon == run.Won && 
+                        totalDamageDealt == run.DamageDealt &&
+                        !string.IsNullOrEmpty(endDateStr))
+                    {
+                        if (DateTime.TryParse(endDateStr, out var endDate))
+                        {
+                            if (Math.Abs((endDate - run.Timestamp).TotalSeconds) < 60) // Within 1 minute
+                            {
+                                return rawRun;
+                            }
+                        }
+                    }
+                }
+
+                Logger.Warning($"Could not find matching raw data for run {run.Id}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Could not extract raw run data: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static JArray? GetAllRawRunData(FileInfo? file, ConfigurationManager configManager)
+        {
+            try
+            {
+                // Determine save file path
+                string saveFilePath;
+                if (file != null && file.Exists)
+                {
+                    saveFilePath = file.FullName;
+                }
+                else
+                {
+                    var defaultPath = configManager.GetEffectiveSaveFilePath();
+                    if (string.IsNullOrEmpty(defaultPath) || !File.Exists(defaultPath))
+                    {
+                        return null;
+                    }
+                    saveFilePath = defaultPath;
+                }
+
+                var statsFilePath = RunDataService.GetStatsFilePath(saveFilePath);
+                if (string.IsNullOrEmpty(statsFilePath) || !File.Exists(statsFilePath))
+                {
+                    return null;
+                }
+
+                // Load raw stats data
+                var statsBytes = File.ReadAllBytes(statsFilePath);
+                var dumper = new SaveFileDumper(configManager);
+                var statsJson = dumper.DumpSaveFile(statsBytes);
+                var statsData = JObject.Parse(statsJson);
+                
+                // Extract the raw runs history
+                return statsData["data"]?["RunStatsHistory"]?["Value"]?["runsHistory"] as JArray;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Could not extract raw run data: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static int? ShowInteractiveRunSelection(List<RunRecord> runs)
+        {
+            Console.WriteLine("\n=== Select a Run to View ===");
+            Console.WriteLine("Available runs:");
+            Console.WriteLine();
+
+            // Show header
+            Console.WriteLine("Index | Status | Class      | Date                | Score       | Duration");
+            Console.WriteLine("------|--------|------------|---------------------|-------------|----------");
+
+            // Show up to 20 most recent runs for selection
+            var displayRuns = runs.Take(20).ToList();
+            for (int i = 0; i < displayRuns.Count; i++)
+            {
+                var run = displayRuns[i];
+                var status = run.Won ? "WIN" : "LOSS";
+                var className = (run.CharacterClass ?? "Unknown").PadRight(10);
+                if (className.Length > 10) className = className.Substring(0, 10);
+                
+                var scoreStr = RunDisplayFormatter.FormatNumber(run.Score).PadLeft(11);
+                var durationStr = RunDisplayFormatter.FormatDuration(run.Duration).PadLeft(8);
+                
+                Console.WriteLine($"{i.ToString().PadLeft(5)} | {status.PadRight(6)} | {className} | {run.Timestamp:yyyy-MM-dd HH:mm:ss} | {scoreStr} | {durationStr}");
+            }
+
+            if (runs.Count > 20)
+            {
+                Console.WriteLine($"\n(Showing first 20 of {runs.Count} total runs)");
+            }
+
+            Console.WriteLine();
+            Console.Write("Enter run index (0-{0}) or 'q' to quit: ", displayRuns.Count - 1);
+            
+            var input = Console.ReadLine()?.Trim();
+            if (string.IsNullOrEmpty(input) || input.Equals("q", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (int.TryParse(input, out var selectedIndex))
+            {
+                if (selectedIndex >= 0 && selectedIndex < displayRuns.Count)
+                {
+                    return selectedIndex;
+                }
+                else
+                {
+                    Console.WriteLine($"Invalid selection. Please enter a number between 0 and {displayRuns.Count - 1}.");
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine("Invalid input. Please enter a number or 'q' to quit.");
+                return null;
             }
         }
     }
