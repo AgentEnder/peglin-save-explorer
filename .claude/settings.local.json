@@ -28,7 +28,9 @@
       "Bash(~/.dotnet/dotnet run:*)",
       "Bash(./bin/Debug/net9.0/peglin-save-explorer.exe view-run:*)",
       "Bash(./bin/Debug/net9.0/peglin-save-explorer view-run:*)",
-      "Bash(./bin/Debug/net9.0/peglin-save-explorer:*)"
+      "Bash(./bin/Debug/net9.0/peglin-save-explorer:*)",
+      "Bash(./peglin-save-explorer/bin/Debug/net9.0/peglin-save-explorer analyze-assembly:*)",
+      "Bash(jq:*)"
     ],
     "deny": []
   }

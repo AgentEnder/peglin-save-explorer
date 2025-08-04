@@ -157,124 +157,61 @@ namespace peglin_save_explorer.Core
                     }
                 }
                 
+                // Use the exact same approach as DumpSaveJsonCommand which works
                 try
                 {
-                    Program.WriteToConsole("Attempting deserialization with Everything policy (matching our working dump command)...");
-                    // Use the same Everything policy that works in DumpSaveJsonCommand
-                    var deserializationContext = new DeserializationContext();
-                    deserializationContext.Config.SerializationPolicy = SerializationPolicies.Everything;
+                    Program.WriteToConsole("Attempting with Everything serialization policy (matching working dump command)...");
+                    var context = new DeserializationContext();
+                    context.Config.SerializationPolicy = SerializationPolicies.Everything;
+                    deserializedData = SerializationUtility.DeserializeValue<Dictionary<string, ISerializable>>(saveData, DataFormat.Binary, context);
+                    Program.WriteToConsole("✓ Deserialized using Everything policy");
                     
-                    deserializedData = SerializationUtility.DeserializeValue<Dictionary<string, ISerializable>>(saveData, DataFormat.Binary, deserializationContext);
-                    if (deserializedData != null)
-                    {
-                        Program.WriteToConsole("✓ Everything policy deserialization worked");
-                        // Create matching serialization context
-                        serializationContext = new SerializationContext();
-                        serializationContext.Config.SerializationPolicy = SerializationPolicies.Everything;
-                        usedUnityContext = true;
-                    }
-                    else
-                    {
-                        Program.WriteToConsole("Everything policy returned null, falling back to type-specific attempts...");
-                        deserializationContext = new DeserializationContext();
-                        deserializationContext.Config.SerializationPolicy = SerializationPolicies.Everything;
-                    
-                        // Try type-specific deserialization first if we found the type
-                    if (saveDataType != null)
-                    {
-                        try
-                        {
-                            var method = typeof(SerializationUtility).GetMethod("DeserializeValue", new[] { typeof(byte[]), typeof(DataFormat), typeof(DeserializationContext) });
-                            var genericMethod = method.MakeGenericMethod(saveDataType);
-                            deserializedData = genericMethod.Invoke(null, new object[] { saveData, DataFormat.Binary, deserializationContext });
-                            Program.WriteToConsole($"✓ Unity context worked with specific type: {saveDataType.Name}");
-                        }
-                        catch (Exception typeEx)
-                        {
-                            Program.WriteToConsole($"Specific type failed: {typeEx.Message}");
-                            throw; // Fall through to generic approaches
-                        }
-                    }
-                    else
-                    {
-                        // Fall back to generic approaches
-                        try
-                        {
-                            deserializedData = SerializationUtility.DeserializeValue<Dictionary<string, object>>(saveData, DataFormat.Binary, deserializationContext);
-                            if (deserializedData != null)
-                            {
-                                Program.WriteToConsole("✓ Unity context worked with Dictionary<string, object>");
-                                Program.WriteToConsole($"DEBUG: deserializedData after Dict success: {deserializedData != null}");
-                            }
-                            else
-                            {
-                                Program.WriteToConsole("Unity context returned null for Dictionary<string, object>, trying generic object...");
-                                deserializedData = SerializationUtility.DeserializeValue<object>(saveData, DataFormat.Binary, deserializationContext);
-                                if (deserializedData != null)
-                                {
-                                    Program.WriteToConsole("✓ Unity context worked with generic object");
-                                    Program.WriteToConsole($"DEBUG: deserializedData after generic success: {deserializedData != null}");
-                                }
-                                else
-                                {
-                                    Program.WriteToConsole("Unity context returned null for generic object too");
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Program.WriteToConsole($"Dictionary deserialization failed: {ex.Message}");
-                            try
-                            {
-                                deserializedData = SerializationUtility.DeserializeValue<object>(saveData, DataFormat.Binary, deserializationContext);
-                                if (deserializedData != null)
-                                {
-                                    Program.WriteToConsole("✓ Unity context worked with generic object");
-                                    Program.WriteToConsole($"DEBUG: deserializedData after generic success: {deserializedData != null}");
-                                }
-                                else
-                                {
-                                    Program.WriteToConsole("Unity context returned null for generic object");
-                                }
-                            }
-                            catch (Exception ex2)
-                            {
-                                Program.WriteToConsole($"Generic object deserialization also failed: {ex2.Message}");
-                            }
-                        }
-                    }
-                    
-                        // Create matching serialization context
-                        serializationContext = new SerializationContext();
-                        serializationContext.Config.SerializationPolicy = SerializationPolicies.Everything;
-                        usedUnityContext = true;
-                    }
+                    // Create a fresh context with Everything policy for serialization
+                    // Must match the deserialization policy to preserve data integrity
+                    serializationContext = new SerializationContext();
+                    serializationContext.Config.SerializationPolicy = SerializationPolicies.Everything;
+                    usedUnityContext = true;
                 }
                 catch (Exception ex)
                 {
-                    Program.WriteToConsole($"Unity context failed: {ex.Message}");
+                    Program.WriteToConsole($"Failed with Everything policy: {ex.Message}");
+                    
+                    // Fallback to Unity policy like DumpSaveJsonCommand does
                     try
                     {
-                        Program.WriteToConsole("Falling back to default context...");
-                        // Try dictionary first, then generic object
-                        try
-                        {
-                            deserializedData = SerializationUtility.DeserializeValue<Dictionary<string, object>>(saveData, DataFormat.Binary);
-                            Program.WriteToConsole("✓ Default context worked with Dictionary<string, object>");
-                        }
-                        catch
-                        {
-                            deserializedData = SerializationUtility.DeserializeValue<object>(saveData, DataFormat.Binary);
-                            Program.WriteToConsole("✓ Default context worked with generic object");
-                        }
+                        Program.WriteToConsole("Trying Unity serialization policy...");
+                        var context = new DeserializationContext();
+                        context.Config.SerializationPolicy = SerializationPolicies.Unity;
+                        deserializedData = SerializationUtility.DeserializeValue<Dictionary<string, ISerializable>>(saveData, DataFormat.Binary, context);
+                        Program.WriteToConsole("✓ Deserialized using Unity policy");
+                        
+                        // Create matching serialization context
+                        serializationContext = new SerializationContext();
+                        serializationContext.Config.SerializationPolicy = SerializationPolicies.Unity;
+                        usedUnityContext = true;
                     }
                     catch (Exception ex2)
                     {
-                        Program.WriteToConsole($"Default context also failed: {ex2.Message}");
+                        Program.WriteToConsole($"Failed with Unity policy: {ex2.Message}");
+                        
+                        // Final fallback to no context (like original)
+                        try
+                        {
+                            Program.WriteToConsole("Final fallback to no-context deserialization...");
+                            deserializedData = SerializationUtility.DeserializeValue<Dictionary<string, ISerializable>>(saveData, DataFormat.Binary, null);
+                            Program.WriteToConsole("✓ Deserialized using no-context method");
+                            
+                            // For no-context, we need to serialize back with no context too
+                            serializationContext = null;
+                            usedUnityContext = false;
+                        }
+                        catch (Exception ex3)
+                        {
+                            Program.WriteToConsole($"❌ All deserialization attempts failed: {ex3.Message}");
+                        }
                     }
                 }
 
-                Program.WriteToConsole($"DEBUG: Final deserializedData state: {deserializedData != null}");
                 if (deserializedData == null)
                 {
                     Program.WriteToConsole("Error: Could not deserialize save data with any context");
@@ -343,7 +280,7 @@ namespace peglin_save_explorer.Core
                 }
 
                 // Serialize back with the SAME context and type that was used for deserialization
-                byte[] updatedSaveData;
+                byte[]? updatedSaveData = null;
                 try
                 {
                     if (saveDataType != null && usedUnityContext && serializationContext != null)
@@ -354,13 +291,16 @@ namespace peglin_save_explorer.Core
                     }
                     else if (usedUnityContext && serializationContext != null)
                     {
-                        Program.WriteToConsole("Serializing with Unity context (matching deserialization)...");
-                        updatedSaveData = SerializationUtility.SerializeValue(deserializedData, DataFormat.Binary, serializationContext);
+                        Program.WriteToConsole("Serializing with fresh Everything policy context (avoiding validation contamination)...");
+                        // Create a completely fresh context to avoid validation contamination
+                        var freshContext = new SerializationContext();
+                        freshContext.Config.SerializationPolicy = SerializationPolicies.Everything;
+                        updatedSaveData = SerializationUtility.SerializeValue(deserializedData, DataFormat.Binary, freshContext);
                     }
                     else
                     {
-                        Program.WriteToConsole("Fallback: Serializing with Everything policy...");
-                        // Ensure we have a serialization context with Everything policy
+                        Program.WriteToConsole("Serializing with fresh Everything policy context (matching deserialization)...");
+                        // Ensure we have a fresh Everything policy context
                         if (serializationContext == null)
                         {
                             serializationContext = new SerializationContext();
@@ -368,7 +308,28 @@ namespace peglin_save_explorer.Core
                         }
                         updatedSaveData = SerializationUtility.SerializeValue(deserializedData, DataFormat.Binary, serializationContext);
                     }
-                    Program.WriteToConsole("✓ Serialization successful");
+                    
+                    // Validate the serialized data
+                    if (updatedSaveData == null)
+                    {
+                        Program.WriteToConsole("❌ ERROR: Serialization returned null");
+                        return false;
+                    }
+                    
+                    if (updatedSaveData.Length == 0)
+                    {
+                        Program.WriteToConsole("❌ ERROR: Serialization returned empty byte array");
+                        return false;
+                    }
+                    
+                    if (updatedSaveData.Length < 1000)
+                    {
+                        Program.WriteToConsole($"⚠️ WARNING: Serialized data is only {updatedSaveData.Length} bytes (original was {saveData.Length} bytes)");
+                        Program.WriteToConsole("This is likely corrupted data. Aborting save to prevent data loss.");
+                        return false;
+                    }
+                    
+                    Program.WriteToConsole($"✓ Serialization successful: {updatedSaveData.Length} bytes (original: {saveData.Length} bytes)");
                 }
                 catch (Exception ex)
                 {
@@ -400,7 +361,6 @@ namespace peglin_save_explorer.Core
             try
             {
                 // Use direct object manipulation to find CruciballManagerSaveData
-                Program.WriteToConsole($"=== DEBUGGING CRUCIBALL UPDATE ===");
                 Program.WriteToConsole($"Received data type: {data?.GetType()?.FullName ?? "null"}");
                 Program.WriteToConsole($"Target class: {className} (index {classIndex}), level: {cruciballLevel}");
                 
