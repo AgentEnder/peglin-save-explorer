@@ -4,6 +4,7 @@ using ToolBox.Serialization;
 using Newtonsoft.Json;
 using System.Reflection;
 using System.Linq;
+using peglin_save_explorer.Utils;
 
 namespace peglin_save_explorer.Core
 {
@@ -25,8 +26,8 @@ namespace peglin_save_explorer.Core
                 filePath = configManager.GetEffectiveSaveFilePath();
                 if (string.IsNullOrEmpty(filePath))
                 {
-                    Program.WriteToConsole("Error: No save file specified and no default save file found.");
-                    Program.WriteToConsole("Please specify a save file with -f or configure a default in settings.");
+                    Logger.Error("No save file specified and no default save file found.");
+                    Logger.Error("Please specify a save file with -f or configure a default in settings.");
                     return null;
                 }
                 Program.WriteToConsole($"Using default save file: {filePath}");
@@ -34,7 +35,7 @@ namespace peglin_save_explorer.Core
 
             if (!File.Exists(filePath))
             {
-                Program.WriteToConsole($"Error: File '{filePath}' does not exist.");
+                Logger.Error($"File '{filePath}' does not exist.");
                 return null;
             }
 
@@ -47,7 +48,7 @@ namespace peglin_save_explorer.Core
             }
             catch (Exception ex)
             {
-                Program.WriteToConsole($"Error loading save file: {ex.Message}");
+                Logger.Error($"Error loading save file: {ex.Message}");
                 return null;
             }
         }
@@ -70,14 +71,14 @@ namespace peglin_save_explorer.Core
                     filePath = configManager.GetEffectiveSaveFilePath();
                     if (string.IsNullOrEmpty(filePath))
                     {
-                        Program.WriteToConsole("Error: No save file specified and no default save file found.");
+                        Logger.Error("No save file specified and no default save file found.");
                         return false;
                     }
                 }
 
                 if (!File.Exists(filePath))
                 {
-                    Program.WriteToConsole($"Error: File '{filePath}' does not exist.");
+                    Logger.Error($"File '{filePath}' does not exist.");
                     return false;
                 }
 
@@ -93,16 +94,16 @@ namespace peglin_save_explorer.Core
                     if (assemblyResult.Success && assemblyResult.LoadedAssembly != null)
                     {
                         peglinAssembly = assemblyResult.LoadedAssembly;
-                        Program.WriteToConsole("✓ Loaded Peglin assembly for type-safe deserialization");
+                        Logger.Verbose("Loaded Peglin assembly for type-safe deserialization");
                     }
                     else
                     {
-                        Program.WriteToConsole("Warning: Could not load Peglin assembly. Using generic deserialization.");
+                        Logger.Verbose("Could not load Peglin assembly. Using generic deserialization.");
                     }
                 }
                 else
                 {
-                    Program.WriteToConsole("Warning: Peglin path not configured. Using generic deserialization.");
+                    Logger.Verbose("Peglin path not configured. Using generic deserialization.");
                 }
 
                 // Now directly modify the binary save file with assembly type information
@@ -110,7 +111,7 @@ namespace peglin_save_explorer.Core
             }
             catch (Exception ex)
             {
-                Program.WriteToConsole($"Error updating cruciball level: {ex.Message}");
+                Logger.Error($"Error updating cruciball level: {ex.Message}");
                 return false;
             }
         }
@@ -132,7 +133,7 @@ namespace peglin_save_explorer.Core
                 // If we have the assembly, try to find the correct save data type
                 if (peglinAssembly != null)
                 {
-                    Program.WriteToConsole("Looking for save data types in Peglin assembly...");
+                    Logger.Verbose("Looking for save data types in Peglin assembly...");
                     var saveDataTypes = peglinAssembly.GetTypes()
                         .Where(t => t.Name.Contains("SaveData", StringComparison.OrdinalIgnoreCase) ||
                                    t.Name.Contains("Save", StringComparison.OrdinalIgnoreCase))
@@ -141,7 +142,7 @@ namespace peglin_save_explorer.Core
                     
                     foreach (var type in saveDataTypes.Take(5))
                     {
-                        Program.WriteToConsole($"  Found save type: {type.FullName}");
+                        Logger.Verbose($"  Found save type: {type.FullName}");
                     }
                     
                     // Look for the main save data type (likely to contain a dictionary or be serializable)
@@ -153,18 +154,18 @@ namespace peglin_save_explorer.Core
                     
                     if (saveDataType != null)
                     {
-                        Program.WriteToConsole($"Selected save data type: {saveDataType.FullName}");
+                        Logger.Verbose($"Selected save data type: {saveDataType.FullName}");
                     }
                 }
                 
                 // Use the exact same approach as DumpSaveJsonCommand which works
                 try
                 {
-                    Program.WriteToConsole("Attempting with Everything serialization policy (matching working dump command)...");
+                    Logger.Verbose("Attempting with Everything serialization policy (matching working dump command)...");
                     var context = new DeserializationContext();
                     context.Config.SerializationPolicy = SerializationPolicies.Everything;
                     deserializedData = SerializationUtility.DeserializeValue<Dictionary<string, ISerializable>>(saveData, DataFormat.Binary, context);
-                    Program.WriteToConsole("✓ Deserialized using Everything policy");
+                    Logger.Verbose("✓ Deserialized using Everything policy");
                     
                     // Create a fresh context with Everything policy for serialization
                     // Must match the deserialization policy to preserve data integrity
@@ -174,16 +175,16 @@ namespace peglin_save_explorer.Core
                 }
                 catch (Exception ex)
                 {
-                    Program.WriteToConsole($"Failed with Everything policy: {ex.Message}");
+                    Logger.Verbose($"Failed with Everything policy: {ex.Message}");
                     
                     // Fallback to Unity policy like DumpSaveJsonCommand does
                     try
                     {
-                        Program.WriteToConsole("Trying Unity serialization policy...");
+                        Logger.Verbose("Trying Unity serialization policy...");
                         var context = new DeserializationContext();
                         context.Config.SerializationPolicy = SerializationPolicies.Unity;
                         deserializedData = SerializationUtility.DeserializeValue<Dictionary<string, ISerializable>>(saveData, DataFormat.Binary, context);
-                        Program.WriteToConsole("✓ Deserialized using Unity policy");
+                        Logger.Verbose("✓ Deserialized using Unity policy");
                         
                         // Create matching serialization context
                         serializationContext = new SerializationContext();
@@ -192,14 +193,14 @@ namespace peglin_save_explorer.Core
                     }
                     catch (Exception ex2)
                     {
-                        Program.WriteToConsole($"Failed with Unity policy: {ex2.Message}");
+                        Logger.Verbose($"Failed with Unity policy: {ex2.Message}");
                         
                         // Final fallback to no context (like original)
                         try
                         {
-                            Program.WriteToConsole("Final fallback to no-context deserialization...");
+                            Logger.Verbose("Final fallback to no-context deserialization...");
                             deserializedData = SerializationUtility.DeserializeValue<Dictionary<string, ISerializable>>(saveData, DataFormat.Binary, null);
-                            Program.WriteToConsole("✓ Deserialized using no-context method");
+                            Logger.Verbose("✓ Deserialized using no-context method");
                             
                             // For no-context, we need to serialize back with no context too
                             serializationContext = null;
@@ -207,41 +208,41 @@ namespace peglin_save_explorer.Core
                         }
                         catch (Exception ex3)
                         {
-                            Program.WriteToConsole($"❌ All deserialization attempts failed: {ex3.Message}");
+                            Logger.Error($"❌ All deserialization attempts failed: {ex3.Message}");
                         }
                     }
                 }
 
                 if (deserializedData == null)
                 {
-                    Program.WriteToConsole("Error: Could not deserialize save data with any context");
+                    Logger.Error("Error: Could not deserialize save data with any context");
                     return false;
                 }
                 
-                Program.WriteToConsole($"✓ Deserialization successful. Data type: {deserializedData.GetType().FullName}");
+                Logger.Verbose($"✓ Deserialization successful. Data type: {deserializedData.GetType().FullName}");
 
                 // Map character class name to index
                 var classIndex = GameDataMappings.GetCharacterClassIndex(characterClass);
                 if (classIndex == -1)
                 {
-                    Program.WriteToConsole($"Error: Unknown character class '{characterClass}'.");
+                    Logger.Error($"Unknown character class '{characterClass}'.");
                     return false;
                 }
 
                 // Update the cruciball data in the deserialized object
-                Program.WriteToConsole($"Attempting to update cruciball data for {characterClass} (index {classIndex}) to level {cruciballLevel}...");
+                Logger.Info($"Attempting to update cruciball data for {characterClass} (index {classIndex}) to level {cruciballLevel}...");
                 bool updated = UpdateCruciballInDeserializedData(deserializedData, classIndex, cruciballLevel, characterClass);
                 if (!updated)
                 {
-                    Program.WriteToConsole("Error: Could not find or update cruciball data in save file.");
-                    Program.WriteToConsole("This likely means the save file structure is different than expected or cruciball data hasn't been initialized yet.");
+                    Logger.Error("Error: Could not find or update cruciball data in save file.");
+                    Logger.Error("This likely means the save file structure is different than expected or cruciball data hasn't been initialized yet.");
                     return false;
                 }
                 
-                Program.WriteToConsole("✓ Successfully updated cruciball data in memory");
+                Logger.Info("✓ Successfully updated cruciball data in memory");
                 
                 // Validate the modified data structure before serialization
-                Program.WriteToConsole("Validating modified data structure...");
+                Logger.Verbose("Validating modified data structure...");
                 try
                 {
                     // Try a test serialization to make sure the structure is still valid
@@ -251,31 +252,31 @@ namespace peglin_save_explorer.Core
                         // Use type-specific serialization if we have the exact type
                         var method = typeof(SerializationUtility).GetMethod("SerializeValue", new[] { saveDataType, typeof(DataFormat), typeof(SerializationContext) });
                         testSerialization = (byte[])method.Invoke(null, new object[] { deserializedData, DataFormat.Binary, serializationContext });
-                        Program.WriteToConsole($"✓ Type-specific validation passed with {saveDataType.Name}");
+                        Logger.Verbose($"✓ Type-specific validation passed with {saveDataType.Name}");
                     }
                     else if (usedUnityContext && serializationContext != null)
                     {
                         testSerialization = SerializationUtility.SerializeValue(deserializedData, DataFormat.Binary, serializationContext);
-                        Program.WriteToConsole("✓ Generic Unity context validation passed");
+                        Logger.Verbose("✓ Generic Unity context validation passed");
                     }
                     else
                     {
                         testSerialization = SerializationUtility.SerializeValue(deserializedData, DataFormat.Binary);
-                        Program.WriteToConsole("✓ Default context validation passed");
+                        Logger.Verbose("✓ Default context validation passed");
                     }
                     
-                    if (testSerialization.Length == 0)
+                    if (testSerialization?.Length == 0)
                     {
-                        Program.WriteToConsole("Error: Test serialization produced empty data");
+                        Logger.Error("Error: Test serialization produced empty data");
                         return false;
                     }
                     
-                    Program.WriteToConsole($"✓ Data structure validation passed (test size: {testSerialization.Length} bytes)");
+                    Logger.Verbose($"✓ Data structure validation passed (test size: {testSerialization?.Length} bytes)");
                 }
                 catch (Exception ex)
                 {
-                    Program.WriteToConsole($"Error: Data structure validation failed: {ex.Message}");
-                    Program.WriteToConsole("The modification may have corrupted the save data structure.");
+                    Logger.Error($"Data structure validation failed: {ex.Message}");
+                    Logger.Error("The modification may have corrupted the save data structure.");
                     return false;
                 }
 
@@ -285,13 +286,13 @@ namespace peglin_save_explorer.Core
                 {
                     if (saveDataType != null && usedUnityContext && serializationContext != null)
                     {
-                        Program.WriteToConsole($"Serializing with Unity context using specific type: {saveDataType.Name}...");
+                        Logger.Verbose($"Serializing with Unity context using specific type: {saveDataType.Name}...");
                         var method = typeof(SerializationUtility).GetMethod("SerializeValue", new[] { saveDataType, typeof(DataFormat), typeof(SerializationContext) });
                         updatedSaveData = (byte[])method.Invoke(null, new object[] { deserializedData, DataFormat.Binary, serializationContext });
                     }
                     else if (usedUnityContext && serializationContext != null)
                     {
-                        Program.WriteToConsole("Serializing with fresh Everything policy context (avoiding validation contamination)...");
+                        Logger.Verbose("Serializing with fresh Everything policy context (avoiding validation contamination)...");
                         // Create a completely fresh context to avoid validation contamination
                         var freshContext = new SerializationContext();
                         freshContext.Config.SerializationPolicy = SerializationPolicies.Everything;
@@ -299,7 +300,7 @@ namespace peglin_save_explorer.Core
                     }
                     else
                     {
-                        Program.WriteToConsole("Serializing with fresh Everything policy context (matching deserialization)...");
+                        Logger.Verbose("Serializing with fresh Everything policy context (matching deserialization)...");
                         // Ensure we have a fresh Everything policy context
                         if (serializationContext == null)
                         {
@@ -312,28 +313,28 @@ namespace peglin_save_explorer.Core
                     // Validate the serialized data
                     if (updatedSaveData == null)
                     {
-                        Program.WriteToConsole("❌ ERROR: Serialization returned null");
+                        Logger.Error("❌ ERROR: Serialization returned null");
                         return false;
                     }
                     
                     if (updatedSaveData.Length == 0)
                     {
-                        Program.WriteToConsole("❌ ERROR: Serialization returned empty byte array");
+                        Logger.Error("❌ ERROR: Serialization returned empty byte array");
                         return false;
                     }
                     
                     if (updatedSaveData.Length < 1000)
                     {
-                        Program.WriteToConsole($"⚠️ WARNING: Serialized data is only {updatedSaveData.Length} bytes (original was {saveData.Length} bytes)");
-                        Program.WriteToConsole("This is likely corrupted data. Aborting save to prevent data loss.");
+                        Logger.Error($"⚠️ WARNING: Serialized data is only {updatedSaveData.Length} bytes (original was {saveData.Length} bytes)");
+                        Logger.Error("This is likely corrupted data. Aborting save to prevent data loss.");
                         return false;
                     }
                     
-                    Program.WriteToConsole($"✓ Serialization successful: {updatedSaveData.Length} bytes (original: {saveData.Length} bytes)");
+                    Logger.Info($"✓ Serialization successful: {updatedSaveData.Length} bytes (original: {saveData.Length} bytes)");
                 }
                 catch (Exception ex)
                 {
-                    Program.WriteToConsole($"Error: Serialization failed: {ex.Message}");
+                    Logger.Error($"Serialization failed: {ex.Message}");
                     return false;
                 }
 
@@ -351,7 +352,7 @@ namespace peglin_save_explorer.Core
             }
             catch (Exception ex)
             {
-                Program.WriteToConsole($"Error updating binary save file: {ex.Message}");
+                Logger.Error($"Error updating binary save file: {ex.Message}");
                 return false;
             }
         }
@@ -361,41 +362,26 @@ namespace peglin_save_explorer.Core
             try
             {
                 // Use direct object manipulation to find CruciballManagerSaveData
-                Program.WriteToConsole($"Received data type: {data?.GetType()?.FullName ?? "null"}");
-                Program.WriteToConsole($"Target class: {className} (index {classIndex}), level: {cruciballLevel}");
+                Logger.Verbose($"Received data type: {data?.GetType()?.FullName ?? "null"}");
+                Logger.Info($"Target class: {className} (index {classIndex}), level: {cruciballLevel}");
                 
                 if (data is not System.Collections.IDictionary dict)
                 {
-                    Program.WriteToConsole("Error: Expected Dictionary structure for save data.");
-                    Program.WriteToConsole($"Actual type: {data?.GetType()}");
+                    Logger.Error("Error: Expected Dictionary structure for save data.");
+                    Logger.Error($"Actual type: {data?.GetType()}");
+                    // Object structure inspection moved to verbose logging
                     if (data != null)
                     {
-                        Program.WriteToConsole($"Data toString: {data.ToString()?.Take(200)}");
-                        
-                        // Try to explore the object structure
-                        var properties = data.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                        var fields = data.GetType().GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                        
-                        Program.WriteToConsole($"Object has {properties.Length} properties and {fields.Length} fields");
-                        Program.WriteToConsole("Properties:");
-                        foreach (var prop in properties.Take(10))
-                        {
-                            Program.WriteToConsole($"  - {prop.PropertyType.Name} {prop.Name}");
-                        }
-                        Program.WriteToConsole("Fields:");
-                        foreach (var field in fields.Take(10))
-                        {
-                            Program.WriteToConsole($"  - {field.FieldType.Name} {field.Name}");
-                        }
+                        Logger.Verbose($"Data has {data.GetType().GetProperties().Length} properties and {data.GetType().GetFields().Length} fields");
                     }
                     return false;
                 }
                 
-                Program.WriteToConsole($"✓ Successfully cast to dictionary with {dict.Count} keys");
-                Program.WriteToConsole("Dictionary keys:");
+                Logger.Verbose($"✓ Successfully cast to dictionary with {dict.Count} keys");
+                Logger.Verbose("Dictionary keys:");
                 foreach (var key in dict.Keys.Cast<object>().Take(10))
                 {
-                    Program.WriteToConsole($"  - {key}");
+                    Logger.Verbose($"  - {key}");
                 }
 
                 // Look for CruciballManagerSaveData in the dictionary
@@ -415,9 +401,9 @@ namespace peglin_save_explorer.Core
 
                 if (cruciballManagerItem == null)
                 {
-                    Program.WriteToConsole("CruciballManagerSaveData not found in current save data.");
-                    Program.WriteToConsole("This is expected for persistent save files - cruciball data is stored per-run.");
-                    Program.WriteToConsole("Attempting to update permanent cruciball unlock data instead...");
+                    Logger.Info("CruciballManagerSaveData not found in current save data.");
+                    Logger.Info("This is expected for persistent save files - cruciball data is stored per-run.");
+                    Logger.Info("Attempting to update permanent cruciball unlock data instead...");
                     
                     // Try to update cruciball data in PersistentPlayerSaveData first, then PermanentStats
                     return UpdateCruciballInPersistentData(dict, classIndex, cruciballLevel, className);
@@ -963,7 +949,7 @@ namespace peglin_save_explorer.Core
                 var classIndex = GameDataMappings.GetCharacterClassIndex(characterClass);
                 if (classIndex == -1)
                 {
-                    Program.WriteToConsole($"Error: Unknown character class '{characterClass}'.");
+                    Logger.Error($"Unknown character class '{characterClass}'.");
                     return false;
                 }
 
