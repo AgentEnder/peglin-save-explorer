@@ -1415,7 +1415,7 @@ namespace peglin_save_explorer.Core
                 {
                     // Try with Unity context
                     var context = new DeserializationContext();
-                    context.Config.SerializationPolicy = SerializationPolicies.Unity;
+                    context.Config.SerializationPolicy = SerializationPolicies.Everything;
                     deserializedData = SerializationUtility.DeserializeValue<object>(saveData, DataFormat.Binary, context);
                 }
 
@@ -1437,7 +1437,7 @@ namespace peglin_save_explorer.Core
                 {
                     // Try with Unity context
                     var context = new SerializationContext();
-                    context.Config.SerializationPolicy = SerializationPolicies.Unity;
+                    context.Config.SerializationPolicy = SerializationPolicies.Everything;
                     updatedSaveData = SerializationUtility.SerializeValue(updatedData, DataFormat.Binary, context);
                 }
 
@@ -1523,7 +1523,7 @@ namespace peglin_save_explorer.Core
                 {
                     // Try with Unity serialization policy
                     var context = new DeserializationContext();
-                    context.Config.SerializationPolicy = SerializationPolicies.Unity;
+                    context.Config.SerializationPolicy = SerializationPolicies.Everything;
                     deserializedData = SerializationUtility.DeserializeValue<object>(saveData, DataFormat.Binary, context);
                 }
 

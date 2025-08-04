@@ -74,7 +74,7 @@ namespace peglin_save_explorer.Core
                         try
                         {
                             var context = new DeserializationContext();
-                            context.Config.SerializationPolicy = SerializationPolicies.Unity;
+                            context.Config.SerializationPolicy = SerializationPolicies.Everything;
                             var unityData = SerializationUtility.DeserializeValue<object>(saveData, DataFormat.Binary, context);
                             if (unityData != null)
                             {

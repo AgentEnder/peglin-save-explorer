@@ -147,6 +147,144 @@ namespace peglin_save_explorer.Commands
                     Console.WriteLine($"Error analyzing stats types: {ex.Message}");
                 }
 
+                // Analyze cruciball-related types and fields
+                Console.WriteLine("\n=== Analyzing Cruciball-Related Data Structures ===");
+                try
+                {
+                    var assemblyPath = PeglinPathHelper.GetAssemblyPath(peglinPath);
+                    if (string.IsNullOrEmpty(assemblyPath))
+                    {
+                        Logger.Error($"Could not find Assembly-CSharp.dll in: {peglinPath}");
+                        return;
+                    }
+                    var assembly = Assembly.LoadFrom(assemblyPath);
+
+                    var allTypes = assembly.GetTypes();
+                    
+                    // Find types that might contain cruciball data
+                    var cruciballTypes = allTypes.Where(t =>
+                        (t.Name.Contains("Cruci", StringComparison.OrdinalIgnoreCase) ||
+                         t.FullName?.Contains("Cruci", StringComparison.OrdinalIgnoreCase) == true ||
+                         t.Name.Contains("Ball", StringComparison.OrdinalIgnoreCase) ||
+                         t.FullName?.Contains("Ball", StringComparison.OrdinalIgnoreCase) == true) &&
+                        !t.Name.Contains("Callback") && !t.Name.Contains("Football"))
+                        .OrderBy(t => t.FullName ?? t.Name)
+                        .ToList();
+
+                    Console.WriteLine($"Cruciball-related types found: {cruciballTypes.Count}");
+                    foreach (var type in cruciballTypes)
+                    {
+                        Console.WriteLine($"  - {type.FullName ?? type.Name}");
+                        
+                        // Show fields and properties
+                        var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                        
+                        if (fields.Length > 0)
+                        {
+                            Console.WriteLine($"    Fields:");
+                            foreach (var field in fields.Take(10))
+                            {
+                                Console.WriteLine($"      {field.FieldType.Name} {field.Name}");
+                            }
+                        }
+                        
+                        if (properties.Length > 0)
+                        {
+                            Console.WriteLine($"    Properties:");
+                            foreach (var prop in properties.Take(10))
+                            {
+                                Console.WriteLine($"      {prop.PropertyType.Name} {prop.Name}");
+                            }
+                        }
+                        Console.WriteLine();
+                    }
+
+                    // Search for types containing cruciball-related fields
+                    Console.WriteLine("\n=== Types Containing Cruciball Fields ===");
+                    var typesWithCruciballFields = new List<(Type type, List<string> fields)>();
+                    
+                    foreach (var type in allTypes.Where(t => t.IsClass && !t.IsAbstract))
+                    {
+                        try
+                        {
+                            var cruciballFields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                                .Where(f => f.Name.Contains("cruci", StringComparison.OrdinalIgnoreCase) ||
+                                           f.Name.Contains("ball", StringComparison.OrdinalIgnoreCase))
+                                .Select(f => $"{f.FieldType.Name} {f.Name}")
+                                .ToList();
+                                
+                            var cruciballProps = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                                .Where(p => p.Name.Contains("cruci", StringComparison.OrdinalIgnoreCase) ||
+                                           p.Name.Contains("ball", StringComparison.OrdinalIgnoreCase))
+                                .Select(p => $"{p.PropertyType.Name} {p.Name}")
+                                .ToList();
+                                
+                            var allCruciballMembers = cruciballFields.Concat(cruciballProps).ToList();
+                            
+                            if (allCruciballMembers.Any())
+                            {
+                                typesWithCruciballFields.Add((type, allCruciballMembers));
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // Skip types that can't be analyzed
+                        }
+                    }
+                    
+                    Console.WriteLine($"Types with cruciball fields found: {typesWithCruciballFields.Count}");
+                    foreach (var (type, fields) in typesWithCruciballFields.Take(20))
+                    {
+                        Console.WriteLine($"  {type.FullName ?? type.Name}:");
+                        foreach (var field in fields)
+                        {
+                            Console.WriteLine($"    - {field}");
+                        }
+                        Console.WriteLine();
+                    }
+
+                    // Analyze save data types more thoroughly
+                    Console.WriteLine("\n=== Save Data Types Analysis ===");
+                    var saveDataTypes = allTypes.Where(t =>
+                        t.Name.Contains("Save", StringComparison.OrdinalIgnoreCase) ||
+                        t.Name.Contains("Data", StringComparison.OrdinalIgnoreCase) ||
+                        t.Name.Contains("Stats", StringComparison.OrdinalIgnoreCase))
+                        .Where(t => t.IsClass && !t.IsAbstract)
+                        .OrderBy(t => t.FullName ?? t.Name)
+                        .ToList();
+                        
+                    Console.WriteLine($"Save/Data/Stats types found: {saveDataTypes.Count}");
+                    foreach (var type in saveDataTypes.Take(30))
+                    {
+                        Console.WriteLine($"  - {type.FullName ?? type.Name}");
+                        
+                        // Check if this type has cruciball-related members
+                        try
+                        {
+                            var hasCruciball = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                                .Any(f => f.Name.Contains("cruci", StringComparison.OrdinalIgnoreCase) ||
+                                         f.Name.Contains("ball", StringComparison.OrdinalIgnoreCase)) ||
+                                type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                                .Any(p => p.Name.Contains("cruci", StringComparison.OrdinalIgnoreCase) ||
+                                         p.Name.Contains("ball", StringComparison.OrdinalIgnoreCase));
+                                         
+                            if (hasCruciball)
+                            {
+                                Console.WriteLine($"    *** HAS CRUCIBALL FIELDS ***");
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // Skip types that can't be analyzed
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error analyzing cruciball data: {ex.Message}");
+                }
+
                 // List all enum types for debugging
                 Console.WriteLine("\n=== Debug: All Enum Types Found ===");
                 try

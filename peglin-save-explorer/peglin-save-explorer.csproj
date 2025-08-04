@@ -14,6 +14,7 @@
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="AssetsTools.NET" Version="3.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +25,33 @@
     <ProjectReference Include="..\assetripper\Source\AssetRipper.SourceGenerated.Extensions\AssetRipper.SourceGenerated.Extensions.csproj" />
     <ProjectReference Include="..\assetripper\Source\AssetRipper.Yaml\AssetRipper.Yaml.csproj" />
   </ItemGroup>
+
+  <!-- Temporary references to Peglin DLLs for proper type deserialization -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>/Users/agentender/Library/Application Support/Steam/steamapps/common/Peglin/peglin.app/Contents/Resources/Data/Managed/Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>/Users/agentender/Library/Application Support/Steam/steamapps/common/Peglin/peglin.app/Contents/Resources/Data/Managed/Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Build frontend and copy to output -->
+  <Target Name="BuildFrontend" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Message Text="Building React frontend..." Importance="high" />
+    <Exec Command="npm install" WorkingDirectory="../web-frontend" />
+    <Exec Command="npm run build" WorkingDirectory="../web-frontend" />
+  </Target>
+
+  <Target Name="CopyFrontend" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <FrontendFiles Include="../web-frontend/dist/**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FrontendFiles)" 
+          DestinationFiles="@(FrontendFiles->'$(OutputPath)wwwroot/%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
 
 
 </Project>

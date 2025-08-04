@@ -186,6 +186,26 @@ namespace peglin_save_explorer
         }
 
         /// <summary>
+        /// Gets the character class index for a character class name
+        /// </summary>
+        public static int GetCharacterClassIndex(string className)
+        {
+            if (string.IsNullOrEmpty(className))
+                return -1;
+
+            // Map of class names to their indices based on the actual Peglin character classes
+            var classNameToIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "Peglin", 0 },
+                { "Balladin", 1 }, 
+                { "Roundrel", 2 },
+                { "Spinventor", 3 }
+            };
+
+            return classNameToIndex.TryGetValue(className, out var index) ? index : -1;
+        }
+
+        /// <summary>
         /// Gets the human-readable name for a character class ID
         /// </summary>
         public static string GetCharacterClassName(int classId)
