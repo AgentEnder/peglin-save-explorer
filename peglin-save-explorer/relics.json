@@ -1,0 +1,4808 @@
+{
+  "shrewdscales": {
+    "Id": "shrewdscales",
+    "Name": "Shrewd Scales",
+    "Description": "Whenever you reload, gain <style=balance>{[BAL_RELOAD_EFF]} Ballance</style>.",
+    "Effect": "80",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "reload_balance",
+      "descMod": "",
+      "englishDisplayName": "Shrewd Scales",
+      "englishDescription": "Whenever you reload, gain <style=balance>{[BAL_RELOAD_EFF]} Ballance</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 80,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "peglintuition": {
+    "Id": "peglintuition",
+    "Name": "Peglintuition",
+    "Description": "Battle rewards and chests contain an additional option to choose from.",
+    "Effect": "97",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "additional_peglin_options",
+      "descMod": "",
+      "englishDisplayName": "Peglintuition",
+      "englishDescription": "Battle rewards and chests contain an additional option to choose from.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 97,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "ancientfleece": {
+    "Id": "ancientfleece",
+    "Name": "Ancient Fleece",
+    "Description": "Additional crits increase shot damage by <style=dmg_bonus>{[CRIT_STACK_BONUS]}x</style>.",
+    "Effect": "90",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "crits_stack_ancient",
+      "descMod": "",
+      "englishDisplayName": "Ancient Fleece",
+      "englishDescription": "Additional crits increase shot damage by <style=dmg_bonus>{[CRIT_STACK_BONUS]}x</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 90,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "bombulet": {
+    "Id": "bombulet",
+    "Name": "Bombulet",
+    "Description": "Pegboards start with 2x as many <sprite name=\"BOMB_REGULAR\">.",
+    "Effect": "63",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "double_bombs",
+      "descMod": "",
+      "englishDisplayName": "Bombulet",
+      "englishDescription": "Pegboards start with 2x as many <sprite name=\"BOMB_REGULAR\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 63,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refillibuster": {
+    "Id": "refillibuster",
+    "Name": "Refillibuster",
+    "Description": "Whenever the board is refreshed, <style=damage>deal damage to all enemies</style> equal to the number of pegs restored.",
+    "Effect": "12",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "refresh_damages_peg_count",
+      "descMod": "",
+      "englishDisplayName": "Refillibuster",
+      "englishDescription": "Whenever the board is refreshed, <style=damage>deal damage to all enemies</style> equal to the number of pegs restored.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 12,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "reducerefuserecycle": {
+    "Id": "reducerefuserecycle",
+    "Name": "Reduce, Re-Fuse, Recycle",
+    "Description": "<sprite name=\"BOMB\"> detonated while navigating provide {[BOMB_NAV_GOLD]} <sprite name=\"GOLD\">.",
+    "Effect": "143",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "bombs_nav_gold",
+      "descMod": "",
+      "englishDisplayName": "Reduce, Re-Fuse, Recycle",
+      "englishDescription": "<sprite name=\"BOMB\"> detonated while navigating provide {[BOMB_NAV_GOLD]} <sprite name=\"GOLD\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 143,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "isdisyourcard": {
+    "Id": "isdisyourcard",
+    "Name": "Is Dis Your Card",
+    "Description": "On discard, gain <style=dodge>Ballusion</style> equal to {[DISCARD_GAIN_CRIT_BALLUSION_MULTIPLIER]}x the discarded orb's crit damage.",
+    "Effect": "156",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "on_discard_gain_crit_ballusion",
+      "descMod": "",
+      "englishDisplayName": "Is Dis Your Card",
+      "englishDescription": "On discard, gain <style=dodge>Ballusion</style> equal to {[DISCARD_GAIN_CRIT_BALLUSION_MULTIPLIER]}x the discarded orb's crit damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 156,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refreshield": {
+    "Id": "refreshield",
+    "Name": "Refreshield",
+    "Description": "Whenever you reload, refresh the board.",
+    "Effect": "75",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "refresh_on_reload",
+      "descMod": "",
+      "englishDisplayName": "Refreshield",
+      "englishDescription": "Whenever you reload, refresh the board.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 75,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "cheese": {
+    "Id": "cheese",
+    "Name": "Bad Cheese",
+    "Description": "Whenever you reload, <style=damage>deal ({[CHEESE_DAMAGE]} x # reloads) damage</style> to all enemies.",
+    "Effect": "66",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "damage_enemies_on_reload",
+      "descMod": "2",
+      "englishDisplayName": "Bad Cheese",
+      "englishDescription": "Whenever you reload, <style=damage>deal ({[CHEESE_DAMAGE]} x # reloads) damage</style> to all enemies.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 66,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "haglinshat": {
+    "Id": "haglinshat",
+    "Name": "Haglin's Hat",
+    "Description": "<style=heal>Heal {[COINS_PROVIDE_HEALING_AMOUNT]}% of your max health</style> for every {[COINS_NEEDED_TO_PROVIDE_HEALING]} <sprite name=\"COIN_ONLY\"> collected.",
+    "Effect": "163",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "coins_for_healing",
+      "descMod": "2",
+      "englishDisplayName": "Haglin's Hat",
+      "englishDescription": "<style=heal>Heal {[COINS_PROVIDE_HEALING_AMOUNT]}% of your max health</style> for every {[COINS_NEEDED_TO_PROVIDE_HEALING]} <sprite name=\"COIN_ONLY\"> collected.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 163,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refreshingpunch": {
+    "Id": "refreshingpunch",
+    "Name": "Refreshing Punch",
+    "Description": "<sprite name=\"REFRESH_PEG\"> <style=activate>Activate</style> nearby pegs when hit.",
+    "Effect": "19",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "refresh_splash",
+      "descMod": "",
+      "englishDisplayName": "Refreshing Punch",
+      "englishDescription": "<sprite name=\"REFRESH_PEG\"> <style=activate>Activate</style> nearby pegs when hit.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 19,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "alchemistcookbook": {
+    "Id": "alchemistcookbook",
+    "Name": "Alchemist's Cookbook",
+    "Description": "<sprite name=\"PEG\"> have a {[PEG_TO_BOMB_CHANCE]}% chance to refresh into <sprite name=\"BOMB_REGULAR\">.",
+    "Effect": "2",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "peg_to_bomb",
+      "descMod": "2",
+      "englishDisplayName": "Alchemist's Cookbook",
+      "englishDescription": "<sprite name=\"PEG\"> have a {[PEG_TO_BOMB_CHANCE]}% chance to refresh into <sprite name=\"BOMB_REGULAR\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 2,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "potionpegscount": {
+    "Id": "potionpegscount",
+    "Name": "Strange Brew",
+    "Description": "<style=activate>Activated</style> <sprite name=\"REFRESH_PEG\"> <sprite name=\"CRIT_PEG\"> contribute to damage {[STRANGE_BREW_NUM]} times.",
+    "Effect": "16",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "potion_pegs_count",
+      "descMod": "2",
+      "englishDisplayName": "Strange Brew",
+      "englishDescription": "<style=activate>Activated</style> <sprite name=\"REFRESH_PEG\"> <sprite name=\"CRIT_PEG\"> contribute to damage {[STRANGE_BREW_NUM]} times.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 16,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "gardenergloves": {
+    "Id": "gardenergloves",
+    "Name": "Gardener's Gloves",
+    "Description": "Reduce <style=damage>self-damage</style> from orbs by {[REDUCE_ORB_SELF_DMG]}%.",
+    "Effect": "107",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "reduce_orb_self_damage",
+      "descMod": "",
+      "englishDisplayName": "Gardener's Gloves",
+      "englishDescription": "Reduce <style=damage>self-damage</style> from orbs by {[REDUCE_ORB_SELF_DMG]}%.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 107,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "bomb_baton": {
+    "Id": "bomb_baton",
+    "Name": "Bomb Baton",
+    "Description": "Pegboards start with +{[ADDITIONAL_BOMBS]} <sprite name=\"BOMB_REGULAR\">.",
+    "Effect": "64",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "additional_bombs",
+      "descMod": "",
+      "englishDisplayName": "Bomb Baton",
+      "englishDescription": "Pegboards start with +{[ADDITIONAL_BOMBS]} <sprite name=\"BOMB_REGULAR\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 64,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "unpretentiouspendant": {
+    "Id": "unpretentiouspendant",
+    "Name": "Unpretentious Pendant",
+    "Description": "All orbs get <style=dmg_bonus>+{[PENDANT_STR_BONUS]}/+{[PENDANT_CRIT_BONUS]}</style> but boards contain one less <sprite name=\"CRIT_PEG\">.",
+    "Effect": "82",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "fewer_crits",
+      "descMod": "",
+      "englishDisplayName": "Unpretentious Pendant",
+      "englishDescription": "All orbs get <style=dmg_bonus>+{[PENDANT_STR_BONUS]}/+{[PENDANT_CRIT_BONUS]}</style> but boards contain one less <sprite name=\"CRIT_PEG\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 82,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "beckoningcrit": {
+    "Id": "beckoningcrit",
+    "Name": "Beckoning Crit",
+    "Description": "Every {[COIN_CRIT]} <sprite name=\"COIN_ONLY\"> collected triggers a crit.",
+    "Effect": "131",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "coins_to_crits",
+      "descMod": "",
+      "englishDisplayName": "Beckoning Crit",
+      "englishDescription": "Every {[COIN_CRIT]} <sprite name=\"COIN_ONLY\"> collected triggers a crit.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 131,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "sling": {
+    "Id": "sling",
+    "Name": "Suffer the Sling",
+    "Description": "Pebballs get <style=dmg_bonus>+{[BASIC_STONE_BONUS]}/+{[BASIC_STONE_CRIT_BONUS]}</style>.",
+    "Effect": "43",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "basic_stone_bonus_damage",
+      "descMod": "",
+      "englishDisplayName": "Suffer the Sling",
+      "englishDescription": "Pebballs get <style=dmg_bonus>+{[BASIC_STONE_BONUS]}/+{[BASIC_STONE_CRIT_BONUS]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 43,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "glorioussuffering": {
+    "Id": "glorioussuffering",
+    "Name": "Glorious SuffeRing",
+    "Description": "Every <sprite name=PEG> <style=activate>Activated</style> gets upgraded <style=dmg_bonus>(+{[ALL_ORBS_BUFF_AMOUNT]} damage)</style> but all attacks have <style=dmg_negative>{[ALL_ORBS_BUFF_DMG_RED]}/{[ALL_ORBS_BUFF_CRIT_RED]}</style>.",
+    "Effect": "61",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "all_orbs_buff",
+      "descMod": "",
+      "englishDisplayName": "Glorious SuffeRing",
+      "englishDescription": "Every <sprite name=PEG> <style=activate>Activated</style> gets upgraded <style=dmg_bonus>(+{[ALL_ORBS_BUFF_AMOUNT]} damage)</style> but all attacks have <style=dmg_negative>{[ALL_ORBS_BUFF_DMG_RED]}/{[ALL_ORBS_BUFF_CRIT_RED]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 61,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "infernalingot": {
+    "Id": "infernalingot",
+    "Name": "Infernal Ingot",
+    "Description": "Steal 1 health from the selected enemy for every {[INFERNAL_PEGS]} <sprite name=\"PEG> <style=activate>Activated</style>.",
+    "Effect": "49",
+    "Rarity": 0,
+    "RawData": {
+      "locKey": "lifesteal_peg_hit",
+      "descMod": "",
+      "englishDisplayName": "Infernal Ingot",
+      "englishDescription": "Steal 1 health from the selected enemy for every {[INFERNAL_PEGS]} <sprite name=\"PEG> <style=activate>Activated</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 49,
+      "globalRarity": "globalRarity"
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "onlyminibosses": {
+    "Id": "onlyminibosses",
+    "Name": "Miniboss Meetup",
+    "Description": "Every node is a miniboss.",
+    "Effect": "174",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "only_minibosses",
+      "descMod": "",
+      "englishDisplayName": "Miniboss Meetup",
+      "englishDescription": "Every node is a miniboss.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 174,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "aliensrocksecret": {
+    "Id": "aliensrocksecret",
+    "Name": "Aliensrock",
+    "Description": "Targeted attacks hit all enemies.",
+    "Effect": "162",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "targeted_attacks_hit_all",
+      "descMod": "",
+      "englishDisplayName": "Aliensrock",
+      "englishDescription": "Targeted attacks hit all enemies.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 162,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "peglinero's_pendant": {
+    "Id": "peglinero's_pendant",
+    "Name": "Peglinero's Pendant",
+    "Description": "Collected <sprite name=\"COIN_ONLY\"> contribute to damage.",
+    "Effect": "103",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "coins_contribute_to_damage",
+      "descMod": "",
+      "englishDisplayName": "Peglinero's Pendant",
+      "englishDescription": "Collected <sprite name=\"COIN_ONLY\"> contribute to damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 103,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "distractionreaction": {
+    "Id": "distractionreaction",
+    "Name": "Distraction Reaction",
+    "Description": "Whenever you <style=damage>lose X health</style>, you gain <style=dodge>2X Ballusion</style>.",
+    "Effect": "151",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "gain_ballusion_from_enemy_dmg",
+      "descMod": "",
+      "englishDisplayName": "Distraction Reaction",
+      "englishDescription": "Whenever you <style=damage>lose X health</style>, you gain <style=dodge>2X Ballusion</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 151,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "subtractionreaction": {
+    "Id": "subtractionreaction",
+    "Name": "Subtraction Reaction",
+    "Description": "At the start of your turn apply <style=upgr_slime>damage reduction slime</style> to X <sprite name=\"PEG\"> where X is the number of times you <style=damage>lost health</style> last turn.",
+    "Effect": "167",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "damage_creates_damage_reduction_slime",
+      "descMod": "",
+      "englishDisplayName": "Subtraction Reaction",
+      "englishDescription": "At the start of your turn apply <style=upgr_slime>damage reduction slime</style> to X <sprite name=\"PEG\"> where X is the number of times you <style=damage>lost health</style> last turn.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 167,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "mentalmantle": {
+    "Id": "mentalmantle",
+    "Name": "Mental Mantle",
+    "Description": "Immediately deal <style=damage>1 damage</style> to the targeted enemy for every {[DAMAGE_ON_PEG_COUNT]} <sprite name=\"PEG> <style=activate>Activated</style>.",
+    "Effect": "50",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "mental_mantle",
+      "descMod": "",
+      "englishDisplayName": "Mental Mantle",
+      "englishDescription": "Immediately deal <style=damage>1 damage</style> to the targeted enemy for every {[DAMAGE_ON_PEG_COUNT]} <sprite name=\"PEG> <style=activate>Activated</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 50,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "maskofsorrow": {
+    "Id": "maskofsorrow",
+    "Name": "Mask of Sorrow",
+    "Description": "When applying negative status effects to an enemy, increase the amount applied by {[SORROW_INC]}.",
+    "Effect": "126",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "increase_neg_status",
+      "descMod": "",
+      "englishDisplayName": "Mask of Sorrow",
+      "englishDescription": "When applying negative status effects to an enemy, increase the amount applied by {[SORROW_INC]}.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 126,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "branch_of_ember": {
+    "Id": "branch_of_ember",
+    "Name": "Branch of Ember",
+    "Description": "When applying <style=bramble>Bramble</style> to an enemy, apply <style=blind>Blind {[BRANCH_BLIND]}</style>. When applying <style=blind>Blind</style> to an <style=Bramble>un-Brambled</style> enemy, apply <style=bramble>Bramble 1</style>.",
+    "Effect": "114",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "bramble_blind_combo",
+      "descMod": "",
+      "englishDisplayName": "Branch of Ember",
+      "englishDescription": "When applying <style=bramble>Bramble</style> to an enemy, apply <style=blind>Blind {[BRANCH_BLIND]}</style>. When applying <style=blind>Blind</style> to an <style=Bramble>un-Brambled</style> enemy, apply <style=bramble>Bramble 1</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 114,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "modestmallet": {
+    "Id": "modestmallet",
+    "Name": "Modest Mallet",
+    "Description": "Whenever you discard an upgradeable orb, upgrade it until end of combat.",
+    "Effect": "160",
+    "Rarity": 0,
+    "RawData": {
+      "locKey": "upgrade_discarded_orbs",
+      "descMod": "2",
+      "englishDisplayName": "Modest Mallet",
+      "englishDescription": "Whenever you discard an upgradeable orb, upgrade it until end of combat.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 160,
+      "globalRarity": "globalRarity"
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "well-done_steak": {
+    "Id": "well-done_steak",
+    "Name": "Well-Done Steak",
+    "Description": "Whenever you reload, <style=heal>Heal {[RELOAD_HEAL]}</style>.",
+    "Effect": "4",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "heal_on_reload",
+      "descMod": "",
+      "englishDisplayName": "Well-Done Steak",
+      "englishDescription": "Whenever you reload, <style=heal>Heal {[RELOAD_HEAL]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 4,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "powerglove": {
+    "Id": "powerglove",
+    "Name": "Power Glove",
+    "Description": "Attacks gain <style=dmg_bonus>+1/+1</style>.",
+    "Effect": "25",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "increase_strength_small",
+      "descMod": "",
+      "englishDisplayName": "Power Glove",
+      "englishDescription": "Attacks gain <style=dmg_bonus>+1/+1</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 25,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "hero'sbackpack": {
+    "Id": "hero'sbackpack",
+    "Name": "Hero's Backpack",
+    "Description": "Non-Pebball orbs gain <style=dmg_bonus>+{[BP_ADJ_DMG]}/+{[BP_ADJ_CRIT]}</style> for every other orb of the same type owned.",
+    "Effect": "92",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "adjacency_bonus",
+      "descMod": "2",
+      "englishDisplayName": "Hero's Backpack",
+      "englishDescription": "Non-Pebball orbs gain <style=dmg_bonus>+{[BP_ADJ_DMG]}/+{[BP_ADJ_CRIT]}</style> for every other orb of the same type owned.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 92,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "agoodslime": {
+    "Id": "agoodslime",
+    "Name": "A Good Slime",
+    "Description": "Whenever <style=upgr_slime>slime</style> is applied to <sprite name=\"PEG\"> it gets upgraded <style=dmg_bonus>+{[SLIME_PEG_BUFF_AMT]}</style>.",
+    "Effect": "132",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "a_good_slime",
+      "descMod": "",
+      "englishDisplayName": "A Good Slime",
+      "englishDescription": "Whenever <style=upgr_slime>slime</style> is applied to <sprite name=\"PEG\"> it gets upgraded <style=dmg_bonus>+{[SLIME_PEG_BUFF_AMT]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 132,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "decoyorb": {
+    "Id": "decoyorb",
+    "Name": "Decoy Orb",
+    "Description": "Enemies don't get their extra turn(s) for your first reload.",
+    "Effect": "27",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "free_reload",
+      "descMod": "",
+      "englishDisplayName": "Decoy Orb",
+      "englishDescription": "Enemies don't get their extra turn(s) for your first reload.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 27,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "consolationprize": {
+    "Id": "consolationprize",
+    "Name": "Consolation Prize",
+    "Description": "Do you feel consoled?",
+    "Effect": "effect",
+    "Rarity": 0,
+    "RawData": {
+      "locKey": "dud_relic",
+      "descMod": "",
+      "englishDisplayName": "Consolation Prize",
+      "englishDescription": "Do you feel consoled?",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": "effect",
+      "globalRarity": "globalRarity"
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "shieldpegsadddamage": {
+    "Id": "shieldpegsadddamage",
+    "Name": "Shield Basher",
+    "Description": "<sprite name=\"PEG_SHIELDED\"> can be <style=activate>Activated</style>.",
+    "Effect": "173",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "shield_pegs_add_damage",
+      "descMod": "",
+      "englishDisplayName": "Shield Basher",
+      "englishDescription": "<sprite name=\"PEG_SHIELDED\"> can be <style=activate>Activated</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 173,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "giftthatkeepsgiving": {
+    "Id": "giftthatkeepsgiving",
+    "Name": "Gift That Keeps Giving",
+    "Description": "All pegs have <style=durable>Durable</style>.",
+    "Effect": "10",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "unpoppable_pegs",
+      "descMod": "",
+      "englishDisplayName": "Gift That Keeps Giving",
+      "englishDescription": "All pegs have <style=durable>Durable</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 10,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "goblinkingscurse": {
+    "Id": "goblinkingscurse",
+    "Name": "Curse of the Peglin King",
+    "Description": "Every second orb drawn will fire with {[ALTERNATE_SHOT_INC]}x force, but every odd orb will fire with {[ALTERNATE_SHOT_DEC]}x force.",
+    "Effect": "71",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "alternate_shot_power",
+      "descMod": "",
+      "englishDisplayName": "Curse of the Peglin King",
+      "englishDescription": "Every second orb drawn will fire with {[ALTERNATE_SHOT_INC]}x force, but every odd orb will fire with {[ALTERNATE_SHOT_DEC]}x force.",
+      "englishLockedDescription": "Clear a custom game using the Crumpled Character Sheet to unlock.",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 71,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "apple": {
+    "Id": "apple",
+    "Name": "An Apple A Day",
+    "Description": "Increases your <style=heal>max health by {[MAX_HEALTH_SMALL_AMOUNT]}</style>.",
+    "Effect": "23",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "max_health_small",
+      "descMod": "",
+      "englishDisplayName": "An Apple A Day",
+      "englishDescription": "Increases your <style=heal>max health by {[MAX_HEALTH_SMALL_AMOUNT]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 23,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "parallelboomiverse": {
+    "Id": "parallelboomiverse",
+    "Name": "Parallel Boomiverse",
+    "Description": "Whenever <sprite name=\"BOMB\"> are created in battle, create an additional <sprite name=\"BOMB_REGULAR\">.",
+    "Effect": "186",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "additional_battle_bombs",
+      "descMod": "",
+      "englishDisplayName": "Parallel Boomiverse",
+      "englishDescription": "Whenever <sprite name=\"BOMB\"> are created in battle, create an additional <sprite name=\"BOMB_REGULAR\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 186,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "improvedcatalyst": {
+    "Id": "improvedcatalyst",
+    "Name": "Improved Catalyst",
+    "Description": "<sprite name=\"BOMB\"> deal +{[ADDITIONAL_BOMB_DAMAGE]} damage.",
+    "Effect": "30",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "additional_bomb_damage",
+      "descMod": "",
+      "englishDisplayName": "Improved Catalyst",
+      "englishDescription": "<sprite name=\"BOMB\"> deal +{[ADDITIONAL_BOMB_DAMAGE]} damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 30,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "endlessdevouring": {
+    "Id": "endlessdevouring",
+    "Name": "Endless DevouRing",
+    "Description": "Attacks deal <style=dmg_bonus>2x damage</style> but every <sprite name=PEG> <style=activate>Activated</style> gets downgraded <style=dmg_negative>(-{[ALL_ORBS_DEBUFF_AMOUNT]} damage)</style>.",
+    "Effect": "154",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "all_orbs_debuff",
+      "descMod": "",
+      "englishDisplayName": "Endless DevouRing",
+      "englishDescription": "Attacks deal <style=dmg_bonus>2x damage</style> but every <sprite name=PEG> <style=activate>Activated</style> gets downgraded <style=dmg_negative>(-{[ALL_ORBS_DEBUFF_AMOUNT]} damage)</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 154,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "seraphicshield": {
+    "Id": "seraphicshield",
+    "Name": "Seraphic Shield",
+    "Description": "You are immune to all damage.",
+    "Effect": "95",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "immunity",
+      "descMod": "",
+      "englishDisplayName": "Seraphic Shield",
+      "englishDescription": "You are immune to all damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 95,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "sealedconviction": {
+    "Id": "sealedconviction",
+    "Name": "Sealed Conviction",
+    "Description": "You gain <style=balance>{[NO_DISCARD_DAMAGE_INCREASE]} Ballance</style> at the start of battle and whenever you reload, but you have <style=damage>-{[DISCARD_REDUCTION]} orb discards</style>.",
+    "Effect": "33",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "no_discard",
+      "descMod": "",
+      "englishDisplayName": "Sealed Conviction",
+      "englishDescription": "You gain <style=balance>{[NO_DISCARD_DAMAGE_INCREASE]} Ballance</style> at the start of battle and whenever you reload, but you have <style=damage>-{[DISCARD_REDUCTION]} orb discards</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 33,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "saltshaker": {
+    "Id": "saltshaker",
+    "Name": "Salt Shaker",
+    "Description": "When gaining max health, increase the amount gained by {[MAX_HP_GAIN_INCR]}.",
+    "Effect": "106",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "max_health_incr",
+      "descMod": "",
+      "englishDisplayName": "Salt Shaker",
+      "englishDescription": "When gaining max health, increase the amount gained by {[MAX_HP_GAIN_INCR]}.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 106,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "critikris": {
+    "Id": "critikris",
+    "Name": "Critikris",
+    "Description": "Whenever a crit is triggered, <style=damage>deal damage to all enemies</style> equal to (your orb's <sprite name=\"CRIT_PEG\"> x # crits).",
+    "Effect": "96",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "crit_damages_enemies",
+      "descMod": "2",
+      "englishDisplayName": "Critikris",
+      "englishDescription": "Whenever a crit is triggered, <style=damage>deal damage to all enemies</style> equal to (your orb's <sprite name=\"CRIT_PEG\"> x # crits).",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 96,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "skulltimatewand": {
+    "Id": "skulltimatewand",
+    "Name": "Wand of Skulltimate Wrath",
+    "Description": "Attacks and <sprite name=\"BOMB\"> deal <style=dmg_bonus>2x damage</style> but you <style=damage>deal {[SKULL_SELF_DMG]} self-damage</style> for every {[SKULL_DMG_PEGS]} <sprite name=\"PEG\"> <style=activate>Activated</style>.",
+    "Effect": "53",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "double_damage_hurt_self",
+      "descMod": "3",
+      "englishDisplayName": "Wand of Skulltimate Wrath",
+      "englishDescription": "Attacks and <sprite name=\"BOMB\"> deal <style=dmg_bonus>2x damage</style> but you <style=damage>deal {[SKULL_SELF_DMG]} self-damage</style> for every {[SKULL_DMG_PEGS]} <sprite name=\"PEG\"> <style=activate>Activated</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 53,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "weightedchip": {
+    "Id": "weightedchip",
+    "Name": "Weighted Chip",
+    "Description": "Bottom slots gain multipliers that double or halve your shot damage.",
+    "Effect": "8",
+    "Rarity": 0,
+    "RawData": {
+      "locKey": "slot_multipliers",
+      "descMod": "",
+      "englishDisplayName": "Weighted Chip",
+      "englishDescription": "Bottom slots gain multipliers that double or halve your shot damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 8,
+      "globalRarity": "globalRarity"
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "ripostalservice": {
+    "Id": "ripostalservice",
+    "Name": "Ripostal Service",
+    "Description": "After you are attacked, the attacker <style=damage>receives damage</style> equal to <style=shield>{[BALLWARK_COUNTER_MULT]}x your remaining Ballwark</style>.",
+    "Effect": "115",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "ballwark_counter",
+      "descMod": "2",
+      "englishDisplayName": "Ripostal Service",
+      "englishDescription": "After you are attacked, the attacker <style=damage>receives damage</style> equal to <style=shield>{[BALLWARK_COUNTER_MULT]}x your remaining Ballwark</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 115,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refreshmoves": {
+    "Id": "refreshmoves",
+    "Name": "Tactical Treat",
+    "Description": "<sprite name=\"REFRESH_PEG\"> move after every shot.",
+    "Effect": "40",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "shuffle_refresh_peg",
+      "descMod": "",
+      "englishDisplayName": "Tactical Treat",
+      "englishDescription": "<sprite name=\"REFRESH_PEG\"> move after every shot.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 40,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "ballpeenhammer": {
+    "Id": "ballpeenhammer",
+    "Name": "Ballpeen Hammer",
+    "Description": "Whenever <sprite name=\"PEG_SHIELDED\"> is created, gain <style=ballwark>{[BALLWARK_SHIELD_PEG_GAIN]} Ballwark</style>.",
+    "Effect": "121",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "ballpeen",
+      "descMod": "",
+      "englishDisplayName": "Ballpeen Hammer",
+      "englishDescription": "Whenever <sprite name=\"PEG_SHIELDED\"> is created, gain <style=ballwark>{[BALLWARK_SHIELD_PEG_GAIN]} Ballwark</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 121,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "ringofindignation": {
+    "Id": "ringofindignation",
+    "Name": "Ring of Pain",
+    "Description": "Whenever you <style=damage>lose health</style>, <style=damage>deal {[DAMAGE_RETURN_MULT]}x that amount</style> to all enemies.",
+    "Effect": "67",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "damage_return",
+      "descMod": "",
+      "englishDisplayName": "Ring of Pain",
+      "englishDescription": "Whenever you <style=damage>lose health</style>, <style=damage>deal {[DAMAGE_RETURN_MULT]}x that amount</style> to all enemies.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 67,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "roundreloquence": {
+    "Id": "roundreloquence",
+    "Name": "Roundreloquence",
+    "Description": "Attacks apply a random debuff to the enemy.",
+    "Effect": "125",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "random_status_effect_on_hit",
+      "descMod": "",
+      "englishDisplayName": "Roundreloquence",
+      "englishDescription": "Attacks apply a random debuff to the enemy.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 125,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "steadyscope": {
+    "Id": "steadyscope",
+    "Name": "Steady Scope",
+    "Description": "Every shot fired has a <style=dodge>(2x Ballusion)</style>% chance to trigger a crit.",
+    "Effect": "165",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "high_ballusion_guaranteed_crit",
+      "descMod": "2",
+      "englishDisplayName": "Steady Scope",
+      "englishDescription": "Every shot fired has a <style=dodge>(2x Ballusion)</style>% chance to trigger a crit.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 165,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "complexclaw": {
+    "Id": "complexclaw",
+    "Name": "Complex Claw",
+    "Description": "All attacks get <style=dmg_bonus>+0/+1</style>.",
+    "Effect": "77",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "crit_bonus_dmg",
+      "descMod": "",
+      "englishDisplayName": "Complex Claw",
+      "englishDescription": "All attacks get <style=dmg_bonus>+0/+1</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 77,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "safetynet": {
+    "Id": "safetynet",
+    "Name": "Safety Net",
+    "Description": "Orbs start with {[SAFETY_PEGS]} <sprite name=\"PEG\"> worth of damage.",
+    "Effect": "89",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "minimum_guarantee",
+      "descMod": "",
+      "englishDisplayName": "Safety Net",
+      "englishDescription": "Orbs start with {[SAFETY_PEGS]} <sprite name=\"PEG\"> worth of damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 89,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "grubbyhands": {
+    "Id": "grubbyhands",
+    "Name": "Grubby Gloves",
+    "Description": "Attacks apply <style=poison>Spinfection {[POISON_ATK]}</style> to enemies.",
+    "Effect": "128",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "attacks_apply_poison",
+      "descMod": "",
+      "englishDisplayName": "Grubby Gloves",
+      "englishDescription": "Attacks apply <style=poison>Spinfection {[POISON_ATK]}</style> to enemies.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 128,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "au_auger": {
+    "Id": "au_auger",
+    "Name": "Au Auger",
+    "Description": "Each crit triggered for projectile attacks cause them to pierce an additional enemy.",
+    "Effect": "130",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "crits_provide_pierce",
+      "descMod": "",
+      "englishDisplayName": "Au Auger",
+      "englishDescription": "Each crit triggered for projectile attacks cause them to pierce an additional enemy.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 130,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "fieryfurnace": {
+    "Id": "fieryfurnace",
+    "Name": "Fiery Furnace",
+    "Description": "Whenever <sprite name=\"PEG_SHIELDED\"> is destroyed, gain <style=ballwark>{[BALLWARK_SHIELD_PEG_DESTROY_GAIN]} Ballwark</style>.",
+    "Effect": "122",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "fiery_furnace",
+      "descMod": "",
+      "englishDisplayName": "Fiery Furnace",
+      "englishDescription": "Whenever <sprite name=\"PEG_SHIELDED\"> is destroyed, gain <style=ballwark>{[BALLWARK_SHIELD_PEG_DESTROY_GAIN]} Ballwark</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 122,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "balladroit": {
+    "Id": "balladroit",
+    "Name": "Balladroit",
+    "Description": "At start of battle, gain <style=shield>Ballwark</style> equal to the number of orbs in your deck or 2 x (your orb's largest base damage), whichever is higher.",
+    "Effect": "170",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "start_with_ballwark_for_orb_levels",
+      "descMod": "",
+      "englishDisplayName": "Balladroit",
+      "englishDescription": "At start of battle, gain <style=shield>Ballwark</style> equal to the number of orbs in your deck or 2 x (your orb's largest base damage), whichever is higher.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 170,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "eye_of_turtle": {
+    "Id": "eye_of_turtle",
+    "Name": "Eye of Turtle",
+    "Description": "Orb and relic battle rewards contain an additional option to choose from.",
+    "Effect": "60",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "additional_orb_relic_options",
+      "descMod": "",
+      "englishDisplayName": "Eye of Turtle",
+      "englishDescription": "Orb and relic battle rewards contain an additional option to choose from.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 60,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "enhancedgunpowder": {
+    "Id": "enhancedgunpowder",
+    "Name": "Enhanced Gunpowder",
+    "Description": "<sprite name=\"BOMB\"> <style=activate>Activate</style> nearby pegs when detonated.",
+    "Effect": "1",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "bomb_splash",
+      "descMod": "",
+      "englishDisplayName": "Enhanced Gunpowder",
+      "englishDescription": "<sprite name=\"BOMB\"> <style=activate>Activate</style> nearby pegs when detonated.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 1,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "intentional_oboe": {
+    "Id": "intentional_oboe",
+    "Name": "Intentional Oboe",
+    "Description": "Whenever you would <style=damage>lose health</style>, reduce the amount lost by 1.",
+    "Effect": "78",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "damage_reduction",
+      "descMod": "",
+      "englishDisplayName": "Intentional Oboe",
+      "englishDescription": "Whenever you would <style=damage>lose health</style>, reduce the amount lost by 1.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 78,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "spiffycrit": {
+    "Id": "spiffycrit",
+    "Name": "Spiffy Crit",
+    "Description": "Attacks apply <style=exploitaball>{[ALL_ATTACKS_APPLY_EXPLOITABALL_AMOUNT]} Exploitaball</style> to enemies, or <style=exploitaball>{[ALL_ATTACKS_APPLY_EXPLOITABALL_CRIT_AMOUNT]} Exploitaball</style> on crit.",
+    "Effect": "166",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "attacks_apply_exploitaball",
+      "descMod": "",
+      "englishDisplayName": "Spiffy Crit",
+      "englishDescription": "Attacks apply <style=exploitaball>{[ALL_ATTACKS_APPLY_EXPLOITABALL_AMOUNT]} Exploitaball</style> to enemies, or <style=exploitaball>{[ALL_ATTACKS_APPLY_EXPLOITABALL_CRIT_AMOUNT]} Exploitaball</style> on crit.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 166,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "pumpkinpi": {
+    "Id": "pumpkinpi",
+    "Name": "Pumpkin π",
+    "Description": "Each shot, a random slot becomes a portal that can teleport orbs to the top of the pegboard up to {[PORTAL_SLOT_USES]}x.",
+    "Effect": "87",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "portal_slot",
+      "descMod": "",
+      "englishDisplayName": "Pumpkin π",
+      "englishDescription": "Each shot, a random slot becomes a portal that can teleport orbs to the top of the pegboard up to {[PORTAL_SLOT_USES]}x.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 87,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "tendercactus": {
+    "Id": "tendercactus",
+    "Name": "Tender Cactus",
+    "Description": "The targeted enemy is <style=damage>dealt (Orb Stat)^{[CAC_EXP]} damage</style> for every <sprite name=\"PEG\"> <style=activate>Activated</style>, but attacks only deal {[CAC_DMG]} + bonus damage.",
+    "Effect": "189",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "direct_damage",
+      "descMod": "",
+      "englishDisplayName": "Tender Cactus",
+      "englishDescription": "The targeted enemy is <style=damage>dealt (Orb Stat)^{[CAC_EXP]} damage</style> for every <sprite name=\"PEG\"> <style=activate>Activated</style>, but attacks only deal {[CAC_DMG]} + bonus damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 189,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "ancientmeteorite": {
+    "Id": "ancientmeteorite",
+    "Name": "Ancient Meteorite",
+    "Description": "Every <sprite name=\"PEG\"> <style=hit>Hit</style> provides explosive force.",
+    "Effect": "72",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "bomb_force_always_legacy",
+      "descMod": "",
+      "englishDisplayName": "Ancient Meteorite",
+      "englishDescription": "Every <sprite name=\"PEG\"> <style=hit>Hit</style> provides explosive force.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 72,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "spinventoriginality": {
+    "Id": "spinventoriginality",
+    "Name": "Spinventoriginality",
+    "Description": "Unique orbs in your deck get <style=dmg_bonus>+1/+2</style>",
+    "Effect": "135",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "unique_orbs_buff",
+      "descMod": "",
+      "englishDisplayName": "Spinventoriginality",
+      "englishDescription": "Unique orbs in your deck get <style=dmg_bonus>+1/+2</style>",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 135,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "axemeanything": {
+    "Id": "axemeanything",
+    "Name": "Axe Me Anything",
+    "Description": "Enemy damage resistances become weaknesses instead.",
+    "Effect": "94",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "no_damage_reduction",
+      "descMod": "2",
+      "englishDisplayName": "Axe Me Anything",
+      "englishDescription": "Enemy damage resistances become weaknesses instead.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 94,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "pegbag": {
+    "Id": "pegbag",
+    "Name": "PegBag",
+    "Description": "The board will contain {[PEGBAG_ADDITIONAL_REFRESH]} additional <sprite name=\"REFRESH_PEG\">.",
+    "Effect": "20",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "three_refresh",
+      "descMod": "",
+      "englishDisplayName": "PegBag",
+      "englishDescription": "The board will contain {[PEGBAG_ADDITIONAL_REFRESH]} additional <sprite name=\"REFRESH_PEG\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 20,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "cleartheway": {
+    "Id": "cleartheway",
+    "Name": "Clear The Way!",
+    "Description": "Attacks apply <style=transpherency>{[ATTACKS_APPLY_TRANSPHERENCY_AMOUNT]} Transpherency</style> to enemies.",
+    "Effect": "169",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "attacks_apply_transpherency",
+      "descMod": "",
+      "englishDisplayName": "Clear The Way!",
+      "englishDescription": "Attacks apply <style=transpherency>{[ATTACKS_APPLY_TRANSPHERENCY_AMOUNT]} Transpherency</style> to enemies.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 169,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "vitaminc": {
+    "Id": "vitaminc",
+    "Name": "Vitamin C!",
+    "Description": "Whenever a crit is triggered, gain <style=dodge>{[BALLUSION_ON_CRIT_AMOUNT]} Ballusion</style>.",
+    "Effect": "141",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "ballusion_on_crit",
+      "descMod": "",
+      "englishDisplayName": "Vitamin C!",
+      "englishDescription": "Whenever a crit is triggered, gain <style=dodge>{[BALLUSION_ON_CRIT_AMOUNT]} Ballusion</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 141,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "adventurine": {
+    "Id": "adventurine",
+    "Name": "Adventurine",
+    "Description": "The first <sprite name=\"PEG\"> <style=hit>Hit</style> by each orb gets <style=dmg_bonus>+10</style>",
+    "Effect": "133",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "buff_first_peg_hit",
+      "descMod": "",
+      "englishDisplayName": "Adventurine",
+      "englishDescription": "The first <sprite name=\"PEG\"> <style=hit>Hit</style> by each orb gets <style=dmg_bonus>+10</style>",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 133,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "brassknuckles": {
+    "Id": "brassknuckles",
+    "Name": "Brassicaceae Knuckles",
+    "Description": "Every {[BROC_NUM]} times the board is refreshed, gain <style=strength>1 Muscircle</style>.",
+    "Effect": "124",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "strength_on_refresh",
+      "descMod": "2",
+      "englishDisplayName": "Brassicaceae Knuckles",
+      "englishDescription": "Every {[BROC_NUM]} times the board is refreshed, gain <style=strength>1 Muscircle</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 124,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "powdercollector": {
+    "Id": "powdercollector",
+    "Name": "Powder Collector",
+    "Description": "Every {[SPAWN_BOMB_PEGS]} <sprite name=\"PEG\"> <style=hit>Hit</style> is converted to <sprite name=\"BOMB_REGULAR\">.",
+    "Effect": "65",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "spawn_bomb_peg_hits",
+      "descMod": "",
+      "englishDisplayName": "Powder Collector",
+      "englishDescription": "Every {[SPAWN_BOMB_PEGS]} <sprite name=\"PEG\"> <style=hit>Hit</style> is converted to <sprite name=\"BOMB_REGULAR\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 65,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "smokemod": {
+    "Id": "smokemod",
+    "Name": "Smoke Mod",
+    "Description": "<sprite name=\"BOMB\"> apply <style=blind>{[BOMB_BLIND_AMT]} Blind</style> when damaging enemies.",
+    "Effect": "83",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "bombs_apply_blind",
+      "descMod": "",
+      "englishDisplayName": "Smoke Mod",
+      "englishDescription": "<sprite name=\"BOMB\"> apply <style=blind>{[BOMB_BLIND_AMT]} Blind</style> when damaging enemies.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 83,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "viridiantrinket": {
+    "Id": "viridiantrinket",
+    "Name": "Viridian Trinket",
+    "Description": "Gravity is reversed, but ceiling bounce is massively increased and orbs pass through <sprite name=\"PEG\"> while travelling downwards.",
+    "Effect": "188",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "reverse_gravity",
+      "descMod": "",
+      "englishDisplayName": "Viridian Trinket",
+      "englishDescription": "Gravity is reversed, but ceiling bounce is massively increased and orbs pass through <sprite name=\"PEG\"> while travelling downwards.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 188,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "unicornhorn": {
+    "Id": "unicornhorn",
+    "Name": "Unicorn Horn?",
+    "Description": "Your aimer is longer and displays an additional bounce.",
+    "Effect": "41",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "unicorn_horn",
+      "descMod": "",
+      "englishDisplayName": "Unicorn Horn?",
+      "englishDescription": "Your aimer is longer and displays an additional bounce.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 41,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "crittorefresh": {
+    "Id": "crittorefresh",
+    "Name": "Heavy Shaft Potion",
+    "Description": "<style=activate>Activated</style> <sprite name=\"CRIT_PEG\"> also refresh the board.",
+    "Effect": "7",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "crit_also_refresh",
+      "descMod": "",
+      "englishDisplayName": "Heavy Shaft Potion",
+      "englishDescription": "<style=activate>Activated</style> <sprite name=\"CRIT_PEG\"> also refresh the board.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 7,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "debuffdistractor": {
+    "Id": "debuffdistractor",
+    "Name": "Debuff Distractor",
+    "Description": "Gain <style=dodge>{[DEBUFF_DODGE]} Ballusion</style> for every negative status effect you apply to an enemy.",
+    "Effect": "176",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "debuff_dodge",
+      "descMod": "",
+      "englishDisplayName": "Debuff Distractor",
+      "englishDescription": "Gain <style=dodge>{[DEBUFF_DODGE]} Ballusion</style> for every negative status effect you apply to an enemy.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 176,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "shortfuse": {
+    "Id": "shortfuse",
+    "Name": "Short Fuse",
+    "Description": "<sprite name=\"BOMB\"> detonate in one hit.",
+    "Effect": "15",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "bombs_one_hit",
+      "descMod": "",
+      "englishDisplayName": "Short Fuse",
+      "englishDescription": "<sprite name=\"BOMB\"> detonate in one hit.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 15,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "consumingchalice": {
+    "Id": "consumingchalice",
+    "Name": "Consuming Chalice",
+    "Description": "At start of battle, gain <style=finesse>{[CHALICE_SPINESSE_AMOUNT]} Spinesse</style>, but boards contain one less <sprite name=\"REFRESH_PEG\">.",
+    "Effect": "81",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "fewer_refresh",
+      "descMod": "2",
+      "englishDisplayName": "Consuming Chalice",
+      "englishDescription": "At start of battle, gain <style=finesse>{[CHALICE_SPINESSE_AMOUNT]} Spinesse</style>, but boards contain one less <sprite name=\"REFRESH_PEG\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 81,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "flauntygauntlets": {
+    "Id": "flauntygauntlets",
+    "Name": "Flaunty Gauntlets",
+    "Description": "Gain <style=dodge>{[COINS_PROVIDE_BALLUSION_AMOUNT]} Ballusion</style> for every <sprite name=\"COIN_ONLY\"> collected.",
+    "Effect": "164",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "coins_give_ballusion",
+      "descMod": "",
+      "englishDisplayName": "Flaunty Gauntlets",
+      "englishDescription": "Gain <style=dodge>{[COINS_PROVIDE_BALLUSION_AMOUNT]} Ballusion</style> for every <sprite name=\"COIN_ONLY\"> collected.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 164,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "safetypegulations": {
+    "Id": "safetypegulations",
+    "Name": "Safety Pegulations",
+    "Description": "Projectile attacks pierce {[PEGULATIONS_PIERCE_NUM]} additional enemies, but <sprite name=\"BOMB\"> deal <style=dmg_negative>{[PEGULATIONS_BOMB_DMG_MOD]}% less damage</style> and <style=damage>self-damage</style>.",
+    "Effect": "185",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "more_pierce_less_bomb_damage",
+      "descMod": "",
+      "englishDisplayName": "Safety Pegulations",
+      "englishDescription": "Projectile attacks pierce {[PEGULATIONS_PIERCE_NUM]} additional enemies, but <sprite name=\"BOMB\"> deal <style=dmg_negative>{[PEGULATIONS_BOMB_DMG_MOD]}% less damage</style> and <style=damage>self-damage</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 185,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "basalttoadem": {
+    "Id": "basalttoadem",
+    "Name": "Basalt Toadem",
+    "Description": "Post battle upgrading now includes the option to <style=heal>increase your Max HP by {[FROGGY_HP]}</style>.",
+    "Effect": "111",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "battle_upgrades_heal_max_hp",
+      "descMod": "2",
+      "englishDisplayName": "Basalt Toadem",
+      "englishDescription": "Post battle upgrading now includes the option to <style=heal>increase your Max HP by {[FROGGY_HP]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 111,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "essentialoil": {
+    "Id": "essentialoil",
+    "Name": "Essential Oil",
+    "Description": "Whenever <style=shield>Ballwark</style> is gained, increase the amount gained by {[BALLWARK_INC]}.",
+    "Effect": "116",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "armor_plus_one",
+      "descMod": "2",
+      "englishDisplayName": "Essential Oil",
+      "englishDescription": "Whenever <style=shield>Ballwark</style> is gained, increase the amount gained by {[BALLWARK_INC]}.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 116,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "wallchicken": {
+    "Id": "wallchicken",
+    "Name": "Wall Chicken",
+    "Description": "Increases your <style=heal>max health by {[MAX_HEALTH_MEDIUM_AMOUNT]}</style>.",
+    "Effect": "24",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "max_health_medium",
+      "descMod": "",
+      "englishDisplayName": "Wall Chicken",
+      "englishDescription": "Increases your <style=heal>max health by {[MAX_HEALTH_MEDIUM_AMOUNT]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 24,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "haglinssatchel": {
+    "Id": "haglinssatchel",
+    "Name": "Haglin's Satchel",
+    "Description": "When taken, {[HAGLIN_REL_ADD]} rare orbs are added to your deck, orbs are randomly upgraded {[HAGLIN_REL_UPGRADE]} times, and {[HAGLIN_REL_GOLD]} <sprite name=\"GOLD\"> is acquired.",
+    "Effect": "88",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "random_orbs",
+      "descMod": "3",
+      "englishDisplayName": "Haglin's Satchel",
+      "englishDescription": "When taken, {[HAGLIN_REL_ADD]} rare orbs are added to your deck, orbs are randomly upgraded {[HAGLIN_REL_UPGRADE]} times, and {[HAGLIN_REL_GOLD]} <sprite name=\"GOLD\"> is acquired.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 88,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "grindingmonstera": {
+    "Id": "grindingmonstera",
+    "Name": "Grinding Monstera",
+    "Description": "Whenever you defeat a non-minion enemy, <style=heal>gain 1 max health</style>.",
+    "Effect": "108",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "gain_max_hp_defeat_enemy",
+      "descMod": "",
+      "englishDisplayName": "Grinding Monstera",
+      "englishDescription": "Whenever you defeat a non-minion enemy, <style=heal>gain 1 max health</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 108,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "orbertsstory": {
+    "Id": "orbertsstory",
+    "Name": "Orbert's Story",
+    "Description": "Every {[ORBERTS_NUM_SCENARIO_NODES]} '?' nodes visited will be a chest, and the chance for rare relics to appear in chests is increased by {[BETTER_TREASURE]}%.",
+    "Effect": "119",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "more_treasure_nodes",
+      "descMod": "2",
+      "englishDisplayName": "Orbert's Story",
+      "englishDescription": "Every {[ORBERTS_NUM_SCENARIO_NODES]} '?' nodes visited will be a chest, and the chance for rare relics to appear in chests is increased by {[BETTER_TREASURE]}%.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 119,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "duplicationstation": {
+    "Id": "duplicationstation",
+    "Name": "Duplication Station",
+    "Description": "Every {[MULTIBALL_X_SHOTS]} shots starts with <style=multiball>+1 Multiball</style>.",
+    "Effect": "137",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "multiball_every_x",
+      "descMod": "",
+      "englishDisplayName": "Duplication Station",
+      "englishDescription": "Every {[MULTIBALL_X_SHOTS]} shots starts with <style=multiball>+1 Multiball</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 137,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "knifesedge": {
+    "Id": "knifesedge",
+    "Name": "Knife's Edge",
+    "Description": "Every shot is a crit when fired <style=damage>below {[GUARANTEED_CRIT_HEALTH_THRESHOLD]}% health</style>.",
+    "Effect": "57",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "low_health_guaranteed_crit",
+      "descMod": "",
+      "englishDisplayName": "Knife's Edge",
+      "englishDescription": "Every shot is a crit when fired <style=damage>below {[GUARANTEED_CRIT_HEALTH_THRESHOLD]}% health</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 57,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "constrictingchains": {
+    "Id": "constrictingchains",
+    "Name": "Constricting Chains",
+    "Description": "Every orb will fire 2 additional copies onto the pegboard, but all orbs deal <style=dmg_negative>0.5x damage (rounded down)</style> and can only be aimed in 4 directions.",
+    "Effect": "153",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "aim_limiter",
+      "descMod": "3",
+      "englishDisplayName": "Constricting Chains",
+      "englishDescription": "Every orb will fire 2 additional copies onto the pegboard, but all orbs deal <style=dmg_negative>0.5x damage (rounded down)</style> and can only be aimed in 4 directions.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 153,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "ringofreuse": {
+    "Id": "ringofreuse",
+    "Name": "Ring of Reuse",
+    "Description": "All orbs have +1 <style=persist>Persist</style>.",
+    "Effect": "54",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "reuse_ring",
+      "descMod": "",
+      "englishDisplayName": "Ring of Reuse",
+      "englishDescription": "All orbs have +1 <style=persist>Persist</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 54,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "callofthevoid": {
+    "Id": "callofthevoid",
+    "Name": "Call of the Void",
+    "Description": "<style=hit>Hit</style> <sprite name=\"PEG\"> are <style=Destroy>destroyed</style>.",
+    "Effect": "178",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "all_orbs_destroy_pegs",
+      "descMod": "",
+      "englishDisplayName": "Call of the Void",
+      "englishDescription": "<style=hit>Hit</style> <sprite name=\"PEG\"> are <style=Destroy>destroyed</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 178,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "recombombulator": {
+    "Id": "recombombulator",
+    "Name": "Recombombulator",
+    "Description": "Previously thrown <sprite name=\"BOMB\"> will now refresh as <sprite name=\"BOMB_REGULAR\">.",
+    "Effect": "14",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "bombs_respawn",
+      "descMod": "3",
+      "englishDisplayName": "Recombombulator",
+      "englishDescription": "Previously thrown <sprite name=\"BOMB\"> will now refresh as <sprite name=\"BOMB_REGULAR\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 14,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refreshxpegs": {
+    "Id": "refreshxpegs",
+    "Name": "Leaf The Rest For Later",
+    "Description": "The board will contain {[MAX_PEGS_REFRESHED_ADD]} additional <sprite name=\"REFRESH_PEG\"> but each refresh only refreshes {[MAX_PEGS_REFRESHED_PERCENTAGE]}% of <sprite name=\"PEG\"> (minimum of {[MAX_PEGS_REFRESHED]}).",
+    "Effect": "140",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "refresh_x_pegs",
+      "descMod": "2",
+      "englishDisplayName": "Leaf The Rest For Later",
+      "englishDescription": "The board will contain {[MAX_PEGS_REFRESHED_ADD]} additional <sprite name=\"REFRESH_PEG\"> but each refresh only refreshes {[MAX_PEGS_REFRESHED_PERCENTAGE]}% of <sprite name=\"PEG\"> (minimum of {[MAX_PEGS_REFRESHED]}).",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 140,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "dodgyshortcut": {
+    "Id": "dodgyshortcut",
+    "Name": "Dodgy Shortcut",
+    "Description": "The board will contain {[PIT_ADDITIONAL_CRIT]} additional <sprite name=\"CRIT_PEG\"> but hitting <sprite name=\"CRIT_PEG\"> will send your orbs flying downwards.",
+    "Effect": "69",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "crit_pit",
+      "descMod": "",
+      "englishDisplayName": "Dodgy Shortcut",
+      "englishDescription": "The board will contain {[PIT_ADDITIONAL_CRIT]} additional <sprite name=\"CRIT_PEG\"> but hitting <sprite name=\"CRIT_PEG\"> will send your orbs flying downwards.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 69,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "bastionreaction": {
+    "Id": "bastionreaction",
+    "Name": "Bastion Reaction",
+    "Description": "After losing health from <style=damage>self-damage</style>, gain <style=shield>Ballwark</style> equal to {[SELF_DAMAGE_GAIN_BALLWARK_MULTIPLIER]}x health lost.",
+    "Effect": "155",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "self_damage_gain_ballwark",
+      "descMod": "",
+      "englishDisplayName": "Bastion Reaction",
+      "englishDescription": "After losing health from <style=damage>self-damage</style>, gain <style=shield>Ballwark</style> equal to {[SELF_DAMAGE_GAIN_BALLWARK_MULTIPLIER]}x health lost.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 155,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "cookie": {
+    "Id": "cookie",
+    "Name": "Cookie",
+    "Description": "<style=heal>Heal {[COOKIE_HEAL]}</style> every time the board is refreshed.",
+    "Effect": "3",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "heal_on_refresh",
+      "descMod": "",
+      "englishDisplayName": "Cookie",
+      "englishDescription": "<style=heal>Heal {[COOKIE_HEAL]}</style> every time the board is refreshed.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 3,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "counterfeitcrits": {
+    "Id": "counterfeitcrits",
+    "Name": "Counterfeit Crits",
+    "Description": "Whenever <sprite name=\"CRIT_PEG\"> is <style=hit>Hit</style> convert {[TEMP_CRITS_CREATED_ON_CRIT_PEG_HIT]} <sprite name=\"PEG\"> to <sprite name=\"TEMP_CRIT\">.",
+    "Effect": "168",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "hitting_crit_adds_temp_crits",
+      "descMod": "",
+      "englishDisplayName": "Counterfeit Crits",
+      "englishDescription": "Whenever <sprite name=\"CRIT_PEG\"> is <style=hit>Hit</style> convert {[TEMP_CRITS_CREATED_ON_CRIT_PEG_HIT]} <sprite name=\"PEG\"> to <sprite name=\"TEMP_CRIT\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 168,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "matryoshkadoll": {
+    "Id": "matryoshkadoll",
+    "Name": "Matryoshka Shell",
+    "Description": "Every shot has <style=multiball>+{[MULTIBALL_RELIC_MULTIBALL]} Multiball</style>, but created <style=multiball>Multiballs</style> are smaller than their source orb.",
+    "Effect": "13",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "matryoshka",
+      "descMod": "3",
+      "englishDisplayName": "Matryoshka Shell",
+      "englishDescription": "Every shot has <style=multiball>+{[MULTIBALL_RELIC_MULTIBALL]} Multiball</style>, but created <style=multiball>Multiballs</style> are smaller than their source orb.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 13,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "critsomallosfleece": {
+    "Id": "critsomallosfleece",
+    "Name": "Critsomallos Fleece",
+    "Description": "<style=activate>Activating</style> multiple <sprite name=\"CRIT_PEG\"> increases damage per <sprite name=\"PEG\"> by (Crit Damage - Regular Damage).",
+    "Effect": "59",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "crits_stack",
+      "descMod": "2",
+      "englishDisplayName": "Critsomallos Fleece",
+      "englishDescription": "<style=activate>Activating</style> multiple <sprite name=\"CRIT_PEG\"> increases damage per <sprite name=\"PEG\"> by (Crit Damage - Regular Damage).",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 59,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "freshbandana": {
+    "Id": "freshbandana",
+    "Name": "Fresh Bandana",
+    "Description": "The board will contain 1 additional <sprite name=\"REFRESH_PEG\">.",
+    "Effect": "37",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "additional_refresh1",
+      "descMod": "",
+      "englishDisplayName": "Fresh Bandana",
+      "englishDescription": "The board will contain 1 additional <sprite name=\"REFRESH_PEG\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 37,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "dungeondie": {
+    "Id": "dungeondie",
+    "Name": "Dungeon Die",
+    "Description": "When your deck is shuffled, each orb's damage and crit are randomly rolled between <style=dmg_negative>(Stat - {[DIE_MOD]})</style> and <style=dmg_bonus>(Stat + {[DIE_MOD_POS]})</style>.",
+    "Effect": "112",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "randomize_orb",
+      "descMod": "2",
+      "englishDisplayName": "Dungeon Die",
+      "englishDescription": "When your deck is shuffled, each orb's damage and crit are randomly rolled between <style=dmg_negative>(Stat - {[DIE_MOD]})</style> and <style=dmg_bonus>(Stat + {[DIE_MOD_POS]})</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 112,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "dodgy_dagger": {
+    "Id": "dodgy_dagger",
+    "Name": "Dodgy Dagger",
+    "Description": "Whenever you <style=dodge>evade an attack</style>, gain <style=finesse>1 Spinesse</style>.",
+    "Effect": "147",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "spinesse_when_dodging",
+      "descMod": "",
+      "englishDisplayName": "Dodgy Dagger",
+      "englishDescription": "Whenever you <style=dodge>evade an attack</style>, gain <style=finesse>1 Spinesse</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 147,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "tornsash": {
+    "Id": "tornsash",
+    "Name": "Torn Sash",
+    "Description": "All incoming damage is halved.",
+    "Effect": "177",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "halve_incoming_damage",
+      "descMod": "",
+      "englishDisplayName": "Torn Sash",
+      "englishDescription": "All incoming damage is halved.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 177,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "maskofjoy": {
+    "Id": "maskofjoy",
+    "Name": "Mask of Joy",
+    "Description": "When applying positive status effects to yourself, increase the amount applied by {[JOY_INC]}.",
+    "Effect": "127",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "increase_pos_status",
+      "descMod": "",
+      "englishDisplayName": "Mask of Joy",
+      "englishDescription": "When applying positive status effects to yourself, increase the amount applied by {[JOY_INC]}.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 127,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "dumb_bell": {
+    "Id": "dumb_bell",
+    "Name": "Dumb Bell",
+    "Description": "Whenever you reload, gain <style=strength>{[STR_RELOAD_EFF]} Muscircle</style>.",
+    "Effect": "73",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "reload_strength",
+      "descMod": "3",
+      "englishDisplayName": "Dumb Bell",
+      "englishDescription": "Whenever you reload, gain <style=strength>{[STR_RELOAD_EFF]} Muscircle</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 73,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "shortstack": {
+    "Id": "shortstack",
+    "Name": "Short Stack",
+    "Description": "Attacks gain <style=dmg_negative>-1</style>/<style=dmg_bonus>+1</style> for every <sprite name=\"CRIT_PEG\"> on the board.",
+    "Effect": "86",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "all_in",
+      "descMod": "",
+      "englishDisplayName": "Short Stack",
+      "englishDescription": "Attacks gain <style=dmg_negative>-1</style>/<style=dmg_bonus>+1</style> for every <sprite name=\"CRIT_PEG\"> on the board.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 86,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "icerod": {
+    "Id": "icerod",
+    "Name": "Prime Rod of Frost",
+    "Description": "Every prime numbered shot pierces an additional enemy.",
+    "Effect": "110",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "all_attacks_pierce",
+      "descMod": "2",
+      "englishDisplayName": "Prime Rod of Frost",
+      "englishDescription": "Every prime numbered shot pierces an additional enemy.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 110,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refreshiv": {
+    "Id": "refreshiv",
+    "Name": "Refreshiv",
+    "Description": "Whenever an enemy is defeated, refresh the board.",
+    "Effect": "39",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "refresh_on_enemy_death",
+      "descMod": "",
+      "englishDisplayName": "Refreshiv",
+      "englishDescription": "Whenever an enemy is defeated, refresh the board.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 39,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "sciuridaesfate": {
+    "Id": "sciuridaesfate",
+    "Name": "Spheridae's Fate",
+    "Description": "Summons a Round Squirrel onto the pegboard whenever {[PEGS_PER_SQUIRREL]} <sprite name=\"PEG\"> are <style=hit>Hit</style> but is destroyed after {[SQUIRREL_NUM]} uses.",
+    "Effect": "136",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "squirrel_ball",
+      "descMod": "2",
+      "englishDisplayName": "Spheridae's Fate",
+      "englishDescription": "Summons a Round Squirrel onto the pegboard whenever {[PEGS_PER_SQUIRREL]} <sprite name=\"PEG\"> are <style=hit>Hit</style> but is destroyed after {[SQUIRREL_NUM]} uses.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 136,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "basicblade": {
+    "Id": "basicblade",
+    "Name": "Basic Blade",
+    "Description": "All attacks get <style=dmg_bonus>+1/+0</style>.",
+    "Effect": "58",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "non_crit_bonus_dmg",
+      "descMod": "",
+      "englishDisplayName": "Basic Blade",
+      "englishDescription": "All attacks get <style=dmg_bonus>+1/+0</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 58,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refreshercourse": {
+    "Id": "refreshercourse",
+    "Name": "Refresher Course",
+    "Description": "Every {[REFRESH_BUFF]} times the board is refreshed, randomly gain <style=strength>1 Muscircle</style> or <style=finesse>1 Spinesse</style>.",
+    "Effect": "91",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "refresh_buffs",
+      "descMod": "",
+      "englishDisplayName": "Refresher Course",
+      "englishDescription": "Every {[REFRESH_BUFF]} times the board is refreshed, randomly gain <style=strength>1 Muscircle</style> or <style=finesse>1 Spinesse</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 91,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "gophergold": {
+    "Id": "gophergold",
+    "Name": "Gopher Gold",
+    "Description": "Every shot has <style=multiball>+{[NEW_MATRY_MULTIBALL]} Multiball</style>, but attacks get <style=dmg_negative>{[NEW_MATRY_REG_DMG]}/{[NEW_MATRY_CRIT_DMG]}</style>.",
+    "Effect": "187",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "new_matryoshka",
+      "descMod": "",
+      "englishDisplayName": "Gopher Gold",
+      "englishDescription": "Every shot has <style=multiball>+{[NEW_MATRY_MULTIBALL]} Multiball</style>, but attacks get <style=dmg_negative>{[NEW_MATRY_REG_DMG]}/{[NEW_MATRY_CRIT_DMG]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 187,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "monstertraining": {
+    "Id": "monstertraining",
+    "Name": "Monster Training",
+    "Description": "Deal <style=dmg_bonus>{[MONSTER_TRAINING_DAMAGE_MULTIPLIER]}x damage</style> when your health is <style=damage>below {[MONSTER_TRAINING_HEALTH_THRESHOLD]}%</style>.",
+    "Effect": "38",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "low_health_increased_damage",
+      "descMod": "2",
+      "englishDisplayName": "Monster Training",
+      "englishDescription": "Deal <style=dmg_bonus>{[MONSTER_TRAINING_DAMAGE_MULTIPLIER]}x damage</style> when your health is <style=damage>below {[MONSTER_TRAINING_HEALTH_THRESHOLD]}%</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 38,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "beleagueredboots": {
+    "Id": "beleagueredboots",
+    "Name": "Beleaguered Boots",
+    "Description": "Your <style=dodge>Ballusion</style> cap is increased to {[BALLUSION_CAP_INC]}, and you retain {[LOSE_LESS_BALLUSION_NEW_PERCENT]}% <style=dodge>Ballusion</style> when evading an attack.",
+    "Effect": "145",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "double_ballusion_cap",
+      "descMod": "3",
+      "englishDisplayName": "Beleaguered Boots",
+      "englishDescription": "Your <style=dodge>Ballusion</style> cap is increased to {[BALLUSION_CAP_INC]}, and you retain {[LOSE_LESS_BALLUSION_NEW_PERCENT]}% <style=dodge>Ballusion</style> when evading an attack.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 145,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "defreshpotion": {
+    "Id": "defreshpotion",
+    "Name": "Defresh Potion",
+    "Description": "All orbs get <style=morbid>Morbid</style> but boards contain\n half as many <sprite name=\"REFRESH_PEG\"> (rounded down).",
+    "Effect": "105",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "all_orbs_morbid",
+      "descMod": "2",
+      "englishDisplayName": "Defresh Potion",
+      "englishDescription": "All orbs get <style=morbid>Morbid</style> but boards contain\n half as many <sprite name=\"REFRESH_PEG\"> (rounded down).",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 105,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "duplicationpotion": {
+    "Id": "duplicationpotion",
+    "Name": "Duplication Potion",
+    "Description": "When <sprite name=\"CRIT_PEG\"> <sprite name=\"REFRESH_PEG\"> move, they leave a stationary copy at their previous position.",
+    "Effect": "101",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "duplicate_special_pegs",
+      "descMod": "",
+      "englishDisplayName": "Duplication Potion",
+      "englishDescription": "When <sprite name=\"CRIT_PEG\"> <sprite name=\"REFRESH_PEG\"> move, they leave a stationary copy at their previous position.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 101,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "sapper_sack": {
+    "Id": "sapper_sack",
+    "Name": "Sapper Sack",
+    "Description": "All <sprite name=\"BOMB_REGULAR\"> are replaced with <sprite name=\"RIGGED_BOMB\"> and <style=dmg_bonus>deal {[SAPPER_SACK_MULT]}x damage to enemies</style>.",
+    "Effect": "62",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "all_bombs_rigged",
+      "descMod": "2",
+      "englishDisplayName": "Sapper Sack",
+      "englishDescription": "All <sprite name=\"BOMB_REGULAR\"> are replaced with <sprite name=\"RIGGED_BOMB\"> and <style=dmg_bonus>deal {[SAPPER_SACK_MULT]}x damage to enemies</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 62,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "perfectedreactant": {
+    "Id": "perfectedreactant",
+    "Name": "Perfected Reactant",
+    "Description": "<sprite name=\"BOMB\"> deal +{[ADDITIONAL_BOMB_DAMAGE2]} damage.",
+    "Effect": "68",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "additional_bomb_damage2",
+      "descMod": "",
+      "englishDisplayName": "Perfected Reactant",
+      "englishDescription": "<sprite name=\"BOMB\"> deal +{[ADDITIONAL_BOMB_DAMAGE2]} damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 68,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "grabbyhand": {
+    "Id": "grabbyhand",
+    "Name": "Grabby Hand",
+    "Description": "Flying enemies are attacked horizontally and take <style=dmg_bonus>{[GRABBY_HAND_DAMAGE_MOD]}x damage</style> from projectile attacks. ",
+    "Effect": "56",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "grabby_hand",
+      "descMod": "2",
+      "englishDisplayName": "Grabby Hand",
+      "englishDescription": "Flying enemies are attacked horizontally and take <style=dmg_bonus>{[GRABBY_HAND_DAMAGE_MOD]}x damage</style> from projectile attacks. ",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 56,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "cake": {
+    "Id": "cake",
+    "Name": "The Cake",
+    "Description": "Increases your max <style=heal>health by {[MAX_HEALTH_LARGE_AMOUNT]}</style>.",
+    "Effect": "74",
+    "Rarity": 0,
+    "RawData": {
+      "locKey": "max_health_large",
+      "descMod": "",
+      "englishDisplayName": "The Cake",
+      "englishDescription": "Increases your max <style=heal>health by {[MAX_HEALTH_LARGE_AMOUNT]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 74,
+      "globalRarity": "globalRarity"
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refreshperspective": {
+    "Id": "refreshperspective",
+    "Name": "Refresh Perspective",
+    "Description": "Whenever <sprite name=\"PEG\"> are refreshed they are upgraded <style=dmg_bonus>+{[REFRESH_UPGRADES_PEGS_AMOUNT]}</style>.",
+    "Effect": "158",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "refreshed_pegs_get_upgraded",
+      "descMod": "",
+      "englishDisplayName": "Refresh Perspective",
+      "englishDescription": "Whenever <sprite name=\"PEG\"> are refreshed they are upgraded <style=dmg_bonus>+{[REFRESH_UPGRADES_PEGS_AMOUNT]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 158,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "ambiguousamulet": {
+    "Id": "ambiguousamulet",
+    "Name": "Ambiguous Amulet",
+    "Description": "Wall bounces contribute to damage.",
+    "Effect": "31",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "bounces_count",
+      "descMod": "",
+      "englishDisplayName": "Ambiguous Amulet",
+      "englishDescription": "Wall bounces contribute to damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 31,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "super_boots": {
+    "Id": "super_boots",
+    "Name": "Super Boots",
+    "Description": "<style=heal>Heal {[SUPER_BOOTS_HEAL_AMOUNT]}</style> for every <sprite name=\"PEG\"> <style=activate>Activated</style> while successfully navigating after battle, and take no damage from mis-navigation.",
+    "Effect": "35",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "super_boots",
+      "descMod": "2",
+      "englishDisplayName": "Super Boots",
+      "englishDescription": "<style=heal>Heal {[SUPER_BOOTS_HEAL_AMOUNT]}</style> for every <sprite name=\"PEG\"> <style=activate>Activated</style> while successfully navigating after battle, and take no damage from mis-navigation.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 35,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "fastreakaton": {
+    "Id": "fastreakaton",
+    "Name": "Fast Reakaton",
+    "Description": "Whenever an enemy spawns, gain <style=dodge>{[BALLUSION_ON_ENEMY_SPAWN_AMOUNT]} Ballusion</style>.",
+    "Effect": "149",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "add_ballusion_with_spawns",
+      "descMod": "",
+      "englishDisplayName": "Fast Reakaton",
+      "englishDescription": "Whenever an enemy spawns, gain <style=dodge>{[BALLUSION_ON_ENEMY_SPAWN_AMOUNT]} Ballusion</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 149,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "spinsepsion": {
+    "Id": "spinsepsion",
+    "Name": "Spinsepsion",
+    "Description": "Enemy <style=poison>Spinfection</style> will increase each turn instead of decreasing.",
+    "Effect": "175",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "poison_inc",
+      "descMod": "",
+      "englishDisplayName": "Spinsepsion",
+      "englishDescription": "Enemy <style=poison>Spinfection</style> will increase each turn instead of decreasing.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 175,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "magnet": {
+    "Id": "magnet",
+    "Name": "Electropegnet",
+    "Description": "<sprite name=\"PEG\"> <sprite name=\"BOMB\"> become weak magnets and <sprite name=\"REFRESH_PEG\"> <sprite name=\"CRIT_PEG\"> become strong magnets. Effect is full strength for {[MAGNET_STR_TIME]}s and gradually decreases over the next {[MAGNET_TIMEOUT]}s.",
+    "Effect": "34",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "magnet",
+      "descMod": "2",
+      "englishDisplayName": "Electropegnet",
+      "englishDescription": "<sprite name=\"PEG\"> <sprite name=\"BOMB\"> become weak magnets and <sprite name=\"REFRESH_PEG\"> <sprite name=\"CRIT_PEG\"> become strong magnets. Effect is full strength for {[MAGNET_STR_TIME]}s and gradually decreases over the next {[MAGNET_TIMEOUT]}s.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 34,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "pincermaneuver": {
+    "Id": "pincermaneuver",
+    "Name": "Pincer Maneuver",
+    "Description": "Projectile and targeted attack damage is split between the original attack and an additional attack targeting the furthest enemy.",
+    "Effect": "179",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "multi_attack",
+      "descMod": "",
+      "englishDisplayName": "Pincer Maneuver",
+      "englishDescription": "Projectile and targeted attack damage is split between the original attack and an additional attack targeting the furthest enemy.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 179,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "kineticmeteorite": {
+    "Id": "kineticmeteorite",
+    "Name": "Kinetic Meteorite",
+    "Description": "Every {[METEOR_PEGS]} <sprite name=\"PEG\"> <style=hit>Hit</style> provides explosive force until the board is refreshed.",
+    "Effect": "28",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "bomb_force_always",
+      "descMod": "2",
+      "englishDisplayName": "Kinetic Meteorite",
+      "englishDescription": "Every {[METEOR_PEGS]} <sprite name=\"PEG\"> <style=hit>Hit</style> provides explosive force until the board is refreshed.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 28,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "navigationflation": {
+    "Id": "navigationflation",
+    "Name": "Navigationflation",
+    "Description": "Every <sprite name=\"COIN_ONLY\"> collected during navigation is worth {[INC_NAV_GOLD]} <sprite name=\"GOLD\">.",
+    "Effect": "100",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "increased_navigation_gold",
+      "descMod": "",
+      "englishDisplayName": "Navigationflation",
+      "englishDescription": "Every <sprite name=\"COIN_ONLY\"> collected during navigation is worth {[INC_NAV_GOLD]} <sprite name=\"GOLD\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 100,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "addedadvantarge": {
+    "Id": "addedadvantarge",
+    "Name": "Added Advantarge",
+    "Description": "Whenever an effect causes you to gain <style=strength>Muscircle</style>, gain <style=shield>{[GAINING_MUSCIRCLE_GIVES_BALLWARK_AMOUNT]} Ballwark</style>.",
+    "Effect": "172",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "gaining_muscircle_gives_ballwark",
+      "descMod": "",
+      "englishDisplayName": "Added Advantarge",
+      "englishDescription": "Whenever an effect causes you to gain <style=strength>Muscircle</style>, gain <style=shield>{[GAINING_MUSCIRCLE_GIVES_BALLWARK_AMOUNT]} Ballwark</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 172,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "statussymbol": {
+    "Id": "statussymbol",
+    "Name": "Status Symbol",
+    "Description": "Status effects you apply have {[DOUBLE_STATUSES_MULT]}x intensity, but attacks have \n<style=dmg_negative>{[DOUBLE_STATUSES_REG_DMG_LOSS]}/{[DOUBLE_STATUSES_CRIT_DMG_LOSS]}</style>.",
+    "Effect": "190",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "double_status_effects",
+      "descMod": "",
+      "englishDisplayName": "Status Symbol",
+      "englishDescription": "Status effects you apply have {[DOUBLE_STATUSES_MULT]}x intensity, but attacks have \n<style=dmg_negative>{[DOUBLE_STATUSES_REG_DMG_LOSS]}/{[DOUBLE_STATUSES_CRIT_DMG_LOSS]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 190,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "trainingtabard": {
+    "Id": "trainingtabard",
+    "Name": "Training Tabard",
+    "Description": "For every <style=shield>{[BALLWARK_FOR_MUSCIRCLE_GAIN]} Ballwark</style> you gain, gain <style=strength>1 Muscircle</style>.",
+    "Effect": "171",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "gaining_ballwark_gives_muscircle",
+      "descMod": "",
+      "englishDisplayName": "Training Tabard",
+      "englishDescription": "For every <style=shield>{[BALLWARK_FOR_MUSCIRCLE_GAIN]} Ballwark</style> you gain, gain <style=strength>1 Muscircle</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 171,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "perfectforger": {
+    "Id": "perfectforger",
+    "Name": "Perfect Forger",
+    "Description": "Whenever an upgradeable orb is added to your deck, upgrade it and <style=damage>take {[FORGE_DMG]} damage</style>.",
+    "Effect": "113",
+    "Rarity": 0,
+    "RawData": {
+      "locKey": "upgrade_added_orbs",
+      "descMod": "",
+      "englishDisplayName": "Perfect Forger",
+      "englishDescription": "Whenever an upgradeable orb is added to your deck, upgrade it and <style=damage>take {[FORGE_DMG]} damage</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 113,
+      "globalRarity": "globalRarity"
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "bagoforangepegs": {
+    "Id": "bagoforangepegs",
+    "Name": "Bag of Orange Pegs",
+    "Description": "Attacks get an increasing <style=dmg_bonus>damage multiplier</style> based on the number of <sprite name=\"PEG_CLEARED\"> or removed <sprite name=\"PEG\">",
+    "Effect": "5",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "bag_of_orange_pegs",
+      "descMod": "",
+      "englishDisplayName": "Bag of Orange Pegs",
+      "englishDescription": "Attacks get an increasing <style=dmg_bonus>damage multiplier</style> based on the number of <sprite name=\"PEG_CLEARED\"> or removed <sprite name=\"PEG\">",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 5,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "poppingcorn": {
+    "Id": "poppingcorn",
+    "Name": "Popping Corn",
+    "Description": "<style=heal>Heal 1</style> for every {[HEAL_PEG_HITS]} <sprite name=\"PEG\"> <style=activate>Activated</style>.",
+    "Effect": "51",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "heal_on_peg_hit",
+      "descMod": "",
+      "englishDisplayName": "Popping Corn",
+      "englishDescription": "<style=heal>Heal 1</style> for every {[HEAL_PEG_HITS]} <sprite name=\"PEG\"> <style=activate>Activated</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 51,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "heavyhand": {
+    "Id": "heavyhand",
+    "Name": "Heavy Hand",
+    "Description": "Every even shot <style=activate>Activates</style> <sprite name=\"PEG\"> an additional time, but becomes Dense.",
+    "Effect": "184",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "multihit_but_less_aim",
+      "descMod": "3",
+      "englishDisplayName": "Heavy Hand",
+      "englishDescription": "Every even shot <style=activate>Activates</style> <sprite name=\"PEG\"> an additional time, but becomes Dense.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 184,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "abacus": {
+    "Id": "abacus",
+    "Name": "Stacked Orbacus",
+    "Description": "Every enemy starts with <style=exploitaball>{[EXPLOITABALL_ON_ENEMY_SPAWN_AMOUNT]} Exploitaball</style>.",
+    "Effect": "148",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "abacus",
+      "descMod": "",
+      "englishDisplayName": "Stacked Orbacus",
+      "englishDescription": "Every enemy starts with <style=exploitaball>{[EXPLOITABALL_ON_ENEMY_SPAWN_AMOUNT]} Exploitaball</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 148,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "gambliniou": {
+    "Id": "gambliniou",
+    "Name": "IOU",
+    "Description": "An extremely legitimate investment certificate (probably).",
+    "Effect": "142",
+    "Rarity": 0,
+    "RawData": {
+      "locKey": "gamblin_iou",
+      "descMod": "",
+      "englishDisplayName": "IOU",
+      "englishDescription": "An extremely legitimate investment certificate (probably).",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 142,
+      "globalRarity": "globalRarity"
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refillosopher's_stone": {
+    "Id": "refillosopher's_stone",
+    "Name": "Refillosopher's Stone",
+    "Description": "Create {[GOLD_REFRESH_COUNT]} <sprite name=\"COIN_ONLY\"> whenever the board is refreshed.",
+    "Effect": "102",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "create_gold_on_refresh",
+      "descMod": "",
+      "englishDisplayName": "Refillosopher's Stone",
+      "englishDescription": "Create {[GOLD_REFRESH_COUNT]} <sprite name=\"COIN_ONLY\"> whenever the board is refreshed.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 102,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "echochamber": {
+    "Id": "echochamber",
+    "Name": "Echo Chamber",
+    "Description": "All orbs have <style=echo>Echo {[ECHO_PERCENT]}</style>.",
+    "Effect": "55",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "echo_chamber",
+      "descMod": "2",
+      "englishDisplayName": "Echo Chamber",
+      "englishDescription": "All orbs have <style=echo>Echo {[ECHO_PERCENT]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 55,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "sashoffocus": {
+    "Id": "sashoffocus",
+    "Name": "Sash of Focus",
+    "Description": "Prevent the first time you would take lethal damage.",
+    "Effect": "109",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "survive_lethal_attack",
+      "descMod": "",
+      "englishDisplayName": "Sash of Focus",
+      "englishDescription": "Prevent the first time you would take lethal damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 109,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "moltenmantle": {
+    "Id": "moltenmantle",
+    "Name": "Molten Mantle",
+    "Description": "Your current shot's total damage is dealt to the targeted enemy every {[COIN_DMG_NUM]} <sprite name=\"COIN_ONLY\"> collected, but you can no longer obtain <sprite name=\"GOLD\"> from pegboards.",
+    "Effect": "99",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "convert_coin_to_damage",
+      "descMod": "2",
+      "englishDisplayName": "Molten Mantle",
+      "englishDescription": "Your current shot's total damage is dealt to the targeted enemy every {[COIN_DMG_NUM]} <sprite name=\"COIN_ONLY\"> collected, but you can no longer obtain <sprite name=\"GOLD\"> from pegboards.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 99,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "dumbbell": {
+    "Id": "dumbbell",
+    "Name": "Training Weight",
+    "Description": "Whenever you gain <style=strength>Muscircle</style>, increase the amount gained by 1.",
+    "Effect": "123",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "strength_plus_one",
+      "descMod": "",
+      "englishDisplayName": "Training Weight",
+      "englishDescription": "Whenever you gain <style=strength>Muscircle</style>, increase the amount gained by 1.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 123,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "effectivecriticism": {
+    "Id": "effectivecriticism",
+    "Name": "Effective Criticism",
+    "Description": "Whenever a crit is triggered, apply a random debuff to the targeted enemy.",
+    "Effect": "183",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "apply_random_status_to_target_on_crit",
+      "descMod": "",
+      "englishDisplayName": "Effective Criticism",
+      "englishDescription": "Whenever a crit is triggered, apply a random debuff to the targeted enemy.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 183,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "speciousring": {
+    "Id": "speciousring",
+    "Name": "Inconspicuous Ring",
+    "Description": "Bouncers contribute to damage.",
+    "Effect": "46",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "bottom_bouncers_count",
+      "descMod": "",
+      "englishDisplayName": "Inconspicuous Ring",
+      "englishDescription": "Bouncers contribute to damage.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 46,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "refreshtocrit": {
+    "Id": "refreshtocrit",
+    "Name": "Light Shaft Potion",
+    "Description": "<style=activate>Activated</style> <sprite name=\"REFRESH_PEG\"> also triggers a crit.",
+    "Effect": "6",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "refresh_also_crit",
+      "descMod": "",
+      "englishDisplayName": "Light Shaft Potion",
+      "englishDescription": "<style=activate>Activated</style> <sprite name=\"REFRESH_PEG\"> also triggers a crit.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 6,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "buckler": {
+    "Id": "buckler",
+    "Name": "Round Guard",
+    "Description": "You are immune to attack damage while reloading.",
+    "Effect": "11",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "no_damage_on_reload",
+      "descMod": "",
+      "englishDisplayName": "Round Guard",
+      "englishDescription": "You are immune to attack damage while reloading.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 11,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "spiralslayer": {
+    "Id": "spiralslayer",
+    "Name": "Spiral Slayer",
+    "Description": "At start of battle, gain <style=strength>{[START_STR]} Muscircle</style>.",
+    "Effect": "79",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "strength_start",
+      "descMod": "",
+      "englishDisplayName": "Spiral Slayer",
+      "englishDescription": "At start of battle, gain <style=strength>{[START_STR]} Muscircle</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 79,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "pocketsand": {
+    "Id": "pocketsand",
+    "Name": "Pocket Sand",
+    "Description": "When an enemy hits you with a melee attack, apply <style=blind>Blind {[POCKET_BLIND_AMT]}</style> to that enemy.",
+    "Effect": "84",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "blind_when_hit",
+      "descMod": "",
+      "englishDisplayName": "Pocket Sand",
+      "englishDescription": "When an enemy hits you with a melee attack, apply <style=blind>Blind {[POCKET_BLIND_AMT]}</style> to that enemy.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 84,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "moltengold": {
+    "Id": "moltengold",
+    "Name": "Molten Gold",
+    "Description": "Battles start with {[ADDITIONAL_BATTLE_GOLD]} extra <sprite name=\"COIN_ONLY\">.",
+    "Effect": "98",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "additional_gold",
+      "descMod": "",
+      "englishDisplayName": "Molten Gold",
+      "englishDescription": "Battles start with {[ADDITIONAL_BATTLE_GOLD]} extra <sprite name=\"COIN_ONLY\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 98,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "weaponizedenvy": {
+    "Id": "weaponizedenvy",
+    "Name": "Weaponized Envy",
+    "Description": "Whenever you <style=heal>heal</style>, <style=damage>deal {[DMG_ON_HEAL_MULT]}x the total heal</style> as damage to the targeted enemy.",
+    "Effect": "52",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "damage_targeted_on_heal",
+      "descMod": "2",
+      "englishDisplayName": "Weaponized Envy",
+      "englishDescription": "Whenever you <style=heal>heal</style>, <style=damage>deal {[DMG_ON_HEAL_MULT]}x the total heal</style> as damage to the targeted enemy.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 52,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "crystalcatalyst": {
+    "Id": "crystalcatalyst",
+    "Name": "Crystal Catalyst",
+    "Description": "<style=poison>Spinfection</style> <style=damage>damage</style> is increased by {[EXTRA_SPINFECTION_DAMAGE_PER_ACT]} per area.",
+    "Effect": "181",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "more_spinfection_damage_per_act",
+      "descMod": "",
+      "englishDisplayName": "Crystal Catalyst",
+      "englishDescription": "<style=poison>Spinfection</style> <style=damage>damage</style> is increased by {[EXTRA_SPINFECTION_DAMAGE_PER_ACT]} per area.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 181,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "pieceofmind": {
+    "Id": "pieceofmind",
+    "Name": "Piece Of Mind",
+    "Description": "Whenever you lose <style=shield>your last Ballwark</style>, gain <style=balance>1 Ballance</style>.",
+    "Effect": "150",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "lose_ballwark_gain_ballance",
+      "descMod": "",
+      "englishDisplayName": "Piece Of Mind",
+      "englishDescription": "Whenever you lose <style=shield>your last Ballwark</style>, gain <style=balance>1 Ballance</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 150,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "sandarrows": {
+    "Id": "sandarrows",
+    "Name": "Sand Arrows",
+    "Description": "Attacks apply <style=blind>{[SAND_ARROWS_BLIND]} Blind</style> to enemies.",
+    "Effect": "44",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "sand_arrows",
+      "descMod": "",
+      "englishDisplayName": "Sand Arrows",
+      "englishDescription": "Attacks apply <style=blind>{[SAND_ARROWS_BLIND]} Blind</style> to enemies.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 44,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "slimysalve": {
+    "Id": "slimysalve",
+    "Name": "Slimy Salve",
+    "Description": "Applies <style=heal><style=upgr_slime>Healing Slime</style></style> to every {[HEAL_SLIME_PEGS]} <sprite name=\"PEG\"> <style=hit>Hit</style>, which makes the peg <style=durable>Durable</style> and heals 1 when <style=hit>Hit</style>.",
+    "Effect": "48",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "healing_slime",
+      "descMod": "",
+      "englishDisplayName": "Slimy Salve",
+      "englishDescription": "Applies <style=heal><style=upgr_slime>Healing Slime</style></style> to every {[HEAL_SLIME_PEGS]} <sprite name=\"PEG\"> <style=hit>Hit</style>, which makes the peg <style=durable>Durable</style> and heals 1 when <style=hit>Hit</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 48,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "sproutingspinvestment": {
+    "Id": "sproutingspinvestment",
+    "Name": "Sprouting Spinvestment",
+    "Description": "Increase your held <sprite name=\"GOLD\"> by {[PERCENT_OF_GOLD_GAIN_ON_NODE]}% when entering a '?' node.",
+    "Effect": "182",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "gain_percentage_of_gold_each_node",
+      "descMod": "",
+      "englishDisplayName": "Sprouting Spinvestment",
+      "englishDescription": "Increase your held <sprite name=\"GOLD\"> by {[PERCENT_OF_GOLD_GAIN_ON_NODE]}% when entering a '?' node.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 182,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "additionaldiscard": {
+    "Id": "additionaldiscard",
+    "Name": "Ambidextionary",
+    "Description": "You have <style=dmg_bonus>+{[ADDITIONAL_DISCARDS]} orb discards</style>.",
+    "Effect": "26",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "additional_discard",
+      "descMod": "",
+      "englishDisplayName": "Ambidextionary",
+      "englishDescription": "You have <style=dmg_bonus>+{[ADDITIONAL_DISCARDS]} orb discards</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 26,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "pocketwatch": {
+    "Id": "pocketwatch",
+    "Name": "Pocketwatch",
+    "Description": "Deal extra damage the longer your orbs are in flight.",
+    "Effect": "29",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "inflight_damage",
+      "descMod": "",
+      "englishDisplayName": "Pocketwatch",
+      "englishDescription": "Deal extra damage the longer your orbs are in flight.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 29,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "redoublet": {
+    "Id": "redoublet",
+    "Name": "Redoublet",
+    "Description": "Whenever you <style=dodge>evade an attack</style>, convert {[DODGE_CRIT_COUNT]} <sprite name=\"PEG\"> to <sprite name=\"TEMP_CRIT\">. <style=blind></style>",
+    "Effect": "152",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "ballusion_dodge_grants_crit",
+      "descMod": "",
+      "englishDisplayName": "Redoublet",
+      "englishDescription": "Whenever you <style=dodge>evade an attack</style>, convert {[DODGE_CRIT_COUNT]} <sprite name=\"PEG\"> to <sprite name=\"TEMP_CRIT\">. <style=blind></style>",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 152,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "puppet": {
+    "Id": "puppet",
+    "Name": "Puppet",
+    "Description": "Prevent the first time you would <style=damage>lose health</style> each battle.",
+    "Effect": "76",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "prevent_first_damage",
+      "descMod": "",
+      "englishDisplayName": "Puppet",
+      "englishDescription": "Prevent the first time you would <style=damage>lose health</style> each battle.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 76,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "overwhelminghammer": {
+    "Id": "overwhelminghammer",
+    "Name": "Overwhammer",
+    "Description": "Projectile attacks have <style=overflow>Overflow</style>.",
+    "Effect": "45",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "overflow",
+      "descMod": "2",
+      "englishDisplayName": "Overwhammer",
+      "englishDescription": "Projectile attacks have <style=overflow>Overflow</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 45,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "crumpledcharactersheet": {
+    "Id": "crumpledcharactersheet",
+    "Name": "Crumpled Character Sheet",
+    "Description": "Enemies start with random health.",
+    "Effect": "70",
+    "Rarity": 4,
+    "RawData": {
+      "locKey": "random_enemy_health",
+      "descMod": "",
+      "englishDisplayName": "Crumpled Character Sheet",
+      "englishDescription": "Enemies start with random health.",
+      "englishLockedDescription": "Clear a custom game using the Dodgy Shortcut to unlock.",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 70,
+      "globalRarity": 4
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "specialbutton": {
+    "Id": "specialbutton",
+    "Name": "Special Button",
+    "Description": "The board will contain 1 additional <sprite name=\"CRIT_PEG\">.",
+    "Effect": "36",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "additional_crit1",
+      "descMod": "",
+      "englishDisplayName": "Special Button",
+      "englishDescription": "The board will contain 1 additional <sprite name=\"CRIT_PEG\">.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 36,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "wandofskulltimategreed": {
+    "Id": "wandofskulltimategreed",
+    "Name": "Wand of Skulltimate Greed",
+    "Description": "Battles start with {[SKULLTIMATE_GREED_COIN_MOD]}x as many <sprite name=\"COIN_ONLY\"> but all purchases are twice as expensive.",
+    "Effect": "104",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "double_coins_and_prices",
+      "descMod": "2",
+      "englishDisplayName": "Wand of Skulltimate Greed",
+      "englishDescription": "Battles start with {[SKULLTIMATE_GREED_COIN_MOD]}x as many <sprite name=\"COIN_ONLY\"> but all purchases are twice as expensive.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 104,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "knightcap": {
+    "Id": "knightcap",
+    "Name": "Knight Cap",
+    "Description": "If you have <style=shield>Ballwark</style> remaining after battle, <style=heal>gain {[KNIGHT_CAP]} max health</style>.",
+    "Effect": "120",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "heal_with_ballwark",
+      "descMod": "2",
+      "englishDisplayName": "Knight Cap",
+      "englishDescription": "If you have <style=shield>Ballwark</style> remaining after battle, <style=heal>gain {[KNIGHT_CAP]} max health</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 120,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "bouncywallsandbouncers": {
+    "Id": "bouncywallsandbouncers",
+    "Name": "House of Slime",
+    "Description": "Walls and bottom bouncers are extra bouncy.",
+    "Effect": "139",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "bouncy_walls_and_bouncers",
+      "descMod": "",
+      "englishDisplayName": "House of Slime",
+      "englishDescription": "Walls and bottom bouncers are extra bouncy.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 139,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "betsyhedge": {
+    "Id": "betsyhedge",
+    "Name": "Betsy's Hedge",
+    "Description": "Attacks gain <style=dmg_bonus>+{[HEDGE_DMG]}/+0</style> for every <sprite name=\"CRIT_PEG\"> on the board.",
+    "Effect": "85",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "hedge_bets",
+      "descMod": "2",
+      "englishDisplayName": "Betsy's Hedge",
+      "englishDescription": "Attacks gain <style=dmg_bonus>+{[HEDGE_DMG]}/+0</style> for every <sprite name=\"CRIT_PEG\"> on the board.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 85,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "primeslime": {
+    "Id": "primeslime",
+    "Name": "Prime Slime",
+    "Description": "Every {[RANDOM_SLIME_PEGS_HIT]} <sprite name=\"PEG\"> <style=hit>Hit</style> has a <style=upgr_slime>random positive slime</style> applied.",
+    "Effect": "138",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "prime_slime",
+      "descMod": "",
+      "englishDisplayName": "Prime Slime",
+      "englishDescription": "Every {[RANDOM_SLIME_PEGS_HIT]} <sprite name=\"PEG\"> <style=hit>Hit</style> has a <style=upgr_slime>random positive slime</style> applied.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 138,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "chokemod": {
+    "Id": "chokemod",
+    "Name": "Choke Mod",
+    "Description": "<sprite name=\"BOMB\"> apply <style=poison>Spinfection {[BOMB_POISON_AMT]}</style> when damaging enemies.",
+    "Effect": "129",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "bombs_apply_poison",
+      "descMod": "",
+      "englishDisplayName": "Choke Mod",
+      "englishDescription": "<sprite name=\"BOMB\"> apply <style=poison>Spinfection {[BOMB_POISON_AMT]}</style> when damaging enemies.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 129,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "luckypenny": {
+    "Id": "luckypenny",
+    "Name": "Lucky Penny",
+    "Description": "The board will contain {[PENNY_ADDITIONAL_CRIT]} additional <sprite name=\"CRIT_PEG\">",
+    "Effect": "17",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "three_crit",
+      "descMod": "2",
+      "englishDisplayName": "Lucky Penny",
+      "englishDescription": "The board will contain {[PENNY_ADDITIONAL_CRIT]} additional <sprite name=\"CRIT_PEG\">",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 17,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "cursedmask": {
+    "Id": "cursedmask",
+    "Name": "Cursed Mask",
+    "Description": "Orbs get <style=dmg_bonus>+{[CONFUSION_RELIC_STRENGTH_BONUS]}/+{[CONFUSION_RELIC_CRIT_INCREASE]}</style> while you have any negative status effect. You start each battle with <style=confuse>Confusion {[CONFUSION_RELIC_CONFUSION_AMOUNT]}</style>.",
+    "Effect": "32",
+    "Rarity": 3,
+    "RawData": {
+      "locKey": "confusion",
+      "descMod": "2",
+      "englishDisplayName": "Cursed Mask",
+      "englishDescription": "Orbs get <style=dmg_bonus>+{[CONFUSION_RELIC_STRENGTH_BONUS]}/+{[CONFUSION_RELIC_CRIT_INCREASE]}</style> while you have any negative status effect. You start each battle with <style=confuse>Confusion {[CONFUSION_RELIC_CONFUSION_AMOUNT]}</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 32,
+      "globalRarity": 3
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "aliensrock": {
+    "Id": "aliensrock",
+    "Name": "Alien's Rock",
+    "Description": "Targeted attacks also hit nearby enemies.",
+    "Effect": "134",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "splash_effect_on_targeted_attacks",
+      "descMod": "",
+      "englishDisplayName": "Alien's Rock",
+      "englishDescription": "Targeted attacks also hit nearby enemies.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 134,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "mauliflower": {
+    "Id": "mauliflower",
+    "Name": "Mauliflower",
+    "Description": "Every {[CRITS_PER_SPINESSE_GAIN]} times a crit is triggered, gain <style=finesse>{[NUM_SPINESSE_GAIN_FOR_CRITS]} Spinesse</style>.",
+    "Effect": "159",
+    "Rarity": 2,
+    "RawData": {
+      "locKey": "crits_add_spinesse",
+      "descMod": "",
+      "englishDisplayName": "Mauliflower",
+      "englishDescription": "Every {[CRITS_PER_SPINESSE_GAIN]} times a crit is triggered, gain <style=finesse>{[NUM_SPINESSE_GAIN_FOR_CRITS]} Spinesse</style>.",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 159,
+      "globalRarity": 2
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  },
+  "heartpendant": {
+    "Id": "heartpendant",
+    "Name": "Rallying Heart",
+    "Description": "Post battle healing is increased by <style=heal>{[POST_BATTLE_HEAL_BY_ORBS]}%</style> for each orb in your deck. <style=heal>(+{[DECK_SIZE_HEAL_TOTAL]}%)</style>",
+    "Effect": "42",
+    "Rarity": 1,
+    "RawData": {
+      "locKey": "post_battle_heal_increase",
+      "descMod": "",
+      "englishDisplayName": "Rallying Heart",
+      "englishDescription": "Post battle healing is increased by <style=heal>{[POST_BATTLE_HEAL_BY_ORBS]}%</style> for each orb in your deck. <style=heal>(+{[DECK_SIZE_HEAL_TOTAL]}%)</style>",
+      "englishLockedDescription": "You haven't encountered this relic yet...",
+      "sprite": {
+        "type": "PPtr_Object_5",
+        "assetInfo": "PPtr_Object_5",
+        "resolved": false
+      },
+      "useSfx": "PPtr_Object_5",
+      "effect": 42,
+      "globalRarity": 1
+    },
+    "CorrelatedSpriteId": null,
+    "SpriteFilePath": null,
+    "CorrelationConfidence": 0.0,
+    "CorrelationMethod": null,
+    "AlternateSpriteIds": []
+  }
+}
