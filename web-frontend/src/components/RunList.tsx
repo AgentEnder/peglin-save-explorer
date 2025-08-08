@@ -16,6 +16,7 @@ import {
   Alert,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { useNavigate } from "react-router-dom";
 import { RunRecord } from "../types";
 import {
   useRunHistoryData,
@@ -24,6 +25,7 @@ import {
 } from "../store/useAppStore";
 
 const RunList: React.FC = () => {
+  const navigate = useNavigate();
   const runHistoryData = useRunHistoryData();
   const { runs, excludeCustomRuns } = useRunsAndConfig();
   const { getFilteredRuns } = useAppActions();
@@ -373,9 +375,9 @@ const RunList: React.FC = () => {
       </Paper>
 
       {/* Data Grid */}
-      <Paper sx={{ height: 600, width: "100%" }}>
+      <Paper sx={{ width: "100%", minHeight: 400 }}>
         <DataGrid
-          rows={apiFilteredRuns}
+          rows={apiFilteredRuns.map((run, index) => ({ ...run, id: run.id || `${run.timestamp}-${index}` }))}
           columns={columns}
           rowCount={totalCount}
           loading={loading}
@@ -386,6 +388,19 @@ const RunList: React.FC = () => {
           }}
           pageSizeOptions={[25, 50, 100]}
           disableRowSelectionOnClick
+          onRowClick={(params) => navigate(`/runs/${encodeURIComponent(params.id)}`)}
+          sx={{ 
+            cursor: "pointer",
+            '& .MuiDataGrid-root': {
+              border: 'none',
+            },
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid rgba(224, 224, 224, 1)',
+            },
+            '& .MuiDataGrid-columnHeaders': {
+              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+            },
+          }}
           autoHeight
         />
       </Paper>

@@ -28,12 +28,17 @@ import {
   Cancel as CancelIcon,
   Info as InfoIcon,
 } from "@mui/icons-material";
-import { useRunsAndConfig, usePlayerStatistics } from "../store/useAppStore";
+import {
+  useRunsAndConfig,
+  usePlayerStatistics,
+  useAppActions,
+} from "../store/useAppStore";
 import { api } from "../api";
 
 const SaveData: React.FC = () => {
   const { runs } = useRunsAndConfig();
   const playerStatistics = usePlayerStatistics();
+  const { refresh } = useAppActions();
 
   const [editingCruciball, setEditingCruciball] = useState<string | null>(null);
   const [cruciballValues, setCruciballValues] = useState<
@@ -44,6 +49,16 @@ const SaveData: React.FC = () => {
     message: string;
   } | null>(null);
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+
+  // Get cruciball levels from player statistics
+  const cruciballLevels = useMemo(() => {
+    if (playerStatistics?.gameplayStats?.["Cruciball Levels"]) {
+      return playerStatistics.gameplayStats[
+        "Cruciball Levels"
+      ] as unknown as Record<string, number>;
+    }
+    return {};
+  }, [playerStatistics]);
 
   // Calculate save data statistics from runs
   const saveStats = useMemo(() => {
@@ -139,6 +154,9 @@ const SaveData: React.FC = () => {
       setSaveStatus({ type: "success", message: result.message });
       setEditingCruciball(null);
 
+      // Refresh the data to reflect the changes
+      await refresh();
+
       // Clear the status after 3 seconds
       setTimeout(() => setSaveStatus(null), 3000);
     } catch {
@@ -148,6 +166,9 @@ const SaveData: React.FC = () => {
       });
     }
   };
+
+  // Removed class lock/unlock functionality - class locking is managed through achievements,
+  // not cruciball levels. Setting cruciball to -1 does not lock a class.
 
   const handleCancelEdit = () => {
     setEditingCruciball(null);
@@ -320,6 +341,56 @@ const SaveData: React.FC = () => {
           </Grid>
         )}
 
+        {/* Class Cruciball Levels */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Class Cruciball Levels
+            </Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+              Highest cruciball level achieved for each class. Class unlocking
+              is managed through achievements, not cruciball levels.
+            </Typography>
+            <Grid container spacing={2}>
+              {Object.entries(cruciballLevels).map(([className, level]) => {
+                const hasPlayed = level >= 0;
+
+                return (
+                  <Grid item xs={12} sm={6} key={className}>
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        border: hasPlayed
+                          ? "1px solid #e0e0e0"
+                          : "1px solid #fafafa",
+                      }}
+                    >
+                      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {className}
+                          </Typography>
+                          <Typography variant="body2" color="textSecondary">
+                            Cruciball Level: {hasPlayed ? level : "Not played"}
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              sx={{ mt: 2, display: "block" }}
+            >
+              Note: To unlock/lock classes, use the CLI command:
+              peglin-save-explorer manage-classes
+            </Typography>
+          </Paper>
+        </Grid>
+
         {/* Class Statistics Table */}
         <Grid item xs={12}>
           <Paper sx={{ p: 2 }}>
@@ -341,78 +412,80 @@ const SaveData: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {Object.entries(saveStats.classCruciballLevels).map(
-                    ([className, stats]) => (
-                      <TableRow key={className}>
-                        <TableCell component="th" scope="row">
-                          {className}
-                        </TableCell>
-                        <TableCell align="right">
-                          {editingCruciball === className ? (
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <TextField
-                                size="small"
-                                type="number"
-                                value={
-                                  cruciballValues[className] ||
-                                  stats.maxCruciball
-                                }
-                                onChange={(e) =>
-                                  setCruciballValues({
-                                    ...cruciballValues,
-                                    [className]: parseInt(e.target.value) || 0,
-                                  })
-                                }
-                                inputProps={{ min: 0, max: 20 }}
-                                sx={{ width: 80 }}
-                              />
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => handleSaveCruciball(className)}
-                              >
-                                <SaveIcon />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={handleCancelEdit}
-                              >
-                                <CancelIcon />
-                              </IconButton>
-                            </Box>
-                          ) : (
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <Typography>{stats.maxCruciball}</Typography>
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  handleEditCruciball(
-                                    className,
-                                    stats.maxCruciball
-                                  )
-                                }
-                              >
-                                <EditIcon />
-                              </IconButton>
-                            </Box>
-                          )}
-                        </TableCell>
-                        <TableCell align="right">{stats.totalRuns}</TableCell>
-                        <TableCell align="right">
-                          {((stats.wins / stats.totalRuns) * 100).toFixed(1)}%
-                        </TableCell>
-                        <TableCell align="right">
-                          {formatNumber(stats.bestDamage)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {stats.avgLevel.toFixed(1)}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Button size="small" disabled>
-                            More Actions
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
+                    ([className, stats]) => {
+                      const actualCruciballLevel =
+                        cruciballLevels[className] ?? stats.maxCruciball;
+
+                      return (
+                        <TableRow key={className}>
+                          <TableCell component="th" scope="row">
+                            {className}
+                          </TableCell>
+                          <TableCell align="right">
+                            {editingCruciball === className ? (
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <TextField
+                                  size="small"
+                                  type="number"
+                                  value={
+                                    cruciballValues[className] ||
+                                    actualCruciballLevel
+                                  }
+                                  onChange={(e) =>
+                                    setCruciballValues({
+                                      ...cruciballValues,
+                                      [className]:
+                                        parseInt(e.target.value) || 0,
+                                    })
+                                  }
+                                  inputProps={{ min: 0, max: 20 }}
+                                  sx={{ width: 80 }}
+                                />
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => handleSaveCruciball(className)}
+                                >
+                                  <SaveIcon />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={handleCancelEdit}
+                                >
+                                  <CancelIcon />
+                                </IconButton>
+                              </Box>
+                            ) : (
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <Typography>{actualCruciballLevel}</Typography>
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    handleEditCruciball(
+                                      className,
+                                      actualCruciballLevel
+                                    )
+                                  }
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Box>
+                            )}
+                          </TableCell>
+                          <TableCell align="right">{stats.totalRuns}</TableCell>
+                          <TableCell align="right">
+                            {((stats.wins / stats.totalRuns) * 100).toFixed(1)}%
+                          </TableCell>
+                          <TableCell align="right">
+                            {formatNumber(stats.bestDamage)}
+                          </TableCell>
+                          <TableCell align="right">
+                            {stats.avgLevel.toFixed(1)}
+                          </TableCell>
+                          <TableCell align="center">-</TableCell>
+                        </TableRow>
+                      );
+                    }
                   )}
                 </TableBody>
               </Table>
@@ -432,7 +505,12 @@ const SaveData: React.FC = () => {
           <Typography paragraph>
             <strong>Cruciball Level:</strong> You can edit the cruciball level
             for each character class. This represents the highest cruciball
-            level you've achieved with that class.
+            level you've achieved with that class. Valid values are 0-20.
+          </Typography>
+          <Typography paragraph>
+            <strong>Class Unlocking:</strong> Class unlocking is managed through
+            achievements in the game. To manually unlock or lock classes, use
+            the CLI command: peglin-save-explorer manage-classes
           </Typography>
           <Typography paragraph>
             <strong>Note:</strong> Editing values here will modify your save

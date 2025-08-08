@@ -1,3 +1,16 @@
+export interface OrbPlayData {
+  id: string;
+  name: string;
+  damageDealt: number;
+  timesFired: number;
+  timesDiscarded: number;
+  timesRemoved: number;
+  starting: boolean;
+  amountInDeck: number;
+  highestCruciballBeat: number;
+  levelInstances?: number[]; // Array of 3 level instances
+}
+
 export interface RunRecord {
   id: string;
   timestamp: string;
@@ -28,6 +41,9 @@ export interface RunRecord {
   bombsThrown: number;
   shotsTaken: number;
   critShotsTaken: number;
+
+  // Orb statistics
+  orbStats: Record<string, OrbPlayData>;
 
   // Enriched data
   relicNames: string[];

@@ -8,25 +8,32 @@ import {
   Storage as StorageIcon,
   Upload as UploadIcon,
   Settings as SettingsIcon,
+  Image as ImageIcon,
+  Link as LinkIcon,
 } from "@mui/icons-material";
 
 const Navigation: React.FC = () => {
   const location = useLocation();
 
   const getCurrentTab = () => {
+    if (location.pathname.startsWith("/runs")) {
+      return 1; // Run History tab for both /runs and /runs/:id
+    }
     switch (location.pathname) {
       case "/":
         return 0;
-      case "/runs":
-        return 1;
       case "/statistics":
         return 2;
       case "/save-data":
         return 3;
-      case "/config":
+      case "/gallery":
         return 4;
-      case "/upload":
+      case "/entities":
         return 5;
+      case "/config":
+        return 6;
+      case "/upload":
+        return 7;
       default:
         return 0;
     }
@@ -58,6 +65,18 @@ const Navigation: React.FC = () => {
           label="Save Data"
           component={Link}
           to="/save-data"
+        />
+        <Tab
+          icon={<ImageIcon />}
+          label="Sprite Gallery"
+          component={Link}
+          to="/gallery"
+        />
+        <Tab
+          icon={<LinkIcon />}
+          label="Entity Browser"
+          component={Link}
+          to="/entities"
         />
         <Tab
           icon={<SettingsIcon />}

@@ -15,20 +15,26 @@ import RunList from "./components/RunList";
 import RunDetail from "./components/RunDetail";
 import Statistics from "./components/Statistics";
 import SaveData from "./components/SaveData";
+import ImageGallery from "./components/ImageGallery";
 import Config from "./components/Config";
 import FileUpload from "./components/FileUpload";
+import EntitySpriteBrowser from "./components/EntitySpriteBrowser";
 import Navigation from "./components/Navigation";
 import { useAppStore } from "./store/useAppStore";
+import { useSpriteActions } from "./store/useSpriteStore";
 
 function App() {
   const { isLoading, error, isInitialized, hasData, initialize, clearError } =
     useAppStore();
+  const { initialize: initializeSprites } = useSpriteActions();
 
   useEffect(() => {
     if (!isInitialized) {
       initialize();
     }
-  }, [isInitialized, initialize]);
+    // Initialize sprites store as well
+    initializeSprites();
+  }, [isInitialized, initialize, initializeSprites]);
 
   const handleUploadComplete = async () => {
     // Data will be automatically refreshed by the store action
@@ -76,6 +82,8 @@ function App() {
             <Route path="/runs/:id" element={<RunDetail />} />
             <Route path="/statistics" element={<Statistics />} />
             <Route path="/save-data" element={<SaveData />} />
+            <Route path="/gallery" element={<ImageGallery />} />
+            <Route path="/entities" element={<EntitySpriteBrowser />} />
             <Route path="/config" element={<Config />} />
             <Route
               path="/upload"

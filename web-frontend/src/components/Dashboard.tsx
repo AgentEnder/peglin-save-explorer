@@ -8,6 +8,7 @@ import {
   CardContent,
   Chip,
   Alert,
+  CardActionArea,
 } from "@mui/material";
 import {
   TrendingUp,
@@ -16,6 +17,7 @@ import {
   EmojiEvents,
 } from "@mui/icons-material";
 import { BarChart, PieChart } from "@mui/x-charts";
+import { useNavigate } from "react-router-dom";
 import {
   useRunHistoryData,
   useSummary,
@@ -23,6 +25,7 @@ import {
 } from "../store/useAppStore";
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const runHistoryData = useRunHistoryData();
   const summary = useSummary();
   const { runs, excludeCustomRuns } = useRunsAndConfig();
@@ -289,35 +292,37 @@ const Dashboard: React.FC = () => {
               {recentRuns.map((run) => (
                 <Grid item xs={12} sm={6} md={4} key={run.id}>
                   <Card variant="outlined">
-                    <CardContent>
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        mb={1}
-                      >
-                        <Chip
-                          label={run.won ? "Victory" : "Defeat"}
-                          color={run.won ? "success" : "error"}
-                          size="small"
-                        />
-                        <Typography variant="caption" color="textSecondary">
-                          {new Date(run.timestamp).toLocaleDateString()}
+                    <CardActionArea onClick={() => navigate(`/runs/${encodeURIComponent(run.id)}`)}>
+                      <CardContent>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Chip
+                            label={run.won ? "Victory" : "Defeat"}
+                            color={run.won ? "success" : "error"}
+                            size="small"
+                          />
+                          <Typography variant="caption" color="textSecondary">
+                            {new Date(run.timestamp).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                        <Typography variant="subtitle1" gutterBottom>
+                          {run.characterClass}
                         </Typography>
-                      </Box>
-                      <Typography variant="subtitle1" gutterBottom>
-                        {run.characterClass}
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        Damage: {formatNumber(run.damageDealt)}
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        Duration: {formatDuration(run.duration)}
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        Level: {run.finalLevel}
-                      </Typography>
-                    </CardContent>
+                        <Typography variant="body2" color="textSecondary">
+                          Damage: {formatNumber(run.damageDealt)}
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          Duration: {formatDuration(run.duration)}
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          Level: {run.finalLevel}
+                        </Typography>
+                      </CardContent>
+                    </CardActionArea>
                   </Card>
                 </Grid>
               ))}
