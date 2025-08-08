@@ -30,8 +30,9 @@
       "Bash(./bin/Debug/net9.0/peglin-save-explorer view-run:*)",
       "Bash(./bin/Debug/net9.0/peglin-save-explorer:*)",
       "Bash(./peglin-save-explorer/bin/Debug/net9.0/peglin-save-explorer analyze-assembly:*)",
-      "Bash(jq:*)"
+      "Bash(jq:*)",
+      "Bash(pkill:*)"
     ],
-    "deny": []
+    "deny": ["Bash(timeout:*) "]
   }
 }

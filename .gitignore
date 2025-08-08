@@ -152,3 +152,4 @@ Backup*/
 UpgradeLog*.XML
 UpgradeLog*.htm
 peglin-dump
+dist
