@@ -1,0 +1,178 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g., v1.0.0)"
+        required: true
+        default: "v0.1.0"
+
+env:
+  DOTNET_VERSION: "9.0.x"
+  NODE_VERSION: "20"
+
+jobs:
+  build-all-platforms:
+    name: Build All Platforms
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install build dependencies
+        run: npm install
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build all platforms
+        run: npm run build ${{ steps.version.outputs.version }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: peglin-save-explorer-all-platforms
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          retention-days: 30
+
+      - name: List created files
+        run: |
+          echo "Created archives:"
+          ls -la dist/
+
+  create-installers:
+    name: Create Installers
+    needs: build-all-platforms
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            installer: msi
+          - os: ubuntu-latest
+            rid: linux-x64
+            installer: deb
+          - os: macos-latest
+            rid: osx-x64
+            installer: pkg
+          - os: macos-latest
+            rid: osx-arm64
+            installer: pkg
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: peglin-save-explorer-all-platforms
+          path: artifacts/
+
+      - name: Extract platform archive
+        shell: bash
+        run: |
+          cd artifacts
+          if [[ -f *${{ matrix.rid }}.tar.gz ]]; then
+            tar -xzf *${{ matrix.rid }}.tar.gz
+          elif [[ -f *${{ matrix.rid }}.zip ]]; then
+            unzip *${{ matrix.rid }}.zip
+          fi
+          ls -la
+
+      - name: Create Windows MSI installer
+        if: matrix.installer == 'msi' && matrix.os == 'windows-latest'
+        run: |
+          # This is a placeholder - would need WiX toolset setup
+          echo "MSI installer creation would go here"
+          echo "Skipping for now - manual archive distribution is sufficient"
+
+      - name: Create Linux DEB package
+        if: matrix.installer == 'deb' && matrix.os == 'ubuntu-latest'
+        run: |
+          # This is a placeholder - would need dpkg tools
+          echo "DEB package creation would go here"
+          echo "Skipping for now - manual archive distribution is sufficient"
+
+      - name: Create macOS PKG installer
+        if: matrix.installer == 'pkg' && startsWith(matrix.os, 'macos')
+        run: |
+          # This is a placeholder - would need pkgbuild tools
+          echo "PKG installer creation would go here"
+          echo "Skipping for now - manual archive distribution is sufficient"
+
+  release:
+    name: Create GitHub Release
+    needs: build-all-platforms
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: peglin-save-explorer-all-platforms
+          path: release-assets/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-assets/*
+          body: |
+            ## Peglin Save Explorer ${{ github.ref_name }}
+
+            Cross-platform release of Peglin Save Explorer with CLI and web interface.
+
+            ### Download Options:
+
+            **Standalone Archives** (Extract and run):
+            - `peglin-save-explorer-win-x64.zip` - Windows x64
+            - `peglin-save-explorer-linux-x64.tar.gz` - Linux x64  
+            - `peglin-save-explorer-osx-x64.tar.gz` - macOS Intel
+            - `peglin-save-explorer-osx-arm64.tar.gz` - macOS Apple Silicon
+
+            ### Quick Start:
+            1. Download the appropriate file for your platform
+            2. Extract the archive
+            3. Run `peglin-save-explorer --help` to see available commands
+            4. Use `peglin-save-explorer web --open` to start the web interface
+
+            ### Features:
+            - CLI tool for save file analysis and game data extraction
+            - Web interface for interactive exploration
+            - Self-contained - no additional dependencies required
+            - Cross-platform support
+
+            See the included README.txt for detailed usage instructions.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
