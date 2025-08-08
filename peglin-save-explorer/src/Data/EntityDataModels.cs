@@ -11,6 +11,7 @@ namespace peglin_save_explorer.Data
         public string Id { get; set; } = "";
         public string Name { get; set; } = "";
         public string Description { get; set; } = "";
+        public List<string> DescriptionStrings { get; set; } = new(); // Translated locDescStrings for bullet-point rendering
         public string? LocKey { get; set; }
         public float? DamagePerPeg { get; set; }
         public float? CritDamagePerPeg { get; set; }

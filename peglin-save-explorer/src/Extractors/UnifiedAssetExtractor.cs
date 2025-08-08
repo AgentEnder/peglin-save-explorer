@@ -546,54 +546,123 @@ namespace peglin_save_explorer.Extractors
         }
 
         /// <summary>
-        /// Converts a SerializableValue to a usable object
+        /// Converts a SerializableValue to a usable object, properly handling arrays and all data types
         /// </summary>
         private object ConvertSerializableValue(SerializableValue value, dynamic field, AssetCollection? collection = null)
         {
             try
             {
+                // Handle string values first (most common case)
                 if (!string.IsNullOrEmpty(value.AsString))
                 {
                     return value.AsString;
                 }
 
-                if (value.PValue != 0)
-                {
-                    return value.AsInt32;
-                }
-
+                // Handle CValue which can be structures, assets, or arrays
                 if (value.CValue != null)
                 {
+                    // Handle nested structures
                     if (value.CValue is SerializableStructure subStructure)
                     {
                         return ConvertStructureToDict(subStructure, collection, out _);
                     }
+                    
+                    // Handle asset references
                     else if (value.CValue is IUnityAssetBase asset)
                     {
-                        // For asset references, store basic info
                         return new Dictionary<string, object>
                         {
                             ["type"] = asset.GetType().Name,
-                            ["pathId"] = 0, // PathID not directly accessible from IUnityAssetBase
+                            ["pathId"] = ExtractPathIdFromAsset(asset),
                             ["name"] = asset.ToString() ?? "unknown"
                         };
                     }
-                    else if (value.CValue is IList<SerializableValue> list)
+                    
+                    // Handle arrays and collections - THIS IS THE KEY FIX!
+                    else if (value.CValue is System.Collections.IEnumerable enumerable && 
+                             !(value.CValue is string)) // strings are enumerable but we don't want to treat them as arrays
                     {
-                        var convertedList = new List<object>();
-                        foreach (var item in list)
+                        var list = new List<object>();
+                        foreach (var item in enumerable)
                         {
-                            convertedList.Add(ConvertSerializableValue(item, field, collection));
+                            if (item is SerializableValue serializableItem)
+                            {
+                                list.Add(ConvertSerializableValue(serializableItem, field, collection));
+                            }
+                            else if (item != null)
+                            {
+                                list.Add(item.ToString() ?? "");
+                            }
                         }
-                        return convertedList;
+                        return list;
                     }
+                    
+                    // Handle primitive values wrapped in CValue
+                    return value.CValue;
                 }
 
-                return value.ToString();
+                // Handle numeric primitive values (PValue) with better type detection
+                if (value.PValue != 0)
+                {
+                    // Try different numeric interpretations based on the field name
+                    try
+                    {
+                        var fieldName = GetFieldName(field)?.ToLowerInvariant() ?? "";
+                        
+                        // For boolean fields, interpret as boolean
+                        if (fieldName.Contains("enabled") || fieldName.Contains("active") || fieldName.Contains("is") || 
+                            fieldName.Contains("can") || fieldName.Contains("has") || fieldName.Contains("should") ||
+                            fieldName.Contains("exhaust") || fieldName.Contains("destroy"))
+                            return value.AsBoolean;
+                        
+                        // For float/damage fields, use float representation
+                        if (fieldName.Contains("damage") || fieldName.Contains("force") || fieldName.Contains("scale") ||
+                            fieldName.Contains("speed") || fieldName.Contains("time") || fieldName.Contains("delay"))
+                            return value.AsSingle;
+                        
+                        // Default to integer for level, count, id fields
+                        return value.AsInt32;
+                    }
+                    catch
+                    {
+                        return value.PValue;
+                    }
+                }
+                
+                // Handle specific typed values
+                if (value.AsSingle != 0)
+                    return value.AsSingle;
+                if (value.AsDouble != 0)
+                    return value.AsDouble;
+                if (value.AsInt32 != 0)
+                    return value.AsInt32;
+                if (value.AsInt64 != 0)
+                    return value.AsInt64;
+                if (value.AsBoolean)
+                    return true;
+
+                return value.ToString() ?? "";
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"⚠️ Error converting SerializableValue: {ex.Message}");
+                return value.ToString() ?? "";
+            }
+        }
+        
+        /// <summary>
+        /// Extracts field name from field object (handles dynamic/reflection types)
+        /// </summary>
+        private string? GetFieldName(dynamic field)
+        {
+            try
+            {
+                // Handle dynamic field objects
+                return field?.Name?.ToString();
             }
             catch
             {
-                return value.ToString();
+                return null;
             }
         }
 
@@ -1119,6 +1188,94 @@ namespace peglin_save_explorer.Extractors
                 {
                     orb.Description = rawLocDescription?.ToString() ?? "";
                 }
+                
+                // Look for locDescStrings array and translate to DescriptionStrings
+                List<string>? locDescStrings = null;
+                
+                if (data.TryGetValue("locDescStrings", out var directLocDescStrings) && 
+                    directLocDescStrings is IEnumerable<object> directArray)
+                {
+                    locDescStrings = directArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                }
+                else if (data.TryGetValue("ComponentData", out var componentDataObj) &&
+                    componentDataObj is Dictionary<string, object> componentData &&
+                    componentData.TryGetValue("OrbComponent", out var orbComponentObj) &&
+                    orbComponentObj is Dictionary<string, object> orbComponent &&
+                    orbComponent.TryGetValue("locDescStrings", out var nestedLocDescStrings) &&
+                    nestedLocDescStrings is IEnumerable<object> nestedArray)
+                {
+                    locDescStrings = nestedArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                }
+                else if (data.TryGetValue("RawData", out var rawDataObj) &&
+                    rawDataObj is Dictionary<string, object> rawData &&
+                    rawData.TryGetValue("ComponentData", out var rawComponentDataObj) &&
+                    rawComponentDataObj is Dictionary<string, object> rawComponentData &&
+                    rawComponentData.TryGetValue("OrbComponent", out var rawOrbComponentObj) &&
+                    rawOrbComponentObj is Dictionary<string, object> rawOrbComponent &&
+                    rawOrbComponent.TryGetValue("locDescStrings", out var rawLocDescStrings) &&
+                    rawLocDescStrings is IEnumerable<object> rawArray)
+                {
+                    locDescStrings = rawArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                }
+                
+                // Translate locDescStrings to DescriptionStrings for frontend rendering
+                if (locDescStrings != null && locDescStrings.Count > 0)
+                {
+                    Logger.Debug($"🔍 Found {locDescStrings.Count} locDescStrings for orb {orb.Name}: [{string.Join(", ", locDescStrings)}]");
+                    try
+                    {
+                        var localizationService = Services.LocalizationService.Instance;
+                        Logger.Debug($"🌐 LocalizationService loaded: {localizationService.IsLoaded}");
+                        if (localizationService.EnsureLoaded())
+                        {
+                            var translatedStrings = new List<string>();
+                            foreach (var descKey in locDescStrings)
+                            {
+                                var translation = localizationService.GetTranslation(descKey);
+                                Logger.Debug($"🔤 Translation for '{descKey}': '{translation}'");
+                                if (!string.IsNullOrWhiteSpace(translation))
+                                {
+                                    translatedStrings.Add(translation);
+                                }
+                            }
+                            orb.DescriptionStrings = translatedStrings;
+                            Logger.Debug($"✅ Translated {translatedStrings.Count} description strings for orb {orb.Name}");
+                        }
+                        else
+                        {
+                            Logger.Debug($"❌ LocalizationService could not be loaded for orb {orb.Name}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"⚠️ Failed to get localized descriptions from locDescStrings for orb {orb.Name}: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Logger.Debug($"⏭️ No locDescStrings found for orb {orb.Name}");
+                }
+                
+                // Handle single LocKey for Description field if no direct description exists
+                if (string.IsNullOrWhiteSpace(orb.Description) && !string.IsNullOrWhiteSpace(orb.LocKey))
+                {
+                    try
+                    {
+                        var localizationService = Services.LocalizationService.Instance;
+                        if (localizationService.EnsureLoaded())
+                        {
+                            var localizedDescription = localizationService.GetTranslation(orb.LocKey);
+                            if (!string.IsNullOrWhiteSpace(localizedDescription))
+                            {
+                                orb.Description = localizedDescription;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"⚠️ Failed to get localized description for orb {orb.Name} (LocKey: {orb.LocKey}): {ex.Message}");
+                    }
+                }
 
                 // Extract damage values directly from data
                 if (data.TryGetValue("DamagePerPeg", out var damagePerPegValue) && 
@@ -1276,6 +1433,99 @@ namespace peglin_save_explorer.Extractors
                     orbComponent.TryGetValue("locDescription", out var nestedLocDescription))
                 {
                     orb.Description = nestedLocDescription?.ToString() ?? "";
+                }
+                
+                // Look for locDescStrings array and translate to DescriptionStrings
+                List<string>? locDescStrings = null;
+                
+                if (structure.TryGetValue("locDescStrings", out var structureLocDescStrings) && 
+                    structureLocDescStrings is IEnumerable<object> structureArray)
+                {
+                    locDescStrings = structureArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                }
+                else if (componentData.TryGetValue("locDescStrings", out var componentLocDescStrings) &&
+                    componentLocDescStrings is IEnumerable<object> componentArray)
+                {
+                    locDescStrings = componentArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                }
+                else if (componentData.TryGetValue("ComponentData", out var nestedComponentDataObj) &&
+                    nestedComponentDataObj is Dictionary<string, object> nestedComponentData &&
+                    nestedComponentData.TryGetValue("OrbComponent", out var orbComponentObj) &&
+                    orbComponentObj is Dictionary<string, object> orbComponent &&
+                    orbComponent.TryGetValue("locDescStrings", out var nestedLocDescStrings) &&
+                    nestedLocDescStrings is IEnumerable<object> nestedArray)
+                {
+                    locDescStrings = nestedArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                }
+                else if (componentData.TryGetValue("RawData", out var rawDataObj) &&
+                    rawDataObj is Dictionary<string, object> rawData &&
+                    rawData.TryGetValue("ComponentData", out var rawComponentDataObj) &&
+                    rawComponentDataObj is Dictionary<string, object> rawComponentData &&
+                    rawComponentData.TryGetValue("OrbComponent", out var rawOrbComponentObj) &&
+                    rawOrbComponentObj is Dictionary<string, object> rawOrbComponent &&
+                    rawOrbComponent.TryGetValue("locDescStrings", out var rawLocDescStrings) &&
+                    rawLocDescStrings is IEnumerable<object> rawArray)
+                {
+                    locDescStrings = rawArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                }
+                
+                // Translate locDescStrings to DescriptionStrings for frontend rendering
+                if (locDescStrings != null && locDescStrings.Count > 0)
+                {
+                    Logger.Debug($"🔍 Found {locDescStrings.Count} locDescStrings for orb {orb.Name}: [{string.Join(", ", locDescStrings)}]");
+                    try
+                    {
+                        var localizationService = Services.LocalizationService.Instance;
+                        Logger.Debug($"🌐 LocalizationService loaded: {localizationService.IsLoaded}");
+                        if (localizationService.EnsureLoaded())
+                        {
+                            var translatedStrings = new List<string>();
+                            foreach (var descKey in locDescStrings)
+                            {
+                                var translation = localizationService.GetTranslation(descKey);
+                                Logger.Debug($"🔤 Translation for '{descKey}': '{translation}'");
+                                if (!string.IsNullOrWhiteSpace(translation))
+                                {
+                                    translatedStrings.Add(translation);
+                                }
+                            }
+                            orb.DescriptionStrings = translatedStrings;
+                            Logger.Debug($"✅ Translated {translatedStrings.Count} description strings for orb {orb.Name}");
+                        }
+                        else
+                        {
+                            Logger.Debug($"❌ LocalizationService could not be loaded for orb {orb.Name}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"⚠️ Failed to get localized descriptions from locDescStrings for orb {orb.Name}: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Logger.Debug($"⏭️ No locDescStrings found for orb {orb.Name}");
+                }
+                
+                // Handle single LocKey for Description field if no direct description exists  
+                if (string.IsNullOrWhiteSpace(orb.Description) && !string.IsNullOrWhiteSpace(orb.LocKey))
+                {
+                    try
+                    {
+                        var localizationService = Services.LocalizationService.Instance;
+                        if (localizationService.EnsureLoaded())
+                        {
+                            var localizedDescription = localizationService.GetTranslation(orb.LocKey);
+                            if (!string.IsNullOrWhiteSpace(localizedDescription))
+                            {
+                                orb.Description = localizedDescription;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"⚠️ Failed to get localized description for orb {orb.Name} (LocKey: {orb.LocKey}): {ex.Message}");
+                    }
                 }
 
                 // Extract damage values directly from structure
@@ -1665,6 +1915,52 @@ namespace peglin_save_explorer.Extractors
                             orbComponent.TryGetValue("locDescription", out var locDescription))
                         {
                             orb.Description = locDescription?.ToString() ?? "";
+                        }
+                        
+                        // Extract and translate locDescStrings from componentData.OrbComponent.locDescStrings
+                        if (componentData.TryGetValue("OrbComponent", out var orbComponentObjForStrings) &&
+                            orbComponentObjForStrings is Dictionary<string, object> orbComponentForStrings &&
+                            orbComponentForStrings.TryGetValue("locDescStrings", out var locDescStringsObj) &&
+                            locDescStringsObj is IEnumerable<object> locDescStringsArray)
+                        {
+                            var locDescStrings = locDescStringsArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                            
+                            if (locDescStrings.Count > 0)
+                            {
+                                Logger.Debug($"🔍 Found {locDescStrings.Count} locDescStrings for orb {orb.Name}: [{string.Join(", ", locDescStrings)}]");
+                                try
+                                {
+                                    var localizationService = Services.LocalizationService.Instance;
+                                    Logger.Debug($"🌐 LocalizationService loaded: {localizationService.IsLoaded}");
+                                    if (localizationService.EnsureLoaded())
+                                    {
+                                        var translatedStrings = new List<string>();
+                                        foreach (var descKey in locDescStrings)
+                                        {
+                                            var translation = localizationService.GetTranslation(descKey);
+                                            Logger.Debug($"🔤 Translation for '{descKey}': '{translation}'");
+                                            if (!string.IsNullOrWhiteSpace(translation))
+                                            {
+                                                translatedStrings.Add(translation);
+                                            }
+                                        }
+                                        orb.DescriptionStrings = translatedStrings;
+                                        Logger.Debug($"✅ Translated {translatedStrings.Count} description strings for orb {orb.Name}");
+                                    }
+                                    else
+                                    {
+                                        Logger.Debug($"❌ LocalizationService could not be loaded for orb {orb.Name}");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.Debug($"⚠️ Failed to get localized descriptions from locDescStrings for orb {orb.Name}: {ex.Message}");
+                                }
+                            }
+                            else
+                            {
+                                Logger.Debug($"⏭️ No valid locDescStrings found for orb {orb.Name}");
+                            }
                         }
                         
                         // Set default values for other fields

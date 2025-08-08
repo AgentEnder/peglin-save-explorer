@@ -227,7 +227,11 @@ namespace peglin_save_explorer.Core
                     // var groupedOrbs = AssetRipperOrbExtractor.GroupOrbs(extractionResult.Orbs);
                     // Data.EntityCacheManager.SaveGroupedOrbs(groupedOrbs);
                     
-                    // Save entities using unified cache manager
+                    // Extract and save localization strings FIRST (needed for orb description translation)
+                    progress?.Report("🌐 Extracting localization strings...");
+                    await ExtractAndSaveLocalizationStrings(progress);
+                    
+                    // Save entities using unified cache manager (now with localization available)
                     var sourceBundles = bundleFiles.Select(Path.GetFileName).Where(name => name != null).Cast<string>().ToList();
                     EntityCacheManager.SaveToCache(extractionResult.Relics, extractionResult.Enemies, extractionResult.Orbs, peglinPath, sourceBundles);
                     
@@ -266,10 +270,6 @@ namespace peglin_save_explorer.Core
                     
                     // Save sprites
                     SpriteCacheManager.SaveToCache(extractionResult.Sprites, peglinPath, sourceBundles);
-                    
-                    // Extract and save localization strings
-                    progress?.Report("🌐 Extracting localization strings...");
-                    await ExtractAndSaveLocalizationStrings(progress);
                     
                     var relicSprites = extractionResult.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Relic);
                     var enemySprites = extractionResult.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Enemy);
