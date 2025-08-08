@@ -1,6 +1,7 @@
 using System.CommandLine;
 using peglin_save_explorer.Commands;
 using peglin_save_explorer.Core;
+using peglin_save_explorer.Data;
 using peglin_save_explorer.Utils;
 
 namespace peglin_save_explorer
@@ -15,13 +16,6 @@ namespace peglin_save_explorer
             // Set up signal handlers to ensure proper terminal cleanup
             Console.CancelKeyPress += OnCancelKeyPress;
             AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
-
-            // Handle legacy test commands
-            if (args.Length > 0 && args[0] == "widget-test")
-            {
-                Console.WriteLine("Widget test functionality not implemented yet.");
-                return 0;
-            }
 
             if (args.Length > 0 && args[0] == "test-assetripper")
             {
@@ -38,6 +32,13 @@ namespace peglin_save_explorer
                 getDefaultValue: () => false);
             rootCommand.AddGlobalOption(verboseOption);
 
+            // Add global clean option
+            var cleanOption = new Option<bool>(
+                new[] { "--clean", "-c" },
+                description: "Clear all caches before executing the command",
+                getDefaultValue: () => false);
+            rootCommand.AddGlobalOption(cleanOption);
+
             // Register all commands automatically
             CommandRegistry.RegisterAllCommands(rootCommand);
 
@@ -49,11 +50,12 @@ namespace peglin_save_explorer
                 IsRequired = false
             };
             rootCommand.Add(fileOption);
-            rootCommand.SetHandler((FileInfo? file, bool verbose) => 
+            rootCommand.SetHandler((FileInfo? file, bool verbose, bool clean) => 
             {
                 SetupLogging(verbose);
+                HandleCleanOption(clean);
                 ShowDefaultSummary(file);
-            }, fileOption, verboseOption);
+            }, fileOption, verboseOption, cleanOption);
 
             return await rootCommand.InvokeAsync(args);
         }
@@ -63,17 +65,21 @@ namespace peglin_save_explorer
             Logger.SetLogLevel(verbose ? LogLevel.Verbose : LogLevel.Info);
         }
 
+        private static void HandleCleanOption(bool clean)
+        {
+            if (clean)
+            {
+                Logger.Info("Clean option enabled - clearing all caches");
+                CacheManager.ClearAllCaches();
+            }
+        }
+
         private static void ShowDefaultSummary(FileInfo? file)
         {
-            var summaryCommand = new SummaryCommand();
-            var command = summaryCommand.CreateCommand();
-            // For the default handler, we'll just call the summary command logic directly
-            // This is a bit of a workaround since we can't easily invoke the command directly
             Console.WriteLine("Showing summary (default command). Use --help to see all available commands.");
             var saveData = SaveDataLoader.LoadSaveData(file);
             if (saveData != null)
             {
-                // Simple summary output
                 Console.WriteLine("Save data loaded successfully. Use 'summary' command for detailed view.");
             }
         }

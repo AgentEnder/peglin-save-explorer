@@ -197,6 +197,20 @@ namespace peglin_save_explorer.Services
                 }
             }
 
+            // Add cruciball levels for each character class
+            var cruciballLevels = GetNestedValue(data, "prop_CruciballLevels") as JArray;
+            if (cruciballLevels != null)
+            {
+                var cruciballDict = new Dictionary<string, int>();
+                for (int i = 0; i < cruciballLevels.Count; i++)
+                {
+                    var className = GameDataMappings.GetCharacterClassName(i);
+                    var level = cruciballLevels[i]?.Value<int>() ?? 0;
+                    cruciballDict[className] = level;
+                }
+                stats["Cruciball Levels"] = cruciballDict;
+            }
+
             return stats;
         }
 

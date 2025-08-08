@@ -1,6 +1,8 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Reflection;
+using peglin_save_explorer.Core;
+using peglin_save_explorer.Data;
 using peglin_save_explorer.Utils;
 
 namespace peglin_save_explorer.Commands
@@ -38,18 +40,31 @@ namespace peglin_save_explorer.Commands
 
         private static void WrapCommandWithLogging(Command command, RootCommand rootCommand)
         {
-            // Get the verbose option from the root command
+            // Get the global options from the root command
             var verboseOption = rootCommand.Options.FirstOrDefault(o => o.Name == "verbose");
-            if (verboseOption is Option<bool> verboseOpt)
+            var cleanOption = rootCommand.Options.FirstOrDefault(o => o.Name == "clean");
+            
+            if (verboseOption is Option<bool> verboseOpt && cleanOption is Option<bool> cleanOpt)
             {
                 // Store the original handler
                 var originalHandler = command.Handler;
                 
-                // Create a new handler that sets up logging first
+                // Create a new handler that handles global options first
                 command.SetHandler(async (InvocationContext context) =>
                 {
                     var verbose = context.ParseResult.GetValueForOption(verboseOpt);
+                    var clean = context.ParseResult.GetValueForOption(cleanOpt);
+                    
                     Logger.SetLogLevel(verbose ? LogLevel.Verbose : LogLevel.Info);
+                    
+                    if (clean)
+                    {
+                        Logger.Info("Clean option enabled - clearing all caches");
+                        // Clear all extraction caches (sprites, relics, classes, etc.)
+                        PeglinDataExtractor.ClearAllCaches();
+                        // Clear the save data cache as well
+                        CacheManager.ClearAllCaches();
+                    }
                     
                     // Execute the original handler
                     if (originalHandler != null)

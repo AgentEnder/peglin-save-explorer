@@ -1,5 +1,6 @@
 using System.CommandLine;
 using peglin_save_explorer.Core;
+using peglin_save_explorer.Utils;
 
 namespace peglin_save_explorer.Commands
 {
@@ -32,16 +33,16 @@ namespace peglin_save_explorer.Commands
                         saveFilePath = configManager.GetEffectiveSaveFilePath();
                         if (string.IsNullOrEmpty(saveFilePath))
                         {
-                            Program.WriteToConsole("Error: No save file specified and no default save file found.");
-                            Program.WriteToConsole("Please specify a save file with -f or configure a default in settings.");
+                            Logger.Error("No save file specified and no default save file found.");
+                            Logger.Info("Please specify a save file with -f or configure a default in settings.");
                             return;
                         }
-                        Program.WriteToConsole($"Using default save file: {saveFilePath}");
+                        Logger.Info($"Using default save file: {saveFilePath}");
                     }
 
                     if (!File.Exists(saveFilePath))
                     {
-                        Program.WriteToConsole($"❌ Save file not found: {saveFilePath}");
+                        Logger.Error($"Save file not found: {saveFilePath}");
                         return;
                     }
                     
@@ -49,7 +50,7 @@ namespace peglin_save_explorer.Commands
                 }
                 catch (Exception ex)
                 {
-                    Program.WriteToConsole($"❌ Error analyzing save: {ex.Message}");
+                    Logger.Error($"Error analyzing save: {ex.Message}");
                 }
             }, fileOption);
             

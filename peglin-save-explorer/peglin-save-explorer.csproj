@@ -6,6 +6,24 @@
     <RootNamespace>peglin_save_explorer</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    
+    <!-- Assembly and product information -->
+    <AssemblyTitle>Peglin Save Explorer</AssemblyTitle>
+    <AssemblyDescription>CLI and web tool for analyzing Peglin save files and extracting game data</AssemblyDescription>
+    <AssemblyCompany>AgentEnder</AssemblyCompany>
+    <AssemblyProduct>Peglin Save Explorer</AssemblyProduct>
+    <AssemblyCopyright>Copyright © 2025 AgentEnder</AssemblyCopyright>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    
+    <!-- Publishing configuration for standalone builds -->
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
+    <UseAppHost>true</UseAppHost>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +33,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="AssetsTools.NET" Version="3.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,21 +43,12 @@
     <ProjectReference Include="..\assetripper\Source\AssetRipper.IO.Files\AssetRipper.IO.Files.csproj" />
     <ProjectReference Include="..\assetripper\Source\AssetRipper.SourceGenerated.Extensions\AssetRipper.SourceGenerated.Extensions.csproj" />
     <ProjectReference Include="..\assetripper\Source\AssetRipper.Yaml\AssetRipper.Yaml.csproj" />
+    <ProjectReference Include="..\assetripper\Source\AssetRipper.Export.Modules.Textures\AssetRipper.Export.Modules.Textures.csproj" />
   </ItemGroup>
 
-  <!-- Temporary references to Peglin DLLs for proper type deserialization -->
-  <ItemGroup>
-    <Reference Include="Assembly-CSharp">
-      <HintPath>/Users/agentender/Library/Application Support/Steam/steamapps/common/Peglin/peglin.app/Contents/Resources/Data/Managed/Assembly-CSharp.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>/Users/agentender/Library/Application Support/Steam/steamapps/common/Peglin/peglin.app/Contents/Resources/Data/Managed/Assembly-CSharp-firstpass.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
+  
 
-  <!-- Build frontend and copy to output -->
+  <!-- Build frontend and copy to output for Release -->
   <Target Name="BuildFrontend" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release'">
     <Message Text="Building React frontend..." Importance="high" />
     <Exec Command="npm install" WorkingDirectory="../web-frontend" />
@@ -51,6 +61,12 @@
     </ItemGroup>
     <Copy SourceFiles="@(FrontendFiles)" 
           DestinationFiles="@(FrontendFiles->'$(OutputPath)wwwroot/%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <!-- Debug mode: ensure npm dependencies are installed -->
+  <Target Name="EnsureNpmDependencies" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="Ensuring npm dependencies are installed for development..." Importance="high" />
+    <Exec Command="npm install" WorkingDirectory="../web-frontend" ContinueOnError="true" />
   </Target>
 
 

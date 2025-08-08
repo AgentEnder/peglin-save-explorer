@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
@@ -9,12 +10,16 @@ using Microsoft.Extensions.FileProviders;
 using peglin_save_explorer.Core;
 using peglin_save_explorer.Utils;
 using peglin_save_explorer.Services;
-using Newtonsoft.Json.Linq;
+using peglin_save_explorer.Data;
+using System.Diagnostics;
 
 namespace peglin_save_explorer.Commands
 {
     public class WebCommand : ICommand
     {
+        private Process? _viteProcess;
+        private readonly CancellationTokenSource _cancellationTokenSource = new();
+
         public Command CreateCommand()
         {
             var command = new Command("web", "Start web server for interactive analysis");
@@ -41,15 +46,27 @@ namespace peglin_save_explorer.Commands
 
         private async Task StartWebServer(int port, FileInfo? saveFile)
         {
+            // Check if port is already in use
+            await CheckAndHandlePortConflict(port);
+            
             var builder = WebApplication.CreateBuilder();
 
-            // Detect if we're in development mode
-            var isDevelopment = builder.Environment.IsDevelopment();
+            // Detect if we're in development mode based on build configuration
+            #if DEBUG
+            var isDevelopment = true;
+            #else
+            var isDevelopment = false;
+            #endif
             
             if (isDevelopment)
             {
                 Console.WriteLine("Development mode detected - enhanced error reporting enabled");
+                await StartViteDevServer();
             }
+
+            // Handle graceful shutdown
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => StopViteDevServer();
+            Console.CancelKeyPress += (s, e) => { StopViteDevServer(); e.Cancel = false; };
 
             // Add services
             builder.Services.AddCors(options =>
@@ -70,58 +87,105 @@ namespace peglin_save_explorer.Commands
             // Configure pipeline
             app.UseCors();
 
-            // Initialize services
-            var configManager = new ConfigurationManager();
-            var analysisService = new DataAnalysisService(configManager);
-
-            // Serve static files from the built frontend
-            var frontendPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+            // Initialize all data and services before setting up middlewares
+            var (configManager, analysisService, currentData, spriteCacheDirectory) = await InitializeDataAndServices(saveFile);
             
-            // In development mode, try to serve from the dev build first
-            if (isDevelopment)
+            // Configure static file serving for sprite cache
+            if (Directory.Exists(spriteCacheDirectory))
             {
-                var devFrontendPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "web-frontend", "dist");
-                if (Directory.Exists(devFrontendPath))
-                {
-                    frontendPath = devFrontendPath;
-                    Console.WriteLine($"Development mode: serving frontend from {devFrontendPath}");
-                }
-            }
-            
-            if (Directory.Exists(frontendPath))
-            {
+                var contentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+                contentTypeProvider.Mappings[".png"] = "image/png";
+                contentTypeProvider.Mappings[".jpg"] = "image/jpeg";
+                contentTypeProvider.Mappings[".jpeg"] = "image/jpeg";
+                contentTypeProvider.Mappings[".gif"] = "image/gif";
+                contentTypeProvider.Mappings[".webp"] = "image/webp";
+                
                 app.UseStaticFiles(new StaticFileOptions
                 {
-                    FileProvider = new PhysicalFileProvider(frontendPath),
-                    RequestPath = ""
+                    FileProvider = new PhysicalFileProvider(spriteCacheDirectory),
+                    RequestPath = "/sprites",
+                    ContentTypeProvider = contentTypeProvider
                 });
-                Console.WriteLine($"Serving static files from: {frontendPath}");
+                Console.WriteLine($"Serving sprites from: {spriteCacheDirectory} at /sprites");
             }
             else
             {
-                Console.WriteLine($"Warning: Frontend path not found: {frontendPath}");
+                Console.WriteLine($"Note: Sprite cache directory not found: {spriteCacheDirectory}");
+                Console.WriteLine("Run 'extract' command to generate sprite cache first.");
             }
 
-            // In-memory data store for the current session
-            var currentData = new RunHistoryData();
-            
-            // Try to load data from provided file or default configuration
-            FileInfo? effectiveFile = saveFile;
-            if (effectiveFile == null)
+            // In development mode, proxy frontend requests to Vite dev server
+            if (isDevelopment && await IsViteDevServerRunning())
             {
-                // Try to get default save file from configuration
-                var defaultPath = configManager.GetEffectiveSaveFilePath();
-                if (!string.IsNullOrEmpty(defaultPath) && File.Exists(defaultPath))
+                Console.WriteLine("Development mode: proxying frontend requests to Vite dev server at http://localhost:3000");
+
+                // Proxy frontend requests to Vite dev server, but exclude API and sprites
+                app.Use(async (context, next) =>
                 {
-                    effectiveFile = new FileInfo(defaultPath);
-                    Console.WriteLine($"Loading data from default save file: {defaultPath}");
+                    if (context.Request.Path.StartsWithSegments("/api") ||
+                        context.Request.Path.StartsWithSegments("/sprites"))
+                    {
+                        await next(context);
+                        return;
+                    }
+
+                    var viteUrl = $"http://localhost:3000{context.Request.Path}{context.Request.QueryString}";
+                    using var httpClient = new HttpClient();
+
+                    try
+                    {
+                        var response = await httpClient.GetAsync(viteUrl);
+                        context.Response.StatusCode = (int)response.StatusCode;
+
+                        foreach (var header in response.Headers)
+                        {
+                            context.Response.Headers[header.Key] = header.Value.ToArray();
+                        }
+                        foreach (var header in response.Content.Headers)
+                        {
+                            context.Response.Headers[header.Key] = header.Value.ToArray();
+                        }
+
+                        await response.Content.CopyToAsync(context.Response.Body);
+                    }
+                    catch
+                    {
+                        context.Response.StatusCode = 502;
+                        await context.Response.WriteAsync("Vite dev server not available");
+                    }
+                });
+            }
+            else
+            {
+                // Serve static files from the built frontend (production mode or dev fallback)
+                var frontendPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+
+                // In development mode, try to serve from the dev build first
+                if (isDevelopment)
+                {
+                    var devFrontendPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "web-frontend", "dist");
+                    if (Directory.Exists(devFrontendPath))
+                    {
+                        frontendPath = devFrontendPath;
+                        Console.WriteLine($"Development mode fallback: serving frontend from {devFrontendPath}");
+                    }
+                }
+
+                if (Directory.Exists(frontendPath))
+                {
+                    app.UseStaticFiles(new StaticFileOptions
+                    {
+                        FileProvider = new PhysicalFileProvider(frontendPath),
+                        RequestPath = ""
+                    });
+                    Console.WriteLine($"Serving static files from: {frontendPath}");
+                }
+                else
+                {
+                    Console.WriteLine($"Warning: Frontend path not found: {frontendPath}");
                 }
             }
-            
-            if (effectiveFile != null && effectiveFile.Exists)
-            {
-                currentData = analysisService.LoadCompleteRunData(effectiveFile);
-            }
+
 
             // API Routes with enhanced error handling
             app.MapGet("/api/health", () => 
@@ -279,9 +343,9 @@ namespace peglin_save_explorer.Commands
                         return Results.BadRequest(CreateApiResponse<object>(null, "Invalid request data"));
                     }
 
-                    if (requestBody.CruciballLevel < 0 || requestBody.CruciballLevel > 20)
+                    if (requestBody.CruciballLevel < -1 || requestBody.CruciballLevel > 20)
                     {
-                        return Results.BadRequest(CreateApiResponse<object>(null, "Cruciball level must be between 0 and 20"));
+                        return Results.BadRequest(CreateApiResponse<object>(null, "Cruciball level must be between -1 (locked) and 20"));
                     }
 
                     // Update the save file with the new cruciball level
@@ -348,40 +412,151 @@ namespace peglin_save_explorer.Commands
                 return Results.NotFound(CreateApiResponse<object>(null, "Class not found"));
             });
 
-            app.MapGet("/api/cruciball-levels", () =>
+            // Class management endpoints using the consolidated ClassManagementService
+            app.MapGet("/api/classes/status", () =>
             {
                 try
                 {
-                    var cruciballLevels = SaveDataLoader.GetCruciballLevelsPerClass();
-                    return Results.Ok(CreateApiResponse(cruciballLevels));
+                    var classService = new ClassManagementService();
+                    var classes = classService.ListClasses();
+                    return CreateApiResponse(classes);
                 }
                 catch (Exception ex)
                 {
-                    if (isDevelopment) Console.WriteLine($"Get cruciball levels error: {ex}");
-                    return Results.BadRequest(CreateApiResponse<object>(null, "Failed to get cruciball levels"));
+                    if (isDevelopment) Console.WriteLine($"Get class status error: {ex}");
+                    return Results.Problem($"Failed to get class status: {ex.Message}");
                 }
             });
 
-            // Fallback to serve the React app for any non-API routes
-            app.MapFallback((HttpContext context) =>
+            app.MapPost("/api/classes/{className}/unlock", (string className) =>
             {
-                if (context.Request.Path.StartsWithSegments("/api"))
+                try
                 {
-                    return Results.NotFound();
+                    var classService = new ClassManagementService();
+                    bool success = classService.UnlockClass(className);
+                    
+                    if (success)
+                    {
+                        return Results.Ok(CreateApiResponse(new
+                        {
+                            message = $"Successfully unlocked class: {className}",
+                            className = className,
+                            action = "unlock"
+                        }));
+                    }
+                    else
+                    {
+                        return Results.BadRequest(CreateApiResponse<object>(null, $"Failed to unlock class: {className}"));
+                    }
                 }
-
-                var indexPath = Path.Combine(frontendPath, "index.html");
-                if (File.Exists(indexPath))
+                catch (Exception ex)
                 {
-                    return Results.File(indexPath, "text/html");
+                    if (isDevelopment) Console.WriteLine($"Unlock class error: {ex}");
+                    return Results.Problem($"Failed to unlock class: {ex.Message}");
                 }
-
-                if (isDevelopment)
-                {
-                    return Results.NotFound($"Frontend not built. Frontend path: {frontendPath}. Run 'npm run build' in the web-frontend directory.");
-                }
-                return Results.NotFound("Frontend not built. Run the build process first.");
             });
+
+            app.MapPost("/api/classes/{className}/lock", (string className) =>
+            {
+                try
+                {
+                    var classService = new ClassManagementService();
+                    bool success = classService.LockClass(className);
+                    
+                    if (success)
+                    {
+                        return Results.Ok(CreateApiResponse(new
+                        {
+                            message = $"Successfully locked class: {className}",
+                            className = className,
+                            action = "lock"
+                        }));
+                    }
+                    else
+                    {
+                        return Results.BadRequest(CreateApiResponse<object>(null, $"Failed to lock class: {className}"));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (isDevelopment) Console.WriteLine($"Lock class error: {ex}");
+                    return Results.Problem($"Failed to lock class: {ex.Message}");
+                }
+            });
+
+            app.MapPost("/api/classes/{className}/cruciball", async (HttpContext context, string className) =>
+            {
+                try
+                {
+                    var requestBody = await context.Request.ReadFromJsonAsync<SetCruciballRequest>();
+                    if (requestBody == null)
+                    {
+                        return Results.BadRequest(CreateApiResponse<object>(null, "Invalid request data"));
+                    }
+
+                    if (requestBody.Level < 0 || requestBody.Level > 20)
+                    {
+                        return Results.BadRequest(CreateApiResponse<object>(null, "Cruciball level must be between 0 and 20"));
+                    }
+
+                    var classService = new ClassManagementService();
+                    bool success = classService.SetCruciballLevel(className, requestBody.Level);
+                    
+                    if (success)
+                    {
+                        return Results.Ok(CreateApiResponse(new
+                        {
+                            message = $"Successfully set {className} cruciball level to {requestBody.Level}",
+                            className = className,
+                            newLevel = requestBody.Level,
+                            action = "set_cruciball"
+                        }));
+                    }
+                    else
+                    {
+                        return Results.BadRequest(CreateApiResponse<object>(null, $"Failed to set cruciball level for {className}"));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (isDevelopment) Console.WriteLine($"Set cruciball error: {ex}");
+                    return Results.Problem($"Failed to set cruciball level: {ex.Message}");
+                }
+            });
+
+            // Fallback to serve the React app for any non-API routes (only when not proxying to Vite)
+            if (!isDevelopment || !await IsViteDevServerRunning())
+            {
+                app.MapFallback((HttpContext context) =>
+                {
+                    if (context.Request.Path.StartsWithSegments("/api"))
+                    {
+                        return Results.NotFound();
+                    }
+
+                    var frontendPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+                    if (isDevelopment)
+                    {
+                        var devFrontendPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "web-frontend", "dist");
+                        if (Directory.Exists(devFrontendPath))
+                        {
+                            frontendPath = devFrontendPath;
+                        }
+                    }
+
+                    var indexPath = Path.Combine(frontendPath, "index.html");
+                    if (File.Exists(indexPath))
+                    {
+                        return Results.File(indexPath, "text/html");
+                    }
+
+                    if (isDevelopment)
+                    {
+                        return Results.NotFound($"Frontend not built. Frontend path: {frontendPath}. Run 'npm run build' in the web-frontend directory or start the Vite dev server.");
+                    }
+                    return Results.NotFound("Frontend not built. Run the build process first.");
+                });
+            }
 
             Console.WriteLine($"Starting web server on http://localhost:{port}");
             if (currentData.TotalRuns > 0)
@@ -392,6 +567,233 @@ namespace peglin_save_explorer.Commands
             {
                 Console.WriteLine("No initial data loaded. Upload a save file via the web interface.");
             }
+
+            // Sprite API endpoints (now serving sprite files directly via static file middleware at /sprites)
+            app.MapGet("/api/sprites", () =>
+            {
+                try
+                {
+                    var allSprites = Data.SpriteCacheManager.GetCachedSprites();
+                    return CreateApiResponse(new
+                    {
+                        sprites = allSprites.Select(s => new
+                        {
+                            id = s.Id,
+                            name = s.Name,
+                            type = s.Type.ToString().ToLower(),
+                            width = s.Width,
+                            height = s.Height,
+                            extractedAt = s.ExtractedAt,
+                            url = $"/sprites/{GetSpriteTypeDirectory(s.Type)}/{s.Id}.png", // Direct static file URL
+                            isAtlas = s.IsAtlas,
+                            frameCount = s.AtlasFrames?.Count ?? 0
+                        }),
+                        total = allSprites.Count,
+                        relicCount = allSprites.Count(s => s.Type == Data.SpriteCacheManager.SpriteType.Relic),
+                        enemyCount = allSprites.Count(s => s.Type == Data.SpriteCacheManager.SpriteType.Enemy),
+                        orbCount = allSprites.Count(s => s.Type == Data.SpriteCacheManager.SpriteType.Orb),
+                        atlasCount = allSprites.Count(s => s.IsAtlas)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    if (isDevelopment) Console.WriteLine($"Get sprites error: {ex}");
+                    return Results.Problem($"Failed to get sprites: {ex.Message}");
+                }
+            });
+
+            app.MapGet("/api/sprites/{type}", (string type) =>
+            {
+                try
+                {
+                    if (!Enum.TryParse<Data.SpriteCacheManager.SpriteType>(type, true, out var spriteType))
+                    {
+                        return Results.BadRequest(CreateApiResponse<object>(null, $"Invalid sprite type: {type}. Valid types are: relic, enemy, orb"));
+                    }
+
+                    var sprites = Data.SpriteCacheManager.GetCachedSprites(spriteType);
+                    return CreateApiResponse(sprites.Select(s => new
+                    {
+                        id = s.Id,
+                        name = s.Name,
+                        type = s.Type.ToString().ToLower(),
+                        width = s.Width,
+                        height = s.Height,
+                        extractedAt = s.ExtractedAt,
+                        url = $"/sprites/{GetSpriteTypeDirectory(s.Type)}/{s.Id}.png", // Direct static file URL
+                        isAtlas = s.IsAtlas,
+                        frameCount = s.AtlasFrames?.Count ?? 0,
+                        // Include frame references for atlases
+                        frames = s.IsAtlas ? s.AtlasFrames?.Select(f => new
+                        {
+                            name = f.Name,
+                            x = f.X,
+                            y = f.Y,
+                            width = f.Width,
+                            height = f.Height,
+                            pivotX = f.PivotX,
+                            pivotY = f.PivotY
+                        }) : null
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    if (isDevelopment) Console.WriteLine($"Get sprites by type error: {ex}");
+                    return Results.Problem($"Failed to get sprites: {ex.Message}");
+                }
+            });
+
+            // Sprite file serving is now handled by static file middleware at /sprites
+            // Individual sprite metadata API endpoint with full atlas frame information
+            app.MapGet("/api/sprites/{type}/{id}/metadata", (string type, string id) =>
+            {
+                try
+                {
+                    if (!Enum.TryParse<Data.SpriteCacheManager.SpriteType>(type, true, out var spriteType))
+                    {
+                        return Results.BadRequest(CreateApiResponse<object>(null, $"Invalid sprite type: {type}. Valid types are: relic, enemy, orb"));
+                    }
+
+                    var sprite = Data.SpriteCacheManager.GetSpriteMetadata(spriteType, id);
+                    if (sprite == null)
+                    {
+                        return Results.NotFound(CreateApiResponse<object>(null, $"Sprite not found: {type}/{id}"));
+                    }
+
+                    return CreateApiResponse(new
+                    {
+                        id = sprite.Id,
+                        name = sprite.Name,
+                        type = sprite.Type.ToString().ToLower(),
+                        width = sprite.Width,
+                        height = sprite.Height,
+                        extractedAt = sprite.ExtractedAt,
+                        sourceBundle = sprite.SourceBundle,
+                        url = $"/sprites/{GetSpriteTypeDirectory(sprite.Type)}/{sprite.Id}.png", // Direct static file URL
+                        exists = File.Exists(sprite.FilePath),
+                        isAtlas = sprite.IsAtlas,
+                        frames = sprite.IsAtlas ? sprite.AtlasFrames?.Select(f => new
+                        {
+                            name = f.Name,
+                            x = f.X,
+                            y = f.Y,
+                            width = f.Width,
+                            height = f.Height,
+                            pivotX = f.PivotX,
+                            pivotY = f.PivotY,
+                            spritePathID = f.SpritePathID
+                        }) : null
+                    });
+                }
+                catch (Exception ex)
+                {
+                    if (isDevelopment) Console.WriteLine($"Get sprite metadata error: {ex}");
+                    return Results.Problem($"Failed to get sprite metadata: {ex.Message}");
+                }
+            });
+
+            // Get atlas frames for a specific sprite (useful for animations)
+            app.MapGet("/api/sprites/{type}/{id}/frames", (string type, string id) =>
+            {
+                try
+                {
+                    if (!Enum.TryParse<Data.SpriteCacheManager.SpriteType>(type, true, out var spriteType))
+                    {
+                        return Results.BadRequest(CreateApiResponse<object>(null, $"Invalid sprite type: {type}. Valid types are: relic, enemy, orb"));
+                    }
+
+                    var sprite = Data.SpriteCacheManager.GetSpriteMetadata(spriteType, id);
+                    if (sprite == null)
+                    {
+                        return Results.NotFound(CreateApiResponse<object>(null, $"Sprite not found: {type}/{id}"));
+                    }
+
+                    if (!sprite.IsAtlas)
+                    {
+                        return Results.BadRequest(CreateApiResponse<object>(null, $"Sprite {id} is not an atlas and has no frame data"));
+                    }
+
+                    return CreateApiResponse(new
+                    {
+                        atlasId = sprite.Id,
+                        atlasName = sprite.Name,
+                        atlasUrl = $"/sprites/{GetSpriteTypeDirectory(sprite.Type)}/{sprite.Id}.png",
+                        atlasWidth = sprite.Width,
+                        atlasHeight = sprite.Height,
+                        frameCount = sprite.AtlasFrames?.Count ?? 0,
+                        frames = sprite.AtlasFrames?.Select(f => new
+                        {
+                            name = f.Name,
+                            x = f.X,
+                            y = f.Y,
+                            width = f.Width,
+                            height = f.Height,
+                            pivotX = f.PivotX,
+                            pivotY = f.PivotY,
+                            // Calculate normalized coordinates for CSS sprites
+                            normalizedX = sprite.Width > 0 ? (float)f.X / sprite.Width : 0f,
+                            normalizedY = sprite.Height > 0 ? (float)f.Y / sprite.Height : 0f,
+                            normalizedWidth = sprite.Width > 0 ? (float)f.Width / sprite.Width : 0f,
+                            normalizedHeight = sprite.Height > 0 ? (float)f.Height / sprite.Height : 0f
+                        }).OrderBy(f => f.name).ToArray() ?? Array.Empty<object>()
+                    });
+                }
+                catch (Exception ex)
+                {
+                    if (isDevelopment) Console.WriteLine($"Get sprite frames error: {ex}");
+                    return Results.Problem($"Failed to get sprite frames: {ex.Message}");
+                }
+            });
+
+            app.MapGet("/api/sprites/cache/status", () =>
+            {
+                try
+                {
+                    var allSprites = Data.SpriteCacheManager.GetCachedSprites();
+                    var cacheDir = Data.SpriteCacheManager.GetSpriteCacheDirectory();
+                    
+                    return CreateApiResponse(new
+                    {
+                        cacheDirectory = cacheDir,
+                        cacheExists = Directory.Exists(cacheDir),
+                        totalSprites = allSprites.Count,
+                        relicSprites = allSprites.Count(s => s.Type == Data.SpriteCacheManager.SpriteType.Relic),
+                        enemySprites = allSprites.Count(s => s.Type == Data.SpriteCacheManager.SpriteType.Enemy),
+                        orbSprites = allSprites.Count(s => s.Type == Data.SpriteCacheManager.SpriteType.Orb),
+                        atlasCount = allSprites.Count(s => s.IsAtlas),
+                        lastUpdated = allSprites.Any() ? allSprites.Max(s => s.ExtractedAt) : (DateTime?)null
+                    });
+                }
+                catch (Exception ex)
+                {
+                    if (isDevelopment) Console.WriteLine($"Get sprite cache status error: {ex}");
+                    return Results.Problem($"Failed to get sprite cache status: {ex.Message}");
+                }
+            });
+
+
+            // Entity-sprite association API endpoint (loads all data at once for frontend)
+            app.MapGet("/api/entities", () =>
+            {
+                try
+                {
+                    var entities = new
+                    {
+                        relics = GetAllRelics(),
+                        sprites = GetAllSprites(),
+                        enemies = GetAllEnemies(),
+                        orbs = GetAllOrbs()
+                    };
+
+                    return CreateApiResponse(entities);
+                }
+                catch (Exception ex)
+                {
+                    if (isDevelopment) Console.WriteLine($"Get entities error: {ex}");
+                    return Results.Problem($"Failed to get entities: {ex.Message}");
+                }
+            });
+
             Console.WriteLine("Press Ctrl+C to stop the server");
 
             await app.RunAsync();
@@ -473,11 +875,835 @@ namespace peglin_save_explorer.Commands
         {
             return CreateApiResponse<object>(data);
         }
+
+        private async Task StartViteDevServer()
+        {
+            try
+            {
+                Console.WriteLine("Starting Vite dev server...");
+                
+                var frontendPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "web-frontend");
+                var absoluteFrontendPath = Path.GetFullPath(frontendPath);
+                
+                if (!Directory.Exists(absoluteFrontendPath))
+                {
+                    Console.WriteLine($"Warning: Frontend directory not found at {absoluteFrontendPath}");
+                    return;
+                }
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "npm",
+                    Arguments = "run dev",
+                    WorkingDirectory = absoluteFrontendPath,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                _viteProcess = new Process { StartInfo = startInfo,  };
+                
+                // _viteProcess.OutputDataReceived += (sender, e) =>
+                // {
+                //     if (!string.IsNullOrEmpty(e.Data))
+                //     {
+                //         Console.WriteLine($"[Vite] {e.Data}");
+                //     }
+                // };
+                
+                // _viteProcess.ErrorDataReceived += (sender, e) =>
+                // {
+                //     if (!string.IsNullOrEmpty(e.Data))
+                //     {
+                //         Console.WriteLine($"[Vite Error] {e.Data}");
+                //     }
+                // };
+
+                _viteProcess.Start();
+                _viteProcess.BeginOutputReadLine();
+                _viteProcess.BeginErrorReadLine();
+
+                // Wait a moment for the server to start
+                await Task.Delay(3000);
+                
+                if (await IsViteDevServerRunning())
+                {
+                    Console.WriteLine("Vite dev server started successfully at http://localhost:3000");
+                }
+                else
+                {
+                    Console.WriteLine("Warning: Vite dev server may not have started properly");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to start Vite dev server: {ex.Message}");
+            }
+        }
+
+        private void StopViteDevServer()
+        {
+            try
+            {
+                if (_viteProcess != null && !_viteProcess.HasExited)
+                {
+                    Console.WriteLine("Stopping Vite dev server...");
+                    _viteProcess.Kill(true); // Kill the process tree
+                    _viteProcess.WaitForExit(5000);
+                    _viteProcess.Dispose();
+                    _viteProcess = null;
+                    Console.WriteLine("Vite dev server stopped");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error stopping Vite dev server: {ex.Message}");
+            }
+        }
+
+        private async Task<bool> IsViteDevServerRunning()
+        {
+            try
+            {
+                using var httpClient = new HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(2);
+                var response = await httpClient.GetAsync("http://localhost:3000");
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string GetSpriteTypeDirectory(SpriteCacheManager.SpriteType type)
+        {
+            return type switch
+            {
+                SpriteCacheManager.SpriteType.Enemy => "enemies",
+                SpriteCacheManager.SpriteType.Relic => "relics",
+                _ => type.ToString().ToLower() + "s"
+            };
+        }
+
+
+        /// <summary>
+        /// Gets sprite reference using correlation data instead of parsing raw data
+        /// </summary>
+        private static object? GetCorrelatedSpriteReference<T>(T entity) where T : class
+        {
+            try
+            {
+                // Use reflection to get CorrelatedSpriteId property
+                var correlatedSpriteIdProperty = typeof(T).GetProperty("CorrelatedSpriteId");
+                var spriteFilePathProperty = typeof(T).GetProperty("SpriteFilePath");
+                var correlationMethodProperty = typeof(T).GetProperty("CorrelationMethod");
+                
+                if (correlatedSpriteIdProperty != null)
+                {
+                    var correlatedSpriteId = correlatedSpriteIdProperty.GetValue(entity) as string;
+                    if (!string.IsNullOrEmpty(correlatedSpriteId))
+                    {
+                        // Get the sprite metadata from cache
+                        var spriteMetadata = Data.SpriteCacheManager.GetCachedSprites()
+                            .FirstOrDefault(s => s.Id == correlatedSpriteId);
+                        
+                        if (spriteMetadata != null)
+                        {
+                            var spriteFilePath = spriteFilePathProperty?.GetValue(entity) as string;
+                            var correlationMethod = correlationMethodProperty?.GetValue(entity) as string;
+                            
+                            return new
+                            {
+                                id = correlatedSpriteId,
+                                name = spriteMetadata.Name,
+                                type = spriteMetadata.Type.ToString().ToLowerInvariant(),
+                                url = $"/sprites/{GetSpriteTypeDirectory(spriteMetadata.Type)}/{correlatedSpriteId}.png",
+                                width = spriteMetadata.Width,
+                                height = spriteMetadata.Height,
+                                resolved = true,
+                                correlationMethod = correlationMethod ?? "Unknown"
+                            };
+                        }
+                        else
+                        {
+                            // Sprite ID found but metadata missing
+                            var spriteFilePath = spriteFilePathProperty?.GetValue(entity) as string;
+                            return new
+                            {
+                                id = correlatedSpriteId,
+                                resolved = false,
+                                reason = "Sprite metadata not found in cache",
+                                filePath = spriteFilePath
+                            };
+                        }
+                    }
+                }
+                
+                // Fall back to old method if no correlation data
+                var rawDataProperty = typeof(T).GetProperty("RawData");
+                if (rawDataProperty != null)
+                {
+                    var rawData = rawDataProperty.GetValue(entity);
+                    if (rawData != null)
+                    {
+                        return GetSpriteReferenceFromRawData(rawData);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Return error info for debugging
+                return new { resolved = false, error = ex.Message };
+            }
+            return null;
+        }
+
+        private static object? GetSpriteReferenceFromRawData(object rawData)
+        {
+            try
+            {
+                var rawDataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(rawData.ToString()!);
+                if (rawDataDict != null && rawDataDict.TryGetValue("sprite", out var spriteRef))
+                {
+                    // Handle both old string format and new detailed object format
+                    if (spriteRef is System.Text.Json.JsonElement element)
+                    {
+                        if (element.ValueKind == System.Text.Json.JsonValueKind.String)
+                        {
+                            return new { reference = element.GetString(), resolved = false };
+                        }
+                        else if (element.ValueKind == System.Text.Json.JsonValueKind.Object)
+                        {
+                            return System.Text.Json.JsonSerializer.Deserialize<object>(element.GetRawText());
+                        }
+                    }
+                    return spriteRef;
+                }
+            }
+            catch (Exception)
+            {
+                // If parsing fails, return null
+            }
+            return null;
+        }
+
+        private static List<object> GetAllRelics()
+        {
+            var relics = new List<object>();
+            try
+            {
+                var cachedRelics = Data.EntityCacheManager.GetCachedRelics();
+                foreach (var kvp in cachedRelics)
+                {
+                    relics.Add(new
+                    {
+                        id = kvp.Key,
+                        name = kvp.Value.Name ?? kvp.Key,
+                        description = kvp.Value.Description ?? "",
+                        effect = kvp.Value.Effect ?? "",
+                        type = "relic",
+                        rarity = kvp.Value.Rarity ?? "Unknown",
+                        spriteReference = GetCorrelatedSpriteReference(kvp.Value)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error loading relics for API: {ex.Message}");
+            }
+            return relics;
+        }
+
+        private static List<object> GetAllEnemies()
+        {
+            var enemies = new List<object>();
+            try
+            {
+                var cachedEnemies = Data.EntityCacheManager.GetCachedEnemies();
+                foreach (var kvp in cachedEnemies)
+                {
+                    enemies.Add(new
+                    {
+                        id = kvp.Key,
+                        name = kvp.Value.Name ?? kvp.Key,
+                        description = kvp.Value.Description ?? "",
+                        type = "enemy",
+                        enemyType = kvp.Value.Type ?? "NORMAL",
+                        maxHealth = kvp.Value.MaxHealth?.ToString() ?? "",
+                        location = kvp.Value.Location ?? "",
+                        spriteReference = GetCorrelatedSpriteReference(kvp.Value)
+                    });
+                }
+            }
+            catch (Exception)
+            {
+                // Return empty list if loading fails
+            }
+            return enemies;
+        }
+
+        private static List<object> GetAllOrbs()
+        {
+            var orbs = new List<object>();
+            try
+            {
+                // Prefer orb families if available
+                // var families = Data.EntityCacheManager.GetCachedOrbFamilies();
+                // if (families.Count > 0)
+                // {
+                //     foreach (var f in families.Values)
+                //     {
+                //         orbs.Add(new
+                //         {
+                //             id = f.Id,
+                //             name = f.Name,
+                //             description = f.Description,
+                //             type = "orb",
+                //             orbType = f.OrbType ?? "ATTACK",
+                //             rarity = f.Rarity ?? (f.RarityValue?.ToString() ?? ""),
+                //             spriteReference = GetCorrelatedSpriteReference(f),
+                //             levels = f.Levels.Select(l => new
+                //             {
+                //                 level = l.Level,
+                //                 damagePerPeg = l.DamagePerPeg?.ToString() ?? "",
+                //                 critDamagePerPeg = l.CritDamagePerPeg?.ToString() ?? ""
+                //             }).ToList()
+                //         });
+                //     }
+                //     return orbs;
+                // }
+                
+                // Fallback to grouped orbs if families not available
+                // var grouped = Data.EntityCacheManager.GetCachedOrbsGrouped();
+                // if (grouped.Count > 0)
+                // {
+                //     foreach (var g in grouped.Values)
+                //     {
+                //         orbs.Add(new
+                //         {
+                //             id = g.Id,
+                //             name = g.Name,
+                //             description = g.Description,
+                //             type = "orb",
+                //             orbType = g.OrbType ?? "ATTACK",
+                //             rarity = g.Rarity ?? (g.RarityValue?.ToString() ?? ""),
+                //             spriteReference = GetCorrelatedSpriteReference(g),
+                //             levels = g.Levels.Select(l => new
+                //             {
+                //                 level = l.Level,
+                //                 damagePerPeg = l.DamagePerPeg?.ToString() ?? "",
+                //                 critDamagePerPeg = l.CritDamagePerPeg?.ToString() ?? ""
+                //             }).ToList()
+                //         });
+                //     }
+                //     return orbs;
+                // }
+
+                // Fallback: flat orbs
+                var cachedOrbs = Data.EntityCacheManager.GetCachedOrbs();
+                Logger.Info($"/api/entities: loaded {cachedOrbs.Count} orbs from cache");
+
+                if (cachedOrbs.Count == 0)
+                {
+                    // Secondary fallback: parse raw entities/orbs.json directly
+                    try
+                    {
+                        var entitiesOrbsPath = Data.EntityCacheManager.GetCachedOrbsPath();
+                        if (System.IO.File.Exists(entitiesOrbsPath))
+                        {
+                            var json = System.IO.File.ReadAllText(entitiesOrbsPath);
+                            var doc = System.Text.Json.JsonDocument.Parse(json);
+                            foreach (var prop in doc.RootElement.EnumerateObject())
+                            {
+                                var el = prop.Value;
+                                var id = prop.Name;
+                                string name = id;
+                                string desc = "";
+                                string orbType = "ATTACK";
+                                string damage = "";
+                                string rarity = "";
+
+                                if (el.TryGetProperty("Name", out var nameEl)) name = nameEl.GetString() ?? name;
+                                if (el.TryGetProperty("Description", out var descEl)) desc = descEl.GetString() ?? "";
+                                if (el.TryGetProperty("OrbType", out var typeEl)) orbType = typeEl.GetString() ?? orbType;
+                                if (el.TryGetProperty("DamagePerPeg", out var dmgEl)) damage = dmgEl.ValueKind == System.Text.Json.JsonValueKind.Number ? dmgEl.ToString() : (dmgEl.GetString() ?? "");
+                                if (el.TryGetProperty("Rarity", out var rarEl)) rarity = rarEl.GetString() ?? (el.TryGetProperty("RarityValue", out var rarValEl) ? rarValEl.ToString() : "");
+
+                                orbs.Add(new
+                                {
+                                    id,
+                                    name,
+                                    description = desc,
+                                    type = "orb",
+                                    orbType,
+                                    damagePerPeg = damage,
+                                    rarity,
+                                    spriteReference = (object?)null
+                                });
+                            }
+                            if (orbs.Count > 0)
+                            {
+                                Logger.Info($"/api/entities raw entities/orbs.json parsed: returned {orbs.Count} orbs");
+                                return orbs;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warning($"Parsing entities/orbs.json fallback failed: {ex.Message}");
+                    }
+
+                    // Fallback: try structured orbs.json created by extractor
+                    try
+                    {
+                        var structuredPath = System.IO.Path.Combine(Core.PeglinDataExtractor.GetExtractionCacheDirectory(), "orbs.json");
+                        if (System.IO.File.Exists(structuredPath))
+                        {
+                            var json = System.IO.File.ReadAllText(structuredPath);
+                            var doc = System.Text.Json.JsonDocument.Parse(json);
+                            foreach (var prop in doc.RootElement.EnumerateObject())
+                            {
+                                var el = prop.Value;
+                                var id = el.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? prop.Name : prop.Name;
+                                var name = el.TryGetProperty("name", out var nameEl) ? nameEl.GetString() ?? id : id;
+                                var desc = el.TryGetProperty("description", out var descEl) ? (descEl.GetString() ?? "") : "";
+                                var damage = el.TryGetProperty("damagePerPeg", out var dmgEl) ? (dmgEl.ValueKind == System.Text.Json.JsonValueKind.Number ? dmgEl.ToString() : (dmgEl.GetString() ?? "")) : "";
+                                var crit = el.TryGetProperty("critDamagePerPeg", out var critEl) ? (critEl.ValueKind == System.Text.Json.JsonValueKind.Number ? critEl.ToString() : (critEl.GetString() ?? "")) : "";
+                                orbs.Add(new
+                                {
+                                    id,
+                                    name,
+                                    description = desc,
+                                    type = "orb",
+                                    orbType = "ATTACK",
+                                    damagePerPeg = damage,
+                                    critDamagePerPeg = crit,
+                                    rarity = "",
+                                    spriteReference = (object?)null
+                                });
+                            }
+                            Logger.Info($"/api/entities fallback: returned {orbs.Count} orbs from structured file");
+                            return orbs;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warning($"Fallback structured orbs.json load failed: {ex.Message}");
+                    }
+                }
+
+                foreach (var kvp in cachedOrbs)
+                {
+                    try
+                    {
+                        orbs.Add(new
+                        {
+                            id = kvp.Key,
+                            name = kvp.Value.Name ?? kvp.Key,
+                            description = kvp.Value.Description ?? "",
+                            type = "orb",
+                            orbType = kvp.Value.OrbType ?? "ATTACK",
+                            damagePerPeg = kvp.Value.DamagePerPeg?.ToString() ?? "",
+                            rarity = kvp.Value.Rarity ?? kvp.Value.RarityValue?.ToString() ?? "",
+                            spriteReference = GetCorrelatedSpriteReference(kvp.Value)
+                        });
+                    }
+                    catch (Exception itemEx)
+                    {
+                        Logger.Warning($"Skipping orb {kvp.Key} due to error: {itemEx.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error loading orbs for API: {ex.Message}");
+            }
+            return orbs;
+        }
+
+        private static List<object> GetAllSprites()
+        {
+            var sprites = new List<object>();
+            try
+            {
+                var allSprites = Data.SpriteCacheManager.GetCachedSprites();
+                sprites.AddRange(allSprites.Select(s => new
+                {
+                    id = s.Id,
+                    name = s.Name,
+                    type = s.Type.ToString().ToLower(),
+                    width = s.Width,
+                    height = s.Height,
+                    url = $"/sprites/{GetSpriteTypeDirectory(s.Type)}/{s.Id}.png",
+                    isAtlas = s.IsAtlas,
+                    frameCount = s.AtlasFrames?.Count ?? 0,
+                    extractedAt = s.ExtractedAt,
+                    sourceBundle = s.SourceBundle
+                }));
+            }
+            catch (Exception)
+            {
+                // Return empty list if loading fails
+            }
+            return sprites;
+        }
+
+
+        private async Task CheckAndHandlePortConflict(int port)
+        {
+            try
+            {
+                // Check if port is in use
+                if (!IsPortInUse(port))
+                {
+                    return; // Port is available
+                }
+
+                Console.WriteLine($"⚠️  Port {port} is already in use.");
+                
+                // Try to identify the process using the port
+                var processInfo = GetProcessUsingPort(port);
+                if (processInfo.HasValue)
+                {
+                    var (processName, processId) = processInfo.Value;
+                    var currentProcessName = Process.GetCurrentProcess().ProcessName;
+                    var currentProcessId = Environment.ProcessId;
+                    
+                    if (processName.Equals(currentProcessName, StringComparison.OrdinalIgnoreCase) && 
+                        processId != currentProcessId)
+                    {
+                        Console.WriteLine($"The port is being used by another instance of {currentProcessName} (PID: {processId}).");
+                        Console.Write($"Would you like to kill the existing process and continue? (y/N): ");
+                        
+                        var response = Console.ReadLine()?.Trim().ToLower();
+                        if (response == "y" || response == "yes")
+                        {
+                            try
+                            {
+                                var process = Process.GetProcessById(processId);
+                                
+                                // Try graceful shutdown first (SIGINT/Ctrl+C)
+                                if (TryGracefulShutdown(process))
+                                {
+                                    Console.WriteLine($"✅ Successfully sent termination signal to process {processId}");
+                                    
+                                    // Wait for graceful shutdown
+                                    if (!process.WaitForExit(8000)) // Wait up to 8 seconds for graceful shutdown
+                                    {
+                                        Console.WriteLine($"⚠️  Process {processId} didn't exit gracefully, forcing termination...");
+                                        process.Kill();
+                                        process.WaitForExit(2000); // Wait up to 2 more seconds
+                                    }
+                                }
+                                else
+                                {
+                                    // Fallback to hard kill if graceful shutdown not supported
+                                    Console.WriteLine($"⚠️  Graceful shutdown not supported on this platform, using hard termination...");
+                                    process.Kill();
+                                    process.WaitForExit(5000);
+                                }
+                                
+                                Console.WriteLine($"✅ Process {processId} terminated");
+                                
+                                // Wait a moment for the port to be released
+                                await Task.Delay(1000);
+                                
+                                if (IsPortInUse(port))
+                                {
+                                    Console.WriteLine($"❌ Port {port} is still in use after terminating the process.");
+                                    Environment.Exit(1);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"❌ Failed to terminate process: {ex.Message}");
+                                Environment.Exit(1);
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Operation cancelled.");
+                            Environment.Exit(0);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"The port is being used by {processName} (PID: {processId}).");
+                        Console.WriteLine($"Please stop the process or use a different port with --port <port>");
+                        Environment.Exit(1);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Could not identify the process using port {port}.");
+                    Console.WriteLine($"Please stop the process or use a different port with --port <port>");
+                    Environment.Exit(1);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking port availability: {ex.Message}");
+                // Continue anyway - the port binding will fail later if there's a real conflict
+            }
+        }
+
+        private static bool IsPortInUse(int port)
+        {
+            try
+            {
+                using var tcpListener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, port);
+                tcpListener.Start();
+                tcpListener.Stop();
+                return false;
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                return true;
+            }
+        }
+
+        private static (string ProcessName, int ProcessId)? GetProcessUsingPort(int port)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = OperatingSystem.IsWindows() ? "netstat" : "lsof",
+                    Arguments = OperatingSystem.IsWindows() ? "-ano" : $"-i :{port}",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process == null) return null;
+
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+
+                if (OperatingSystem.IsWindows())
+                {
+                    return ParseWindowsNetstatOutput(output, port);
+                }
+                else
+                {
+                    // Unix-like systems - parse lsof output
+                    // Format: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
+                    var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var line in lines.Skip(1)) // Skip header
+                    {
+                        var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length > 1 && int.TryParse(parts[1], out var pid))
+                        {
+                            try
+                            {
+                                var proc = Process.GetProcessById(pid);
+                                return (proc.ProcessName, pid);
+                            }
+                            catch
+                            {
+                                // Process might have exited
+                            }
+                        }
+                    }
+                    return null;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static (string ProcessName, int ProcessId)? ParseWindowsNetstatOutput(string output, int port)
+        {
+            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                if (line.Contains($":{port} ") && line.Contains("LISTENING"))
+                {
+                    var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 4 && int.TryParse(parts[^1], out var pid))
+                    {
+                        try
+                        {
+                            var process = Process.GetProcessById(pid);
+                            return (process.ProcessName, pid);
+                        }
+                        catch
+                        {
+                            // Process might have exited
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static bool TryGracefulShutdown(Process process)
+        {
+            try
+            {
+                // Check if the process is still running
+                if (process.HasExited)
+                    return true;
+
+                // Try different approaches based on the platform
+                if (OperatingSystem.IsWindows())
+                {
+                    // On Windows, try to send Ctrl+C signal
+                    return TryWindowsGracefulShutdown(process);
+                }
+                else
+                {
+                    // On Unix-like systems (macOS, Linux), send SIGTERM first, then SIGINT
+                    return TryUnixGracefulShutdown(process);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryWindowsGracefulShutdown(Process process)
+        {
+            try
+            {
+                // On Windows, we can try to close the main window first
+                if (!process.HasExited && process.MainWindowHandle != IntPtr.Zero)
+                {
+                    process.CloseMainWindow();
+                    return true;
+                }
+                
+                // Fallback: Windows doesn't have a direct equivalent to SIGINT for arbitrary processes
+                // We'll return false to indicate graceful shutdown isn't available
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryUnixGracefulShutdown(Process process)
+        {
+            try
+            {
+                // Use kill command to send SIGTERM (15) first, which is more graceful than SIGKILL
+                var killProcess = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "kill",
+                    Arguments = $"-TERM {process.Id}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                
+                killProcess?.WaitForExit();
+                return killProcess?.ExitCode == 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Initializes all data loading, cache extraction, and services before setting up middlewares
+        /// </summary>
+        private Task<(ConfigurationManager configManager, DataAnalysisService analysisService, RunHistoryData currentData, string spriteCacheDirectory)> InitializeDataAndServices(FileInfo? saveFile)
+        {
+            // Initialize services
+            var configManager = new ConfigurationManager();
+            var analysisService = new DataAnalysisService(configManager);
+
+            // Ensure Peglin data is extracted before starting web server
+            var peglinPath = configManager.GetEffectivePeglinPath(null, false);
+            if (!string.IsNullOrEmpty(peglinPath))
+            {
+                Console.WriteLine("🔍 Checking Peglin data extraction status...");
+                if (Core.PeglinDataExtractor.IsExtractionNeeded(peglinPath))
+                {
+                    Console.WriteLine("📥 Extracting Peglin data (this may take a moment)...");
+                    var extractionResult = Core.PeglinDataExtractor.ExtractPeglinData(peglinPath, Core.PeglinDataExtractor.ExtractionType.All);
+                    
+                    if (extractionResult.Success)
+                    {
+                        if (extractionResult.UsedCache)
+                        {
+                            Console.WriteLine("✅ Peglin data is up to date");
+                        }
+                        else
+                        {
+                            var totalItems = extractionResult.ExtractedCounts.Sum(kvp => kvp.Value);
+                            Console.WriteLine($"✅ Extracted {totalItems} items in {extractionResult.Duration.TotalSeconds:F1}s");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"⚠️ Data extraction failed: {extractionResult.ErrorMessage}");
+                        Console.WriteLine("Web server will start, but some features may not work properly.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("✅ Peglin data is up to date");
+                }
+            }
+            else
+            {
+                Console.WriteLine("⚠️ No Peglin installation detected. Some features may not work properly.");
+                Console.WriteLine("Use 'peglin-save-explorer extract --peglin-path /path/to/peglin' to extract game data.");
+            }
+
+            // Load run data from save files
+            var currentData = new RunHistoryData();
+            FileInfo? effectiveFile = saveFile;
+            if (effectiveFile == null)
+            {
+                // Try to get default save file from configuration
+                var defaultPath = configManager.GetEffectiveSaveFilePath();
+                if (!string.IsNullOrEmpty(defaultPath) && File.Exists(defaultPath))
+                {
+                    effectiveFile = new FileInfo(defaultPath);
+                    Console.WriteLine($"Loading data from default save file: {defaultPath}");
+                }
+            }
+            
+            if (effectiveFile != null && effectiveFile.Exists)
+            {
+                currentData = analysisService.LoadCompleteRunData(effectiveFile);
+            }
+
+            // Get sprite cache directory path
+            var spriteCacheDirectory = Data.SpriteCacheManager.GetSpriteCacheDirectory();
+
+            // Log data loading results
+            Console.WriteLine($"🗂️ Data initialization complete:");
+            Console.WriteLine($"   • Sprite cache: {(Directory.Exists(spriteCacheDirectory) ? "✅ Available" : "❌ Not found")}");
+            Console.WriteLine($"   • Entity cache: {(Data.EntityCacheManager.GetCachedRelics().Count > 0 ? "✅ Available" : "❌ Empty")} ({Data.EntityCacheManager.GetCachedRelics().Count} relics)");
+            Console.WriteLine($"   • Run data: {(currentData.TotalRuns > 0 ? "✅ Loaded" : "❌ None")} ({currentData.TotalRuns} runs)");
+
+            return Task.FromResult((configManager, analysisService, currentData, spriteCacheDirectory));
+        }
     }
 
     public class UpdateCruciballRequest
     {
         public string CharacterClass { get; set; } = "";
         public int CruciballLevel { get; set; }
+    }
+
+    public class ClassActionRequest
+    {
+        public string ClassName { get; set; } = "";
+    }
+
+    public class SetCruciballRequest
+    {
+        public int Level { get; set; }
     }
 }

@@ -30,7 +30,7 @@ namespace peglin_save_explorer.Core
                     Logger.Error("Please specify a save file with -f or configure a default in settings.");
                     return null;
                 }
-                Program.WriteToConsole($"Using default save file: {filePath}");
+                Logger.Info($"Using default save file: {filePath}");
             }
 
             if (!File.Exists(filePath))
@@ -82,7 +82,7 @@ namespace peglin_save_explorer.Core
                     return false;
                 }
 
-                Program.WriteToConsole($"Setting cruciball level for {characterClass} to {cruciballLevel}...");
+                Logger.Info($"Setting cruciball level for {characterClass} to {cruciballLevel}...");
 
                 // First, discover the correct save data types from the assembly
                 var peglinPath = configManager.GetEffectivePeglinPath();
@@ -341,12 +341,12 @@ namespace peglin_save_explorer.Core
                 // Create backup before writing
                 var backupPath = saveFilePath + ".backup_cruciball";
                 File.Copy(saveFilePath, backupPath, true);
-                Program.WriteToConsole($"Created backup: {backupPath}");
+                Logger.Info($"Created backup: {backupPath}");
 
                 // Write the updated save data
                 File.WriteAllBytes(saveFilePath, updatedSaveData);
-                Program.WriteToConsole($"Successfully updated {characterClass} cruciball level to {cruciballLevel}.");
-                Program.WriteToConsole("Save file has been modified. Restart Peglin to see the changes.");
+                Logger.Info($"Successfully updated {characterClass} cruciball level to {cruciballLevel}.");
+                Logger.Info("Save file has been modified. Restart Peglin to see the changes.");
                 
                 return true;
             }
@@ -376,97 +376,12 @@ namespace peglin_save_explorer.Core
                     }
                     return false;
                 }
-                
-                Logger.Verbose($"✓ Successfully cast to dictionary with {dict.Count} keys");
-                Logger.Verbose("Dictionary keys:");
-                foreach (var key in dict.Keys.Cast<object>().Take(10))
-                {
-                    Logger.Verbose($"  - {key}");
-                }
 
-                // Look for CruciballManagerSaveData in the dictionary
-                object? cruciballManagerItem = null;
-                string? cruciballKey = null;
-                
-                foreach (var key in dict.Keys.Cast<object>())
-                {
-                    var keyStr = key?.ToString() ?? "";
-                    if (keyStr.Contains("CruciballManager", StringComparison.OrdinalIgnoreCase))
-                    {
-                        cruciballManagerItem = dict[key];
-                        cruciballKey = keyStr;
-                        break;
-                    }
-                }
-
-                if (cruciballManagerItem == null)
-                {
-                    Logger.Info("CruciballManagerSaveData not found in current save data.");
-                    Logger.Info("This is expected for persistent save files - cruciball data is stored per-run.");
-                    Logger.Info("Attempting to update permanent cruciball unlock data instead...");
-                    
-                    // Try to update cruciball data in PersistentPlayerSaveData first, then PermanentStats
-                    return UpdateCruciballInPersistentData(dict, classIndex, cruciballLevel, className);
-                }
-
-                Program.WriteToConsole($"Found cruciball data under key: {cruciballKey}");
-
-                // Get the Value field from the Item<T> wrapper
-                var valueField = cruciballManagerItem.GetType().GetField("Value", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (valueField == null)
-                {
-                    Program.WriteToConsole("Error: Could not find Value field in CruciballManager item.");
-                    return false;
-                }
-
-                var cruciballManagerData = valueField.GetValue(cruciballManagerItem);
-                if (cruciballManagerData == null)
-                {
-                    Program.WriteToConsole("Error: CruciballManager Value is null.");
-                    return false;
-                }
-
-                // Look for the cruciball level field (_cruciballLevel) and class field (_class)
-                var cruciballLevelField = cruciballManagerData.GetType().GetField("_cruciballLevel", 
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                var classField = cruciballManagerData.GetType().GetField("_class", 
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                
-                if (cruciballLevelField == null)
-                {
-                    Program.WriteToConsole("Error: Could not find _cruciballLevel field in CruciballManagerSaveData.");
-                    var fields = cruciballManagerData.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    Program.WriteToConsole("Available fields:");
-                    foreach (var field in fields)
-                    {
-                        Program.WriteToConsole($"  - {field.FieldType.Name} {field.Name}");
-                    }
-                    return false;
-                }
-
-                if (classField == null)
-                {
-                    Program.WriteToConsole("Error: Could not find _class field in CruciballManagerSaveData.");
-                    return false;
-                }
-
-                // Get current values
-                var currentLevel = cruciballLevelField.GetValue(cruciballManagerData);
-                var currentClass = classField.GetValue(cruciballManagerData);
-                
-                Program.WriteToConsole($"Current cruciball data - Level: {currentLevel}, Class: {currentClass}");
-                
-                // Update the values
-                cruciballLevelField.SetValue(cruciballManagerData, cruciballLevel);
-                classField.SetValue(cruciballManagerData, classIndex);
-                
-                Program.WriteToConsole($"Updated cruciball data - Level: {cruciballLevel}, Class: {classIndex} ({className})");
-                
-                return true;
+                return UpdateCruciballInPersistentData(dict, classIndex, cruciballLevel, className);
             }
             catch (Exception ex)
             {
-                Program.WriteToConsole($"Error updating cruciball in deserialized data: {ex.Message}");
+                Logger.Error($"Error updating cruciball in deserialized data: {ex.Message}");
                 return false;
             }
         }
@@ -475,12 +390,12 @@ namespace peglin_save_explorer.Core
         {
             try
             {
-                Program.WriteToConsole("=== COMPREHENSIVE SAVE FILE ANALYSIS ===");
-                Program.WriteToConsole($"Analyzing: {saveFilePath}");
+                Logger.Verbose("=== COMPREHENSIVE SAVE FILE ANALYSIS ===");
+                Logger.Verbose($"Analyzing: {saveFilePath}");
                 
                 // Read and deserialize the save file
                 var saveData = File.ReadAllBytes(saveFilePath);
-                Program.WriteToConsole($"Save file size: {saveData.Length} bytes");
+                Logger.Verbose($"Save file size: {saveData.Length} bytes");
                 
                 // Deserialize with Unity context
                 DeserializationContext deserializationContext = new DeserializationContext();
@@ -489,31 +404,31 @@ namespace peglin_save_explorer.Core
                 var deserializedData = SerializationUtility.DeserializeValue<object>(new MemoryStream(saveData), DataFormat.Binary, deserializationContext);
                 if (deserializedData == null)
                 {
-                    Program.WriteToConsole("❌ Failed to deserialize save file");
+                    Logger.Error("❌ Failed to deserialize save file");
                     return;
                 }
                 
-                Program.WriteToConsole($"✓ Deserialized as: {deserializedData.GetType().FullName}");
+                Logger.Verbose($"✓ Deserialized as: {deserializedData.GetType().FullName}");
                 
                 if (deserializedData is System.Collections.IDictionary dict)
                 {
-                    Program.WriteToConsole($"\n=== TOP-LEVEL DICTIONARY ({dict.Count} keys) ===");
+                    Logger.Verbose($"TOP-LEVEL DICTIONARY ({dict.Count} keys)");
                     foreach (var key in dict.Keys.Cast<object>())
                     {
                         var value = dict[key];
-                        Program.WriteToConsole($"Key: {key}");
-                        Program.WriteToConsole($"  Type: {value?.GetType().FullName ?? "null"}");
+                        Logger.Verbose($"Key: {key}");
+                        Logger.Verbose($"  Type: {value?.GetType().FullName ?? "null"}");
                         
                         // Deep dive into each major section
                         AnalyzeDataSection(key.ToString(), value, 1);
                     }
                 }
                 
-                Program.WriteToConsole("\n=== ANALYSIS COMPLETE ===");
+                Logger.Verbose("ANALYSIS COMPLETE");
             }
             catch (Exception ex)
             {
-                Program.WriteToConsole($"❌ Analysis failed: {ex.Message}");
+                Logger.Error($"❌ Analysis failed: {ex.Message}");
             }
         }
         
@@ -523,15 +438,15 @@ namespace peglin_save_explorer.Core
             
             if (data == null)
             {
-                Program.WriteToConsole($"{indent}└─ null");
+                Logger.Verbose($"{indent}└─ null");
                 return;
             }
             
-            Program.WriteToConsole($"{indent}└─ {data.GetType().Name}");
+            Logger.Verbose($"{indent}└─ {data.GetType().Name}");
             
             if (depth > 3) // Prevent infinite recursion
             {
-                Program.WriteToConsole($"{indent}   (max depth reached)");
+                Logger.Verbose($"{indent}   (max depth reached)");
                 return;
             }
             
@@ -540,7 +455,7 @@ namespace peglin_save_explorer.Core
             if (valueField != null)
             {
                 var innerValue = valueField.GetValue(data);
-                Program.WriteToConsole($"{indent}  ├─ Contains Value field:");
+                Logger.Verbose($"{indent}  ├─ Contains Value field:");
                 AnalyzeDataSection("Value", innerValue, depth + 1);
                 return;
             }
@@ -550,17 +465,17 @@ namespace peglin_save_explorer.Core
             
             if (fields.Length > 0)
             {
-                Program.WriteToConsole($"{indent}  ├─ Fields ({fields.Length}):");
+                Logger.Verbose($"{indent}  ├─ Fields ({fields.Length}):");
                 foreach (var field in fields.Take(20)) // Limit to first 20 fields
                 {
                     var fieldValue = field.GetValue(data);
                     string valueStr = FormatFieldValue(fieldValue);
-                    Program.WriteToConsole($"{indent}    ├─ {field.FieldType.Name} {field.Name} = {valueStr}");
+                    Logger.Verbose($"{indent}    ├─ {field.FieldType.Name} {field.Name} = {valueStr}");
                     
                     // Special analysis for important fields
                     if (IsImportantField(field.Name))
                     {
-                        Program.WriteToConsole($"{indent}      ★ IMPORTANT FIELD ★");
+                        Logger.Verbose($"{indent}      ★ IMPORTANT FIELD ★");
                         if (fieldValue != null && depth < 3)
                         {
                             AnalyzeDataSection(field.Name, fieldValue, depth + 2);
@@ -570,23 +485,23 @@ namespace peglin_save_explorer.Core
                 
                 if (fields.Length > 20)
                 {
-                    Program.WriteToConsole($"{indent}    └─ ... and {fields.Length - 20} more fields");
+                    Logger.Verbose($"{indent}    └─ ... and {fields.Length - 20} more fields");
                 }
             }
             
             // Analyze arrays/collections
             if (data is Array array)
             {
-                Program.WriteToConsole($"{indent}  ├─ Array[{array.Length}]:");
+                Logger.Verbose($"{indent}  ├─ Array[{array.Length}]:");
                 for (int i = 0; i < Math.Min(array.Length, 5); i++)
                 {
                     var item = array.GetValue(i);
                     string valueStr = FormatFieldValue(item);
-                    Program.WriteToConsole($"{indent}    [{i}] = {valueStr}");
+                    Logger.Verbose($"{indent}    [{i}] = {valueStr}");
                 }
                 if (array.Length > 5)
                 {
-                    Program.WriteToConsole($"{indent}    ... and {array.Length - 5} more items");
+                    Logger.Verbose($"{indent}    ... and {array.Length - 5} more items");
                 }
             }
         }
@@ -615,7 +530,7 @@ namespace peglin_save_explorer.Core
         private static bool UpdateCruciballInPersistentData(System.Collections.IDictionary dict, int classIndex, int cruciballLevel, string className)
         {
             // First check PersistentPlayerSaveData
-            Program.WriteToConsole("Checking PersistentPlayerSaveData for cruciball data...");
+            Logger.Info("Checking PersistentPlayerSaveData for cruciball data...");
             if (dict.Contains("PersistentPlayerSaveData"))
             {
                 var persistentPlayerItem = dict["PersistentPlayerSaveData"];
@@ -627,11 +542,11 @@ namespace peglin_save_explorer.Core
                         var persistentPlayerData = valueField.GetValue(persistentPlayerItem);
                         if (persistentPlayerData != null)
                         {
-                            Program.WriteToConsole("Examining PersistentPlayerSaveData structure:");
+                            Logger.Verbose("Examining PersistentPlayerSaveData structure:");
                             var fields = persistentPlayerData.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                             
                             // First, show ALL fields to understand what might be getting corrupted
-                            Program.WriteToConsole("=== ALL FIELDS IN PersistentPlayerSaveData ===");
+                            Logger.Verbose("=== ALL FIELDS IN PersistentPlayerSaveData ===");
                             foreach (var field in fields)
                             {
                                 var fieldValue = field.GetValue(persistentPlayerData);
@@ -644,9 +559,9 @@ namespace peglin_save_explorer.Core
                                 {
                                     valueDescription = valueDescription.Substring(0, 50) + "...";
                                 }
-                                Program.WriteToConsole($"  - {field.FieldType.Name} {field.Name} = {valueDescription}");
+                                Logger.Verbose($"  - {field.FieldType.Name} {field.Name} = {valueDescription}");
                             }
-                            Program.WriteToConsole("=== END ALL FIELDS ===");
+                            Logger.Verbose("=== END ALL FIELDS ===");
                             
                             foreach (var field in fields.Take(20))
                             {
@@ -656,21 +571,21 @@ namespace peglin_save_explorer.Core
                                     field.Name.Contains("unlock", StringComparison.OrdinalIgnoreCase) ||
                                     field.Name.Contains("level", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    Program.WriteToConsole($"    *** POTENTIAL CRUCIBALL FIELD: {field.FieldType.Name} {field.Name} ***");
+                                    Logger.Verbose($"    *** POTENTIAL CRUCIBALL FIELD: {field.FieldType.Name} {field.Name} ***");
                                     
                                     var fieldValue = field.GetValue(persistentPlayerData);
                                     if (fieldValue != null)
                                     {
-                                        Program.WriteToConsole($"    Current value: {fieldValue}");
-                                        Program.WriteToConsole($"    Type: {fieldValue.GetType().Name}");
+                                        Logger.Verbose($"    Current value: {fieldValue}");
+                                        Logger.Verbose($"    Type: {fieldValue.GetType().Name}");
                                         
                                         // If it's an array, show its contents
                                         if (fieldValue is Array array)
                                         {
-                                            Program.WriteToConsole($"    Array length: {array.Length}");
+                                            Logger.Verbose($"    Array length: {array.Length}");
                                             for (int i = 0; i < Math.Min(array.Length, 10); i++)
                                             {
-                                                Program.WriteToConsole($"      [{i}]: {array.GetValue(i)}");
+                                                Logger.Verbose($"      [{i}]: {array.GetValue(i)}");
                                             }
                                             
                                             // Try to update if this looks like a cruciball levels array
@@ -679,24 +594,24 @@ namespace peglin_save_explorer.Core
                                                 array.Length >= 4 && classIndex < array.Length)
                                             {
                                                 var currentValue = array.GetValue(classIndex);
-                                                Program.WriteToConsole($"    Current {className} value: {currentValue}");
+                                                Logger.Info($"    Current {className} value: {currentValue}");
                                                 
                                                 // Update the value
                                                 array.SetValue(cruciballLevel, classIndex);
-                                                Program.WriteToConsole($"    Updated {className} cruciball level to {cruciballLevel} in field {field.Name}");
+                                                Logger.Info($"    Updated {className} cruciball level to {cruciballLevel} in field {field.Name}");
                                                 return true;
                                             }
                                         }
                                     }
                                     else if (field.FieldType.IsArray && field.FieldType.GetElementType() == typeof(int))
                                     {
-                                        Program.WriteToConsole($"    Field is null, but is an int array type");
+                                        Logger.Verbose($"    Field is null, but is an int array type");
                                         
                                         // Check if this is a cruciball-related field that we should initialize
                                         if (field.Name.Contains("cruciball", StringComparison.OrdinalIgnoreCase) ||
                                             field.Name.Contains("CruciballLevel", StringComparison.OrdinalIgnoreCase))
                                         {
-                                            Program.WriteToConsole($"    WARNING: {field.Name} is null - this may indicate the save hasn't unlocked cruciball yet");
+                                            Logger.Verbose($"    WARNING: {field.Name} is null - this may indicate the save hasn't unlocked cruciball yet");
                                             
                                             // Check if this appears to be a completely fresh save
                                             var allFields = persistentPlayerData.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -709,13 +624,13 @@ namespace peglin_save_explorer.Core
                                             
                                             if (appearsFreshSave)
                                             {
-                                                Program.WriteToConsole($"    ⚠️  SAFETY CHECK: This appears to be a fresh save (all progression arrays are null)");
-                                                Program.WriteToConsole($"    For safety, we'll skip modifying cruciball data to avoid inconsistent save state.");
-                                                Program.WriteToConsole($"    Recommendation: Play the game for a bit first to initialize save progression, then try again.");
+                                                Logger.Warning($"    ⚠️  SAFETY CHECK: This appears to be a fresh save (all progression arrays are null)");
+                                                Logger.Warning($"    For safety, we'll skip modifying cruciball data to avoid inconsistent save state.");
+                                                Logger.Warning($"    Recommendation: Play the game for a bit first to initialize save progression, then try again.");
                                                 return false;
                                             }
                                             
-                                            Program.WriteToConsole($"    Save appears to have progression data - proceeding with cruciball modification...");
+                                            Logger.Info($"    Save appears to have progression data - proceeding with cruciball modification...");
                                             
                                             try
                                             {
@@ -734,18 +649,18 @@ namespace peglin_save_explorer.Core
                                                 var verifyArray = field.GetValue(persistentPlayerData) as int[];
                                                 if (verifyArray != null && verifyArray[classIndex] == cruciballLevel)
                                                 {
-                                                    Program.WriteToConsole($"    ✓ Successfully created and updated {className} cruciball level to {cruciballLevel} in field {field.Name}");
+                                                    Logger.Verbose($"Successfully created and updated {className} cruciball level to {cruciballLevel} in field {field.Name}");
                                                     return true;
                                                 }
                                                 else
                                                 {
-                                                    Program.WriteToConsole($"    ✗ Failed to verify array update");
+                                                    Logger.Warning($"Failed to verify array update");
                                                     return false;
                                                 }
                                             }
                                             catch (Exception ex)
                                             {
-                                                Program.WriteToConsole($"    ✗ Failed to initialize array: {ex.Message}");
+                                                Logger.Error($"Failed to initialize array: {ex.Message}");
                                                 return false;
                                             }
                                         }
@@ -758,7 +673,7 @@ namespace peglin_save_explorer.Core
             }
             
             // Fall back to PermanentStats if nothing found in PersistentPlayerSaveData
-            Program.WriteToConsole("\nNo cruciball data found in PersistentPlayerSaveData, checking PermanentStats...");
+            Logger.Info("No cruciball data found in PersistentPlayerSaveData, checking PermanentStats...");
             return UpdateCruciballUnlockInPermanentStats(dict, classIndex, cruciballLevel, className);
         }
 
@@ -769,14 +684,14 @@ namespace peglin_save_explorer.Core
                 // Find PermanentStats in the dictionary
                 if (!dict.Contains("PermanentStats"))
                 {
-                    Program.WriteToConsole("Error: Could not find PermanentStats in save data.");
+                    Logger.Error("Could not find PermanentStats in save data.");
                     return false;
                 }
 
                 var permanentStatsItem = dict["PermanentStats"];
                 if (permanentStatsItem == null)
                 {
-                    Program.WriteToConsole("Error: PermanentStats is null.");
+                    Logger.Error("PermanentStats is null.");
                     return false;
                 }
 
@@ -784,14 +699,14 @@ namespace peglin_save_explorer.Core
                 var valueField = permanentStatsItem.GetType().GetField("Value", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (valueField == null)
                 {
-                    Program.WriteToConsole("Error: Could not find Value field in PermanentStats item.");
+                    Logger.Error("Could not find Value field in PermanentStats item.");
                     return false;
                 }
 
                 var permanentStatsData = valueField.GetValue(permanentStatsItem);
                 if (permanentStatsData == null)
                 {
-                    Program.WriteToConsole("Error: PermanentStats Value is null.");
+                    Logger.Error("PermanentStats Value is null.");
                     return false;
                 }
 
@@ -814,14 +729,14 @@ namespace peglin_save_explorer.Core
 
                 if (cruciballField == null)
                 {
-                    Program.WriteToConsole("Warning: No cruciball tracking field found in PermanentStats.");
-                    Program.WriteToConsole("This save file may not have cruciball progression unlocked yet.");
-                    Program.WriteToConsole("Creating a temporary cruciball level indicator...");
+                    Logger.Warning("No cruciball tracking field found in PermanentStats.");
+                    Logger.Info("This save file may not have cruciball progression unlocked yet.");
+                    Logger.Info("Creating a temporary cruciball level indicator...");
                     
                     // For now, we can't dynamically add fields, but we can note the limitation
-                    Program.WriteToConsole($"Would set {className} (index {classIndex}) cruciball unlock level to {cruciballLevel}");
-                    Program.WriteToConsole("Note: This change affects only the current run cruciball level in active games.");
-                    Program.WriteToConsole("Persistent cruciball unlocks require the game to have cruciball progression available.");
+                    Logger.Info($"Would set {className} (index {classIndex}) cruciball unlock level to {cruciballLevel}");
+                    Logger.Info("Note: This change affects only the current run cruciball level in active games.");
+                    Logger.Info("Persistent cruciball unlocks require the game to have cruciball progression available.");
                     return false;
                 }
 
@@ -836,7 +751,7 @@ namespace peglin_save_explorer.Core
                         cruciballArray[i] = -1; // Initialize with -1 like Peglin's DataSerializer
                     }
                     cruciballField.SetValue(permanentStatsData, cruciballArray);
-                    Program.WriteToConsole("Created new cruciball unlock array in PermanentStats (initialized with -1 values like Peglin).");
+                    Logger.Info("Created new cruciball unlock array in PermanentStats (initialized with -1 values like Peglin).");
                 }
 
                 // Ensure array is large enough
@@ -850,17 +765,17 @@ namespace peglin_save_explorer.Core
 
                 // Get current value
                 var currentValue = cruciballArray[classIndex];
-                Program.WriteToConsole($"Current {className} cruciball unlock level: {currentValue}");
+                Logger.Verbose($"Current {className} cruciball unlock level: {currentValue}");
 
                 // Update the cruciball unlock level
                 cruciballArray[classIndex] = cruciballLevel;
                 
-                Program.WriteToConsole($"Updated {className} cruciball unlock level to {cruciballLevel}.");
+                Logger.Info($"Updated {className} cruciball unlock level to {cruciballLevel}.");
                 return true;
             }
             catch (Exception ex)
             {
-                Program.WriteToConsole($"Error updating cruciball unlock in PermanentStats: {ex.Message}");
+                Logger.Error($"Error updating cruciball unlock in PermanentStats: {ex.Message}");
                 return false;
             }
         }
@@ -900,44 +815,44 @@ namespace peglin_save_explorer.Core
             try
             {
                 var dataType = data.GetType();
-                Program.WriteToConsole($"Debug [{label}]: Type = {dataType.FullName}");
+                Logger.Verbose($"Debug [{label}]: Type = {dataType.FullName}");
                 
                 if (data is System.Collections.IDictionary dict)
                 {
-                    Program.WriteToConsole($"Debug [{label}]: Dictionary with {dict.Count} entries:");
+                    Logger.Verbose($"Debug [{label}]: Dictionary with {dict.Count} entries:");
                     int count = 0;
                     foreach (var key in dict.Keys)
                     {
                         if (count >= 5) // Limit output
                         {
-                            Program.WriteToConsole($"Debug [{label}]: ... and {dict.Count - 5} more entries");
+                            Logger.Verbose($"Debug [{label}]: ... and {dict.Count - 5} more entries");
                             break;
                         }
                         var value = dict[key];
                         var valueType = value?.GetType()?.Name ?? "null";
-                        Program.WriteToConsole($"Debug [{label}]:   [{key}] => {valueType}");
+                        Logger.Verbose($"Debug [{label}]:   [{key}] => {valueType}");
                         count++;
                     }
                 }
                 else
                 {
-                    Program.WriteToConsole($"Debug [{label}]: Object fields:");
+                    Logger.Verbose($"Debug [{label}]: Object fields:");
                     var fields = dataType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                     foreach (var field in fields.Take(10)) // Limit output
                     {
                         var value = field.GetValue(data);
                         var valueType = value?.GetType()?.Name ?? "null";
-                        Program.WriteToConsole($"Debug [{label}]:   {field.Name} => {valueType}");
+                        Logger.Verbose($"Debug [{label}]:   {field.Name} => {valueType}");
                     }
                     if (fields.Length > 10)
                     {
-                        Program.WriteToConsole($"Debug [{label}]: ... and {fields.Length - 10} more fields");
+                        Logger.Verbose($"Debug [{label}]: ... and {fields.Length - 10} more fields");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Program.WriteToConsole($"Debug [{label}]: Error dumping structure: {ex.Message}");
+                Logger.Verbose($"Debug [{label}]: Error dumping structure: {ex.Message}");
             }
         }
 
@@ -983,7 +898,7 @@ namespace peglin_save_explorer.Core
 
                 if (permanentStats == null)
                 {
-                    Program.WriteToConsole("Error: Could not find PermanentStats in save data.");
+                    Logger.Error("Could not find PermanentStats in save data.");
                     return false;
                 }
 
@@ -996,7 +911,7 @@ namespace peglin_save_explorer.Core
                     // Create new cruciball per class array (assuming 4 classes: 0-3)
                     cruciballPerClass = new JArray(new int[4]);
                     permanentStats[cruciballPerClassKey] = cruciballPerClass;
-                    Program.WriteToConsole("Created new cruciballPerClass array in PermanentStats.");
+                    Logger.Info("Created new cruciballPerClass array in PermanentStats.");
                 }
 
                 if (cruciballPerClass is JArray cruciballArray)
@@ -1010,18 +925,18 @@ namespace peglin_save_explorer.Core
                     // Update the cruciball level for the specified class
                     cruciballArray[classIndex] = cruciballLevel;
                     
-                    Program.WriteToConsole($"Updated cruciball level for class {characterClass} (index {classIndex}) to {cruciballLevel}.");
+                    Logger.Info($"Updated cruciball level for class {characterClass} (index {classIndex}) to {cruciballLevel}.");
                     return true;
                 }
                 else
                 {
-                    Program.WriteToConsole("Error: cruciballPerClass is not an array.");
+                    Logger.Error("cruciballPerClass is not an array.");
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                Program.WriteToConsole($"Error updating cruciball in save data: {ex.Message}");
+                Logger.Error($"Error updating cruciball in save data: {ex.Message}");
                 return false;
             }
         }
@@ -1091,7 +1006,7 @@ namespace peglin_save_explorer.Core
             }
             catch (Exception ex)
             {
-                Program.WriteToConsole($"Error loading cruciball levels: {ex.Message}");
+                Logger.Error($"Error loading cruciball levels: {ex.Message}");
             }
 
             return cruciballLevels;
