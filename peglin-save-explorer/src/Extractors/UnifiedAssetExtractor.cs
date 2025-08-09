@@ -212,6 +212,11 @@ namespace peglin_save_explorer.Extractors
                     {
                         gameObjectCount++;
                         Logger.Debug($"🎮 Processing GameObject: {gameObject.Name} (PathID: {gameObject.PathID})");
+                        // Add special logging for doctorb
+                        if (gameObject.Name.String.Contains("doctorb", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.Info($"🔍🔍🔍 DOCTORB FOUND: Processing GameObject {gameObject.Name} (PathID: {gameObject.PathID})");
+                        }
                         ProcessGameObjectForOrbs(gameObject, componentMap, result, orbSpriteRefs, collection);
                         processedGameObjects++;
                     }
@@ -1022,8 +1027,16 @@ namespace peglin_save_explorer.Extractors
                 return false;
             }
             
+            // If we have 4+ required fields, it's definitely an orb (like doctorb)
+            if (requiredFieldCount >= 4)
+            {
+                Logger.Debug($"🔍 Strong match: {requiredFieldCount}/5 required orb fields found - definitely an orb!");
+                return true;
+            }
+            
+            // For 3 required fields, check for additional evidence
             // Check for attack-type specific fields that distinguish orb types
-            var attackTypeFields = new[] { "shotPrefab", "_shotPrefab", "_thunderPrefab", "_criticalShotPrefab", "_criticalThunderPrefab", "targetColumn", "verticalAttack" };
+            var attackTypeFields = new[] { "shotPrefab", "_shotPrefab", "_thunderPrefab", "_criticalShotPrefab", "_criticalThunderPrefab", "targetColumn", "verticalAttack", "targetingType" };
             var hasAttackTypeFields = attackTypeFields.Any(field => data.ContainsKey(field));
             
             // Check for MonoBehaviour script references that identify orb component types
@@ -1034,7 +1047,7 @@ namespace peglin_save_explorer.Extractors
             var isOrb = requiredFieldCount >= 3 && (hasAttackTypeFields || hasScriptRef);
             Logger.Debug($"🔍 IsOrb result: {isOrb} (required fields: {requiredFieldCount >= 3}, type indicators: {hasAttackTypeFields || hasScriptRef})");
             
-            // Must have both required fields and either attack-type fields or script reference
+            // Must have required fields and either be a strong match or have attack-type indicators
             return isOrb;
         }
 
@@ -1278,25 +1291,99 @@ namespace peglin_save_explorer.Extractors
                 }
 
                 // Extract damage values directly from data
-                if (data.TryGetValue("DamagePerPeg", out var damagePerPegValue) && 
-                    float.TryParse(damagePerPegValue?.ToString(), out var damageFloat))
+                if (data.TryGetValue("DamagePerPeg", out var damagePerPegValue))
                 {
-                    orb.DamagePerPeg = damageFloat;
+                    // Handle cases where value is already numeric or needs parsing
+                    if (damagePerPegValue is float floatDamage)
+                    {
+                        orb.DamagePerPeg = floatDamage;
+                    }
+                    else if (damagePerPegValue is double doubleDamage)
+                    {
+                        orb.DamagePerPeg = (float)doubleDamage;
+                    }
+                    else if (damagePerPegValue is int intDamage)
+                    {
+                        orb.DamagePerPeg = intDamage;
+                    }
+                    else if (float.TryParse(damagePerPegValue?.ToString(), out var parsedDamage))
+                    {
+                        orb.DamagePerPeg = parsedDamage;
+                    }
+                    else
+                    {
+                        // Handle SerializableValue objects from Unity serialization
+                        var damageStr = damagePerPegValue?.ToString() ?? "";
+                        if (damageStr.Contains("PValue ="))
+                        {
+                            // Extract PValue using regex from the string representation
+                            var match = System.Text.RegularExpressions.Regex.Match(damageStr, @"PValue = ([^,]+)");
+                            if (match.Success && float.TryParse(match.Groups[1].Value.Trim(), out var extractedDamage))
+                            {
+                                orb.DamagePerPeg = extractedDamage;
+                                Logger.Debug($"Extracted PValue {extractedDamage} from SerializableValue string for {assetName}");
+                            }
+                        }
+                    }
+                    
+                    // Log for doctorb debugging
+                    if (assetName?.Contains("doctorb", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        Logger.Info($"🎯 DOCTORB: DamagePerPeg raw value: {damagePerPegValue} (type: {damagePerPegValue?.GetType()?.Name}), extracted: {orb.DamagePerPeg}");
+                    }
                 }
 
-                if (data.TryGetValue("CritDamagePerPeg", out var critDamagePerPegValue) && 
-                    float.TryParse(critDamagePerPegValue?.ToString(), out var critDamageFloat))
+                if (data.TryGetValue("CritDamagePerPeg", out var critDamagePerPegValue))
                 {
-                    orb.CritDamagePerPeg = critDamageFloat;
+                    // Handle cases where value is already numeric or needs parsing
+                    if (critDamagePerPegValue is float floatCrit)
+                    {
+                        orb.CritDamagePerPeg = floatCrit;
+                    }
+                    else if (critDamagePerPegValue is double doubleCrit)
+                    {
+                        orb.CritDamagePerPeg = (float)doubleCrit;
+                    }
+                    else if (critDamagePerPegValue is int intCrit)
+                    {
+                        orb.CritDamagePerPeg = intCrit;
+                    }
+                    else if (float.TryParse(critDamagePerPegValue?.ToString(), out var parsedCrit))
+                    {
+                        orb.CritDamagePerPeg = parsedCrit;
+                    }
                 }
 
                 // Extract level from data (store in RawData for now since OrbData doesn't have Level property)
-                if (data.TryGetValue("Level", out var levelValue) && 
-                    int.TryParse(levelValue?.ToString(), out var level))
+                if (data.TryGetValue("Level", out var levelValue))
                 {
-                    // Store level info in RawData for future processing
-                    if (orb.RawData == null) orb.RawData = new Dictionary<string, object>();
-                    orb.RawData["Level"] = level;
+                    // Handle cases where value is already numeric or needs parsing
+                    int? extractedLevel = null;
+                    if (levelValue is int intLevel)
+                    {
+                        extractedLevel = intLevel;
+                    }
+                    else if (levelValue is long longLevel)
+                    {
+                        extractedLevel = (int)longLevel;
+                    }
+                    else if (int.TryParse(levelValue?.ToString(), out var parsedLevel))
+                    {
+                        extractedLevel = parsedLevel;
+                    }
+                    
+                    if (extractedLevel.HasValue)
+                    {
+                        // Store level info in RawData for future processing
+                        if (orb.RawData == null) orb.RawData = new Dictionary<string, object>();
+                        orb.RawData["Level"] = extractedLevel.Value;
+                        
+                        // Log for doctorb debugging
+                        if (assetName?.Contains("doctorb", StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            Logger.Info($"🎯 DOCTORB: Level raw value: {levelValue} (type: {levelValue?.GetType()?.Name}), extracted: {extractedLevel}");
+                        }
+                    }
                 }
 
                 // Determine orb type based on available fields  
@@ -1590,6 +1677,12 @@ namespace peglin_save_explorer.Extractors
         {
             try
             {
+                var isDoctorb = gameObject.Name.String.Contains("doctorb", StringComparison.OrdinalIgnoreCase);
+                if (isDoctorb)
+                {
+                    Logger.Info($"🎯🎯🎯 DOCTORB: Starting ProcessGameObjectForOrbs for {gameObject.Name}");
+                }
+                
                 var gameObjectData = new GameObjectData
                 {
                     Id = CleanEntityId(gameObject.Name),
@@ -1597,13 +1690,28 @@ namespace peglin_save_explorer.Extractors
                     PathID = gameObject.PathID
                 };
 
+                if (isDoctorb)
+                {
+                    Logger.Info($"🎯 DOCTORB: Extracting components from GameObject");
+                }
+                
                 // Extract components from the GameObject
                 ExtractGameObjectComponents(gameObject, componentMap, gameObjectData, collection);
 
                 // Check if this looks like an orb based on its components
+                if (isDoctorb)
+                {
+                    Logger.Info($"🎯 DOCTORB: Components found: {string.Join(", ", gameObjectData.Components.Select(c => c.Type))}");
+                    Logger.Info($"🎯 DOCTORB: RawData keys: {(gameObjectData.RawData != null ? string.Join(", ", ((Dictionary<string, object>)gameObjectData.RawData).Keys) : "null")}");
+                }
+                
                 Logger.Debug($"🔍 Checking if GameObject {gameObjectData.Name} is an orb. Components: {string.Join(", ", gameObjectData.Components.Select(c => c.Type))}");
                 if (IsOrbGameObject(gameObjectData))
                 {
+                    if (isDoctorb)
+                    {
+                        Logger.Info($"✅✅✅ DOCTORB: GameObject {gameObjectData.Name} identified as orb!");
+                    }
                     Logger.Debug($"✅ GameObject {gameObjectData.Name} identified as orb");
                     // Convert GameObject data to OrbData
                     var orbData = ConvertGameObjectToOrbData(gameObjectData);
@@ -1624,6 +1732,12 @@ namespace peglin_save_explorer.Extractors
                 }
                 else
                 {
+                    if (isDoctorb)
+                    {
+                        Logger.Info($"❌❌❌ DOCTORB: GameObject {gameObjectData.Name} REJECTED as orb! Why?");
+                        Logger.Info($"❌ DOCTORB: Name: {gameObjectData.Name}, Id: {gameObjectData.Id}");
+                        Logger.Info($"❌ DOCTORB: Component count: {gameObjectData.Components.Count}");
+                    }
                     Logger.Debug($"❌ GameObject {gameObjectData.Name} rejected as orb");
                 }
             }
@@ -1651,6 +1765,13 @@ namespace peglin_save_explorer.Extractors
                 // Fetch all components from the GameObject
                 var components = gameObject.FetchComponents();
                 var extractedComponentData = new Dictionary<string, object>();
+                var orbComponentsFound = new List<Dictionary<string, object>>();
+                
+                var isDoctorb = gameObject.Name.String.Contains("doctorb", StringComparison.OrdinalIgnoreCase);
+                if (isDoctorb)
+                {
+                    Logger.Info($"🔎 DOCTORB ExtractGameObjectComponents: Found {components.Count()} component references");
+                }
                 
                 foreach (var componentPtr in components)
                 {
@@ -1663,6 +1784,11 @@ namespace peglin_save_explorer.Extractors
                             // Handle MonoBehaviour components (orb data, etc.)
                             if (component is IMonoBehaviour monoBehaviour)
                             {
+                                if (isDoctorb)
+                                {
+                                    Logger.Info($"🔎 DOCTORB: Found MonoBehaviour component: {monoBehaviour.Name} (PathID: {monoBehaviour.PathID})");
+                                }
+                                
                                 // Load the structure data from the MonoBehaviour
                                 var structure = monoBehaviour.LoadStructure();
                                 if (structure != null)
@@ -1671,26 +1797,26 @@ namespace peglin_save_explorer.Extractors
                                     IUnityAssetBase? spriteRef = null;
                                     var componentData = ConvertStructureToDict(structure, collection, out spriteRef);
                                     
+                                    if (isDoctorb)
+                                    {
+                                        Logger.Info($"🔎 DOCTORB: MonoBehaviour data keys: {string.Join(", ", componentData.Keys.Take(10))}");
+                                    }
+                                    
                                     // Check if this is orb data
                                     if (IsOrbData(componentData))
                                     {
+                                        if (isDoctorb)
+                                        {
+                                            Logger.Info($"✅✅ DOCTORB: Found orb MonoBehaviour in GameObject {gameObject.Name}!");
+                                        }
                                         Logger.Debug($"✅ Found orb MonoBehaviour in GameObject {gameObject.Name}");
                                         
-                                        // Extract the orb data from this component
-                                        var orbData = ExtractOrb(gameObject.Name, componentData);
-                                        if (orbData != null)
-                                        {
-                                            // Merge the extracted orb data into the GameObject data
-                                            gameObjectData.Name = orbData.Name ?? gameObject.Name;
-                                            gameObjectData.RawData = orbData.RawData;
-                                            
-                                            // Store the extracted component data for later use
-                                            extractedComponentData["OrbComponent"] = componentData;
-                                            extractedComponentData["HasOrbData"] = true;
-                                            extractedComponentData["LocKey"] = orbData.LocKey;
-                                            extractedComponentData["DamagePerPeg"] = orbData.DamagePerPeg;
-                                            extractedComponentData["CritDamagePerPeg"] = orbData.CritDamagePerPeg;
-                                        }
+                                        // Collect all orb components for aggregation
+                                        orbComponentsFound.Add(componentData);
+                                    }
+                                    else if (isDoctorb)
+                                    {
+                                        Logger.Info($"❌ DOCTORB: MonoBehaviour NOT identified as orb data. Keys: {string.Join(", ", componentData.Keys)}");
                                     }
                                     
                                     // Store component info even if not orb data
@@ -1786,6 +1912,28 @@ namespace peglin_save_explorer.Extractors
                     }
                 }
                 
+                // Aggregate all orb components if we found multiple
+                if (orbComponentsFound.Count > 0)
+                {
+                    Logger.Debug($"🔄 Aggregating {orbComponentsFound.Count} orb components for GameObject {gameObject.Name}");
+                    
+                    // Create an aggregated orb data from all components
+                    var aggregatedOrbData = AggregateOrbComponents(gameObject.Name, orbComponentsFound);
+                    if (aggregatedOrbData != null)
+                    {
+                        gameObjectData.Name = aggregatedOrbData.Name ?? gameObject.Name;
+                        gameObjectData.RawData = aggregatedOrbData.RawData;
+                        
+                        // Store the aggregated component data
+                        extractedComponentData["OrbComponent"] = aggregatedOrbData.RawData;
+                        extractedComponentData["HasOrbData"] = true;
+                        extractedComponentData["LocKey"] = aggregatedOrbData.LocKey;
+                        extractedComponentData["DamagePerPeg"] = aggregatedOrbData.DamagePerPeg;
+                        extractedComponentData["CritDamagePerPeg"] = aggregatedOrbData.CritDamagePerPeg;
+                        extractedComponentData["ComponentCount"] = orbComponentsFound.Count;
+                    }
+                }
+                
                 // Store the extracted component data in RawData
                 if (extractedComponentData.Count > 0)
                 {
@@ -1809,6 +1957,61 @@ namespace peglin_save_explorer.Extractors
             {
                 Logger.Warning($"Error extracting components for {gameObject.Name}: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Aggregates multiple orb MonoBehaviour components into a single OrbData
+        /// </summary>
+        private OrbData? AggregateOrbComponents(string gameObjectName, List<Dictionary<string, object>> orbComponents)
+        {
+            if (orbComponents.Count == 0) return null;
+            
+            Logger.Debug($"🔀 Aggregating {orbComponents.Count} orb components for {gameObjectName}");
+            
+            // Start with an empty dictionary to aggregate all fields
+            var aggregatedData = new Dictionary<string, object>();
+            
+            // Merge all component data, later components can add to or override earlier ones
+            foreach (var component in orbComponents)
+            {
+                foreach (var kvp in component)
+                {
+                    // For nested dictionaries, merge them recursively
+                    if (kvp.Value is Dictionary<string, object> nestedDict && 
+                        aggregatedData.TryGetValue(kvp.Key, out var existingValue) &&
+                        existingValue is Dictionary<string, object> existingDict)
+                    {
+                        // Merge nested dictionaries
+                        foreach (var nestedKvp in nestedDict)
+                        {
+                            existingDict[nestedKvp.Key] = nestedKvp.Value;
+                        }
+                    }
+                    else
+                    {
+                        // For non-dictionary values or first occurrence, just set/override
+                        // Prioritize non-null values
+                        if (kvp.Value != null || !aggregatedData.ContainsKey(kvp.Key))
+                        {
+                            aggregatedData[kvp.Key] = kvp.Value;
+                        }
+                    }
+                }
+            }
+            
+            Logger.Debug($"📊 Aggregated data contains {aggregatedData.Count} fields from {orbComponents.Count} components");
+            
+            // Now extract an OrbData from the aggregated data
+            var orbData = ExtractOrb(gameObjectName, aggregatedData);
+            
+            if (orbData != null)
+            {
+                // Store the aggregated raw data
+                orbData.RawData = aggregatedData;
+                Logger.Debug($"✅ Successfully created aggregated OrbData for {gameObjectName} with {aggregatedData.Count} fields");
+            }
+            
+            return orbData;
         }
 
         /// <summary>
