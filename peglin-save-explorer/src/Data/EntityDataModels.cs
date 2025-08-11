@@ -43,6 +43,7 @@ namespace peglin_save_explorer.Data
         public string Name { get; set; } = "";
         public string Description { get; set; } = "";
         public string Effect { get; set; } = "";
+        public string? LocKey { get; set; } // Localization key
         public int RarityValue { get; set; }
         public string Rarity { get; set; } = "";  // Human-readable rarity name
         public Dictionary<string, object> RawData { get; set; } = new();
@@ -65,8 +66,10 @@ namespace peglin_save_explorer.Data
         public string Type { get; set; } = ""; // NORMAL, MINIBOSS, BOSS
         public string? Description { get; set; }
         public string? LocKey { get; set; }
+        public float? Health { get; set; } // Alias for MaxHealth
         public float? MaxHealth { get; set; }
         public float? MaxHealthCruciball { get; set; }
+        public float? AttackDamage { get; set; } // Generic attack damage
         public float? MeleeAttackDamage { get; set; }
         public float? RangedAttackDamage { get; set; }
         public string? Location { get; set; } // FOREST, CASTLE, MINES

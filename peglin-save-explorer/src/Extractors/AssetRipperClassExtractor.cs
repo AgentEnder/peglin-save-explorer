@@ -7,6 +7,7 @@ using AssetRipper.Import.Structure.Assembly.Serializable;
 using AssetRipper.SourceGenerated.Classes.ClassID_114;
 using Newtonsoft.Json;
 using peglin_save_explorer.Utils;
+using peglin_save_explorer.Services;
 
 namespace peglin_save_explorer.Extractors
 {
@@ -58,7 +59,7 @@ namespace peglin_save_explorer.Extractors
         {
             try
             {
-                var localizationService = Services.LocalizationService.Instance;
+                var localizationService = LocalizationService.Instance;
                 
                 if (!localizationService.EnsureLoaded())
                 {
@@ -69,7 +70,7 @@ namespace peglin_save_explorer.Extractors
                 // Try to resolve class name
                 if (!string.IsNullOrEmpty(classInfo.ClassNameLocKey))
                 {
-                    var displayName = localizationService.GetTranslation(classInfo.ClassNameLocKey);
+                    var displayName = localizationService.GetTranslation($"Classes/{classInfo.ClassNameLocKey}");
                     if (!string.IsNullOrEmpty(displayName))
                     {
                         classInfo.DisplayName = displayName;
@@ -80,7 +81,7 @@ namespace peglin_save_explorer.Extractors
                 // Try to resolve class description
                 if (!string.IsNullOrEmpty(classInfo.ClassDescriptionLocKey))
                 {
-                    var description = localizationService.GetTranslation(classInfo.ClassDescriptionLocKey);
+                    var description = localizationService.GetTranslation($"Classes/{classInfo.ClassDescriptionLocKey}");
                     if (!string.IsNullOrEmpty(description))
                     {
                         classInfo.Description = description;
@@ -91,7 +92,7 @@ namespace peglin_save_explorer.Extractors
                 // Try to resolve unlock method
                 if (!string.IsNullOrEmpty(classInfo.ClassUnlockMethodLocKey))
                 {
-                    var unlockMethod = localizationService.GetTranslation(classInfo.ClassUnlockMethodLocKey);
+                    var unlockMethod = localizationService.GetTranslation($"Classes/{classInfo.ClassUnlockMethodLocKey}");
                     if (!string.IsNullOrEmpty(unlockMethod))
                     {
                         classInfo.UnlockMethod = unlockMethod;

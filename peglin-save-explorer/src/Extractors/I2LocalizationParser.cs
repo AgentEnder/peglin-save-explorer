@@ -2,6 +2,7 @@ using System.Text;
 using System.Reflection;
 using peglin_save_explorer.Utils;
 using peglin_save_explorer.Core;
+using AssetRipper.SourceGenerated.Extensions;
 
 namespace peglin_save_explorer.Extractors
 {
@@ -196,6 +197,9 @@ namespace peglin_save_explorer.Extractors
                     return false;
                 }
 
+                // Dump the unencrypted plaintext content for debugging
+                DumpPlaintextContent(decodedContent);
+
                 return ParseI2Content(decodedContent);
             }
             catch (Exception ex)
@@ -209,22 +213,56 @@ namespace peglin_save_explorer.Extractors
         {
             try
             {
+                // Split content by [/i2csv] markers to get sections
+                var sections = content.Split(new[] { "[/i2csv]" }, StringSplitOptions.RemoveEmptyEntries);
+                
+                foreach (var section in sections)
+                {
+                    if (string.IsNullOrWhiteSpace(section)) continue;
+                    
+                    // Look for category tag in this section
+                    var categoryMatch = System.Text.RegularExpressions.Regex.Match(section, @"\[i2category\]([^\[]*)\[/i2category\]");
+                    string categoryName = "Default";
+                    
+                    if (categoryMatch.Success)
+                    {
+                        categoryName = categoryMatch.Groups[1].Value.Trim();
+                        Logger.Verbose($"[I2Parser] Found category: {categoryName}");
+                    }
+                    
+                    // Parse this section's content
+                    ParseI2Section(section, categoryName);
+                }
+                
+                var totalTerms = _localizationData.Values.SelectMany(d => d.Keys).Distinct().Count();
+                Logger.Verbose($"[I2Parser] Successfully parsed {totalTerms} unique localization terms");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"[I2Parser] Error parsing I2 content: {ex.Message}");
+                return false;
+            }
+        }
+        
+        private void ParseI2Section(string content, string category)
+        {
+            try
+            {
                 // Parse I2CSV format: rows separated by [ln], columns by [*]
                 var rows = content.Split(new[] { "[ln]" }, StringSplitOptions.RemoveEmptyEntries);
                 
                 if (rows.Length < 2)
                 {
-                    Logger.Warning("[I2Parser] Invalid I2CSV format - insufficient rows");
-                    return false;
+                    return; // Skip sections without data
                 }
 
                 // First row should contain headers (Key[*]Type[*]Desc[*]Language1[*]Language2...)
                 var headers = rows[0].Split(new[] { "[*]" }, StringSplitOptions.None);
                 
-                if (headers.Length < 4)
+                if (headers.Length < 4 || !headers[0].Contains("Key"))
                 {
-                    Logger.Warning("[I2Parser] Invalid I2CSV format - insufficient columns");
-                    return false;
+                    return; // Skip non-data sections (like statistics)
                 }
                 
                 // Extract language names (skip Key, Type, Desc columns)
@@ -232,10 +270,13 @@ namespace peglin_save_explorer.Extractors
                 for (int i = 3; i < headers.Length; i++)
                 {
                     var langName = headers[i].Trim();
-                    if (!string.IsNullOrEmpty(langName))
+                    if (!string.IsNullOrEmpty(langName) && !langName.Equals("Dev Notes", StringComparison.OrdinalIgnoreCase))
                     {
                         languageNames.Add(langName);
-                        _localizationData[langName] = new Dictionary<string, string>();
+                        if (!_localizationData.ContainsKey(langName))
+                        {
+                            _localizationData[langName] = new Dictionary<string, string>();
+                        }
                     }
                 }
                 
@@ -244,22 +285,32 @@ namespace peglin_save_explorer.Extractors
                 {
                     // Assume single language (English) with translation in column 3
                     languageNames.Add("English");
-                    _localizationData["English"] = new Dictionary<string, string>();
-                    Logger.Verbose($"[I2Parser] No language headers found, assuming single English language");
+                    if (!_localizationData.ContainsKey("English"))
+                    {
+                        _localizationData["English"] = new Dictionary<string, string>();
+                    }
                 }
-                
-                Logger.Verbose($"[I2Parser] Found {languageNames.Count} languages: {string.Join(", ", languageNames)}");
 
                 // Parse each data row
-                int processedTerms = 0;
                 for (int rowIndex = 1; rowIndex < rows.Length; rowIndex++)
                 {
                     var columns = rows[rowIndex].Split(new[] { "[*]" }, StringSplitOptions.None);
                     
                     if (columns.Length < 4) continue;
                     
-                    var key = columns[0].Trim();
-                    if (string.IsNullOrEmpty(key)) continue;
+                    var baseKey = columns[0].Trim();
+                    if (string.IsNullOrEmpty(baseKey)) continue;
+                    
+                    // Construct the full key with category prefix (unless it's Default)
+                    var fullKey = category.Equals("Default", StringComparison.OrdinalIgnoreCase) 
+                        ? baseKey 
+                        : $"{category}/{baseKey}";
+
+                    // Debug output for magnet terms to track duplicates
+                    if (baseKey.IndexOf("magnet", StringComparison.OrdinalIgnoreCase) >= 0) 
+                    {
+                        Logger.Verbose($"[I2Parser] Processing magnet term in category '{category}': key='{fullKey}', type='{columns[1].Trim()}', desc='{columns[2].Trim()}'");
+                    }
                     
                     // Store translations for each language
                     for (int langIndex = 0; langIndex < languageNames.Count && langIndex + 3 < columns.Length; langIndex++)
@@ -267,20 +318,14 @@ namespace peglin_save_explorer.Extractors
                         var translation = columns[langIndex + 3]; // Skip Key, Type, Desc
                         if (!string.IsNullOrEmpty(translation))
                         {
-                            _localizationData[languageNames[langIndex]][key] = DecodeI2String(translation);
+                            _localizationData[languageNames[langIndex]][fullKey] = DecodeI2String(translation);
                         }
                     }
-                    
-                    processedTerms++;
                 }
-
-                Logger.Verbose($"[I2Parser] Successfully parsed {processedTerms} localization terms");
-                return true;
             }
             catch (Exception ex)
             {
-                Logger.Error($"[I2Parser] Error parsing I2 content: {ex.Message}");
-                return false;
+                Logger.Warning($"[I2Parser] Error parsing section for category '{category}': {ex.Message}");
             }
         }
         
@@ -327,6 +372,63 @@ namespace peglin_save_explorer.Extractors
         {
             // Based on LocalizationReader.DecodeString method
             return string.IsNullOrEmpty(str) ? string.Empty : str.Replace("<\\n>", "\r\n");
+        }
+        
+        /// <summary>
+        /// Dumps the plaintext content of the localization file for debugging (only once per session)
+        /// </summary>
+        private static void DumpPlaintextContent(string content)
+        {
+            try
+            {
+                // Use the same cache directory as strings.json
+                string cacheDir;
+                if (OperatingSystem.IsWindows())
+                {
+                    cacheDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "PeglinSaveExplorer"
+                    );
+                }
+                else if (OperatingSystem.IsMacOS())
+                {
+                    cacheDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        "Library", "Application Support", "PeglinSaveExplorer"
+                    );
+                }
+                else
+                {
+                    // Linux - use XDG_CONFIG_HOME or fallback to ~/.config
+                    var xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+                    if (string.IsNullOrEmpty(xdgConfigHome))
+                    {
+                        xdgConfigHome = Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                            ".config"
+                        );
+                    }
+                    cacheDir = Path.Combine(xdgConfigHome, "PeglinSaveExplorer");
+                }
+                
+                Directory.CreateDirectory(cacheDir);
+                var plaintextPath = Path.Combine(cacheDir, "localization_plaintext.txt");
+                
+                // Only write if file doesn't exist or is significantly different in size
+                if (!File.Exists(plaintextPath) || Math.Abs(File.ReadAllText(plaintextPath).Length - content.Length) > 100)
+                {
+                    File.WriteAllText(plaintextPath, content);
+                    Logger.Info($"[I2Parser] Dumped plaintext localization content to {plaintextPath}");
+                }
+                else
+                {
+                    Logger.Verbose($"[I2Parser] Plaintext file already exists and appears current");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"[I2Parser] Failed to dump plaintext content: {ex.Message}");
+            }
         }
 
         public string? GetTranslation(string key, string language = "English")

@@ -62,16 +62,16 @@ namespace peglin_save_explorer.Extractors
                 var bundleDirectory = PeglinPathHelper.GetStreamingAssetsBundlePath(peglinPath);
                 if (string.IsNullOrEmpty(bundleDirectory) || !Directory.Exists(bundleDirectory))
                 {
-                    Console.WriteLine($"[AssetRipper] Bundle directory not found for: {peglinPath}");
-                    Console.WriteLine("[AssetRipper] Checked for platform-specific streaming assets directories");
+                    Logger.Error($"[AssetRipper] Bundle directory not found for: {peglinPath}");
+                    Logger.Error("[AssetRipper] Checked for platform-specific streaming assets directories");
                     return allRelics;
                 }
 
-                Console.WriteLine($"[AssetRipper] Extracting relics from Peglin installation: {peglinPath}");
-                
+                Logger.Verbose($"[AssetRipper] Extracting relics from Peglin installation: {peglinPath}");
+
                 var bundleFiles = Directory.GetFiles(bundleDirectory, "*.bundle", SearchOption.AllDirectories);
-                Console.WriteLine($"[AssetRipper] Found {bundleFiles.Length} bundle files");
-                
+                Logger.Verbose($"[AssetRipper] Found {bundleFiles.Length} bundle files");
+
                 foreach (var bundleFile in bundleFiles)
                 {
                     try
@@ -88,16 +88,16 @@ namespace peglin_save_explorer.Extractors
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[AssetRipper] Failed to process bundle {Path.GetFileName(bundleFile)}: {ex.Message}");
+                        Logger.Error($"[AssetRipper] Failed to process bundle {Path.GetFileName(bundleFile)}: {ex.Message}");
                     }
                 }
 
-                Console.WriteLine($"[AssetRipper] Total relics extracted: {allRelics.Count}");
+                Logger.Verbose($"[AssetRipper] Total relics extracted: {allRelics.Count}");
                 return allRelics;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AssetRipper] Error extracting relics from Peglin install: {ex.Message}");
+                Logger.Error($"[AssetRipper] Error extracting relics from Peglin install: {ex.Message}");
                 return allRelics;
             }
         }
@@ -106,16 +106,16 @@ namespace peglin_save_explorer.Extractors
         {
             try
             {
-                Console.WriteLine($"[AssetRipper] Loading bundle from: {bundlePath}");
-                
+                Logger.Verbose($"[AssetRipper] Loading bundle from: {bundlePath}");
+
                 // Create a simple assembly manager (we won't need full script compilation)
                 var assemblyManager = new BaseManager(s => { });
                 var assetFactory = new GameAssetFactory(assemblyManager);
                 
                 // Load the bundle
                 var gameBundle = GameBundle.FromPaths(new[] { bundlePath }, assetFactory);
-                
-                Console.WriteLine($"[AssetRipper] Loaded {gameBundle.FetchAssetCollections().Count()} collections");
+
+                Logger.Verbose($"[AssetRipper] Loaded {gameBundle.FetchAssetCollections().Count()} collections");
 
                 // Find and extract MonoBehaviours
                 foreach (var collection in gameBundle.FetchAssetCollections())
@@ -129,13 +129,13 @@ namespace peglin_save_explorer.Extractors
                     }
                 }
 
-                Console.WriteLine($"[AssetRipper] Extracted {_relicCache.Count} relics");
+                Logger.Verbose($"[AssetRipper] Extracted {_relicCache.Count} relics");
                 return _relicCache;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AssetRipper] Error extracting relics: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                Logger.Error($"[AssetRipper] Error extracting relics: {ex.Message}");
+                Logger.Error($"Stack trace: {ex.StackTrace}");
                 return _relicCache;
             }
         }
@@ -158,13 +158,13 @@ namespace peglin_save_explorer.Extractors
                     if (relic != null && !string.IsNullOrEmpty(relic.Id))
                     {
                         _relicCache[relic.Id] = relic;
-                        Console.WriteLine($"[AssetRipper] Found relic: {relic.Id} - {relic.Name}");
+                        Logger.Verbose($"[AssetRipper] Found relic: {relic.Id} - {relic.Name}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AssetRipper] Error processing MonoBehaviour: {ex.Message}");
+                Logger.Error($"[AssetRipper] Error processing MonoBehaviour: {ex.Message}");
             }
         }
 
@@ -327,7 +327,7 @@ namespace peglin_save_explorer.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AssetRipper] Error extracting relic data: {ex.Message}");
+                Logger.Error($"[AssetRipper] Error extracting relic data: {ex.Message}");
                 return null;
             }
         }
@@ -351,11 +351,11 @@ namespace peglin_save_explorer.Extractors
             {
                 var json = JsonConvert.SerializeObject(_relicCache, Formatting.Indented);
                 File.WriteAllText(filePath, json);
-                Console.WriteLine($"[AssetRipper] Saved {_relicCache.Count} relics to cache");
+                Logger.Verbose($"[AssetRipper] Saved {_relicCache.Count} relics to cache");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AssetRipper] Error saving relic cache: {ex.Message}");
+                Logger.Error($"[AssetRipper] Error saving relic cache: {ex.Message}");
             }
         }
 
@@ -374,13 +374,13 @@ namespace peglin_save_explorer.Extractors
                         {
                             _relicCache[kvp.Key] = kvp.Value;
                         }
-                        Console.WriteLine($"[AssetRipper] Loaded {_relicCache.Count} relics from cache");
+                        Logger.Verbose($"[AssetRipper] Loaded {_relicCache.Count} relics from cache");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AssetRipper] Error loading relic cache: {ex.Message}");
+                Logger.Error($"[AssetRipper] Error loading relic cache: {ex.Message}");
             }
         }
     }

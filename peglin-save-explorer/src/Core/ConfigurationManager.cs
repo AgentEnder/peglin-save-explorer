@@ -158,7 +158,7 @@ namespace peglin_save_explorer.Core
             }
 
             // Otherwise, perform full recursive search with spinner
-            var spinner = new ConsoleSpinner();
+            var spinner = ConsoleSpinner.Instance;
             spinner.Start("No Peglin found in common locations. Performing deep search...");
 
             try

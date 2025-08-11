@@ -559,6 +559,24 @@ namespace peglin_save_explorer.Commands
             }
 
             Console.WriteLine($"Starting web server on http://localhost:{port}");
+            
+            // Open the web browser after server startup
+            var serverUrl = $"http://localhost:{port}";
+            _ = Task.Run(async () =>
+            {
+                // Wait a moment for the server to fully start
+                await Task.Delay(2000);
+                try
+                {
+                    OpenBrowser(serverUrl);
+                    Console.WriteLine($"🌐 Opened web browser to {serverUrl}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Could not open web browser automatically: {ex.Message}");
+                    Console.WriteLine($"Please open {serverUrl} in your web browser manually.");
+                }
+            });
             if (currentData.TotalRuns > 0)
             {
                 Console.WriteLine($"Loaded {currentData.TotalRuns} runs, {currentData.TotalWins} wins ({currentData.WinRate:P1} win rate)");
@@ -583,6 +601,10 @@ namespace peglin_save_explorer.Commands
                             type = s.Type.ToString().ToLower(),
                             width = s.Width,
                             height = s.Height,
+                            frameWidth = s.FrameWidth,
+                            frameHeight = s.FrameHeight,
+                            frameX = s.FrameX,
+                            frameY = s.FrameY,
                             extractedAt = s.ExtractedAt,
                             url = $"/sprites/{GetSpriteTypeDirectory(s.Type)}/{s.Id}.png", // Direct static file URL
                             isAtlas = s.IsAtlas,
@@ -619,6 +641,10 @@ namespace peglin_save_explorer.Commands
                         type = s.Type.ToString().ToLower(),
                         width = s.Width,
                         height = s.Height,
+                        frameWidth = s.FrameWidth,
+                        frameHeight = s.FrameHeight,
+                        frameX = s.FrameX,
+                        frameY = s.FrameY,
                         extractedAt = s.ExtractedAt,
                         url = $"/sprites/{GetSpriteTypeDirectory(s.Type)}/{s.Id}.png", // Direct static file URL
                         isAtlas = s.IsAtlas,
@@ -846,7 +872,7 @@ namespace peglin_save_explorer.Commands
             return filter;
         }
 
-        private object CreateApiResponse<T>(T data, string? error = null)
+        private object CreateApiResponse<T>(T? data, string? error = null)
         {
             return new
             {
@@ -1022,6 +1048,10 @@ namespace peglin_save_explorer.Commands
                                 url = $"/sprites/{GetSpriteTypeDirectory(spriteMetadata.Type)}/{correlatedSpriteId}.png",
                                 width = spriteMetadata.Width,
                                 height = spriteMetadata.Height,
+                                frameWidth = spriteMetadata.FrameWidth,
+                                frameHeight = spriteMetadata.FrameHeight,
+                                frameX = spriteMetadata.FrameX,
+                                frameY = spriteMetadata.FrameY,
                                 resolved = true,
                                 correlationMethod = correlationMethod ?? "Unknown"
                             };
@@ -1226,7 +1256,25 @@ namespace peglin_save_explorer.Commands
                                 string rarity = "";
 
                                 if (el.TryGetProperty("Name", out var nameEl)) name = nameEl.GetString() ?? name;
-                                if (el.TryGetProperty("Description", out var descEl)) desc = descEl.GetString() ?? "";
+                                
+                                // Check for Description first, then DescriptionStrings
+                                if (el.TryGetProperty("Description", out var descEl)) 
+                                {
+                                    desc = descEl.GetString() ?? "";
+                                }
+                                else if (el.TryGetProperty("DescriptionStrings", out var descStringsEl) && descStringsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                                {
+                                    var descStrings = new List<string>();
+                                    foreach (var item in descStringsEl.EnumerateArray())
+                                    {
+                                        var str = item.GetString();
+                                        if (!string.IsNullOrEmpty(str))
+                                            descStrings.Add(str);
+                                    }
+                                    if (descStrings.Count > 0)
+                                        desc = string.Join("\n", descStrings.Select(s => "•" + s));
+                                }
+                                
                                 if (el.TryGetProperty("OrbType", out var typeEl)) orbType = typeEl.GetString() ?? orbType;
                                 if (el.TryGetProperty("DamagePerPeg", out var dmgEl)) damage = dmgEl.ValueKind == System.Text.Json.JsonValueKind.Number ? dmgEl.ToString() : (dmgEl.GetString() ?? "");
                                 if (el.TryGetProperty("Rarity", out var rarEl)) rarity = rarEl.GetString() ?? (el.TryGetProperty("RarityValue", out var rarValEl) ? rarValEl.ToString() : "");
@@ -1298,11 +1346,22 @@ namespace peglin_save_explorer.Commands
                 {
                     try
                     {
+                        // Use Description if available, otherwise format DescriptionStrings as bullet points
+                        var description = "";
+                        if (!string.IsNullOrEmpty(kvp.Value.Description))
+                        {
+                            description = kvp.Value.Description;
+                        }
+                        else if (kvp.Value.DescriptionStrings != null && kvp.Value.DescriptionStrings.Count > 0)
+                        {
+                            description = string.Join("\n", kvp.Value.DescriptionStrings.Select(s => "•" + s));
+                        }
+
                         orbs.Add(new
                         {
                             id = kvp.Key,
                             name = kvp.Value.Name ?? kvp.Key,
-                            description = kvp.Value.Description ?? "",
+                            description = description,
                             type = "orb",
                             orbType = kvp.Value.OrbType ?? "ATTACK",
                             damagePerPeg = kvp.Value.DamagePerPeg?.ToString() ?? "",
@@ -1608,6 +1667,57 @@ namespace peglin_save_explorer.Commands
             catch
             {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Opens the default web browser to the specified URL
+        /// </summary>
+        private static void OpenBrowser(string url)
+        {
+            try
+            {
+                if (OperatingSystem.IsWindows())
+                {
+                    // Windows
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "cmd",
+                        Arguments = $"/c start \"\" \"{url}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                }
+                else if (OperatingSystem.IsMacOS())
+                {
+                    // macOS
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "open",
+                        Arguments = url,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                }
+                else if (OperatingSystem.IsLinux())
+                {
+                    // Linux
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "xdg-open",
+                        Arguments = url,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                }
+                else
+                {
+                    throw new PlatformNotSupportedException("Automatic browser opening is not supported on this platform.");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to open browser: {ex.Message}", ex);
             }
         }
 

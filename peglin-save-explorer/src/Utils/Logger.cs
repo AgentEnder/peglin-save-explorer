@@ -18,7 +18,7 @@ namespace peglin_save_explorer.Utils
         public static void SetLogLevel(LogLevel level)
         {
             _currentLevel = level;
-            
+
             // Also set the log level for OdinSerializer stubs if available
             try
             {
@@ -69,22 +69,33 @@ namespace peglin_save_explorer.Utils
             Log(LogLevel.Verbose, message);
         }
 
-        private static void Log(LogLevel level, string message)
+        public static void Log(LogLevel level, string message)
         {
             if (level <= _currentLevel)
             {
-                var prefix = level switch
+                if (ConsoleSpinner.Instance.IsActive)
                 {
-                    LogLevel.Error => "[ERROR] ",
-                    LogLevel.Warning => "[WARN] ",
-                    LogLevel.Info => "",
-                    LogLevel.Debug => "[DEBUG] ",
-                    LogLevel.Verbose => "[VERBOSE] ",
-                    _ => ""
-                };
-
-                Console.WriteLine($"{prefix}{message}");
+                    ConsoleSpinner.Instance.LogLineAbove(message, level);
+                }
+                else
+                {
+                    var prefix = GetLogPrefix(level);
+                    Console.WriteLine($"{prefix}{message}");
+                }
             }
+        }
+
+        public static string GetLogPrefix(LogLevel level)
+        {
+            return level switch
+            {
+                LogLevel.Error => "[ERROR] ",
+                LogLevel.Warning => "[WARN] ",
+                LogLevel.Info => "",
+                LogLevel.Debug => "[DEBUG] ",
+                LogLevel.Verbose => "[VERBOSE] ",
+                _ => ""
+            };
         }
     }
 }

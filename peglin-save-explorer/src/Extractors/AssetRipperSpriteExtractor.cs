@@ -459,6 +459,7 @@ namespace peglin_save_explorer.Extractors
                             atlasMetadata.AtlasFrames.Add(frameInfo);
                         }
                     }
+                    atlasMetadata.FrameCount = atlasMetadata.AtlasFrames.Count;
 
                     var atlasKey = $"{spriteType.Value}:{atlasId}";
                     sprites[atlasKey] = atlasMetadata;
@@ -526,17 +527,47 @@ namespace peglin_save_explorer.Extractors
 
                     if (ConvertTextureToPng(texture, spriteFilePath))
                     {
+                        // Extract sprite frame information from Unity sprite data
+                        var rect = sprite.Rect;
+                        var frameWidth = (int)rect.Width;
+                        var frameHeight = (int)rect.Height;
+                        var frameX = (int)rect.X;
+                        var frameY = (int)rect.Y;
+                        
+                        // Calculate potential frame count if this is actually a sprite sheet
+                        var textureWidth = texture.Width_C28;
+                        var textureHeight = texture.Height_C28;
+                        var frameCount = 1;
+                        
+                        // Debug logging for sprite frame detection
+                        Logger.Debug($"Sprite {spriteName}: texture={textureWidth}x{textureHeight}, frame={frameWidth}x{frameHeight}, pos=({frameX},{frameY})");
+                        
+                        // Check if the texture is larger than the frame, indicating multiple frames
+                        if (frameWidth > 0 && frameHeight > 0 && 
+                            (textureWidth > frameWidth || textureHeight > frameHeight))
+                        {
+                            var framesX = textureWidth / frameWidth;
+                            var framesY = textureHeight / frameHeight;
+                            frameCount = Math.Max(1, framesX * framesY);
+                            Logger.Debug($"Detected sprite sheet {spriteName}: {frameCount} frames ({framesX}x{framesY})");
+                        }
+                        
                         var metadata = new SpriteCacheManager.SpriteMetadata
                         {
                             Id = spriteId,
                             Name = spriteName,
                             Type = spriteType.Value,
                             FilePath = spriteFilePath,
-                            Width = texture.Width_C28,
-                            Height = texture.Height_C28,
+                            Width = textureWidth,
+                            Height = textureHeight,
+                            FrameWidth = frameWidth,
+                            FrameHeight = frameHeight,
+                            FrameX = frameX,
+                            FrameY = frameY,
+                            FrameCount = frameCount,
                             SourceBundle = Path.GetFileName(bundlePath),
                             ExtractedAt = DateTime.Now,
-                            IsAtlas = false  // This is NOT an atlas
+                            IsAtlas = frameCount > 1  // Mark as atlas if multiple frames detected
                         };
 
                         var key = $"{spriteType.Value}:{spriteId}";
@@ -639,6 +670,7 @@ namespace peglin_save_explorer.Extractors
                     // Generate synthetic frame data for the sprite sheet
                     var frames = GenerateSpriteSheetFrames(spriteName, texture.Width_C28, texture.Height_C28);
                     atlasMetadata.AtlasFrames.AddRange(frames);
+                    atlasMetadata.FrameCount = frames.Count;
 
                     var atlasKey = $"{spriteType.Value}:{atlasId}";
                     sprites[atlasKey] = atlasMetadata;
@@ -879,6 +911,10 @@ namespace peglin_save_explorer.Extractors
                         FilePath = spriteFilePath,
                         Width = texture.Width_C28,
                         Height = texture.Height_C28,
+                        FrameWidth = texture.Width_C28,  // For standalone textures, frame = full texture
+                        FrameHeight = texture.Height_C28,
+                        FrameX = 0,
+                        FrameY = 0,
                         SourceBundle = Path.GetFileName(bundlePath),
                         ExtractedAt = DateTime.Now,
                         IsAtlas = false  // Standalone textures are not atlases

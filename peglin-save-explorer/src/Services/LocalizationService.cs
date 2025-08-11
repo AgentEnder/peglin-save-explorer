@@ -36,19 +36,22 @@ namespace peglin_save_explorer.Services
         {
             lock (_lock)
             {
-                // If already loaded and same file path, return success
-                if (_isLoaded && _parser != null && string.Equals(_lastLoadedFilePath, localizationFilePath))
-                {
-                    return true;
-                }
-
-                // Find localization file if not provided
+                // Find the actual file path to use for comparison
                 var filePath = localizationFilePath ?? FindI2LocalizationFile();
                 if (string.IsNullOrEmpty(filePath))
                 {
                     Logger.Verbose("[LocalizationService] No I2 localization file found");
                     return false;
                 }
+
+                // If already loaded with the same resolved file path, return success
+                if (_isLoaded && _parser != null && string.Equals(_lastLoadedFilePath, filePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    Logger.Verbose($"[LocalizationService] Localization already loaded from {Path.GetFileName(filePath)}");
+                    return true;
+                }
+
+                Logger.Verbose($"[LocalizationService] Loading localization data from {Path.GetFileName(filePath)}");
 
                 // Load the localization data
                 _parser = new I2LocalizationParser();
@@ -132,7 +135,7 @@ namespace peglin_save_explorer.Services
 
             return _parser?.FindKeysContaining(searchTerm) ?? new List<string>();
         }
-
+        
         /// <summary>
         /// Gets all localization data as a dictionary of language -> key -> translation
         /// </summary>

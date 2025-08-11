@@ -214,10 +214,10 @@ namespace peglin_save_explorer.Core
                 var extractedCounts = new Dictionary<string, int>();
                 var extractionTimes = new Dictionary<string, DateTime>();
 
-                    // Use the new unified extractor for single-pass extraction
+                    // Use the new modernized extractor for single-pass extraction
                     progress?.Report("🚀 Starting unified extraction of all data types...");
                     
-                    var unifiedExtractor = new UnifiedAssetExtractor(null);
+                    var unifiedExtractor = new ModernUnifiedAssetExtractor(null);
                     var extractionResult = await Task.Run(() => unifiedExtractor.ExtractAllAssetsFromPeglinInstall(peglinPath, progress));
                     
                     // Save all extracted data
@@ -373,7 +373,7 @@ namespace peglin_save_explorer.Core
             });
 
             // Start spinner
-            spinner = new ConsoleSpinner();
+            spinner = ConsoleSpinner.Instance;
             spinner.Start("🎮 Initializing Peglin data extraction...");
 
             try

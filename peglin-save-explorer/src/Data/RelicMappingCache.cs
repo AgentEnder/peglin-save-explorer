@@ -697,7 +697,7 @@ namespace peglin_save_explorer.Data
                     }
                 }
 
-                Console.WriteLine($"Processed {relicMappings.Count} relic mappings from direct AssetRipper data");
+                Logger.Debug($"Processed {relicMappings.Count} relic mappings from direct AssetRipper data");
                 return relicMappings;
             }
             catch (Exception ex)
@@ -736,7 +736,7 @@ namespace peglin_save_explorer.Data
                     }
                 }
 
-                Console.WriteLine($"Processed {relicMappings.Count} relic mappings from AssetRipper data");
+                Logger.Debug($"Processed {relicMappings.Count} relic mappings from AssetRipper data");
                 return relicMappings;
             }
             catch (Exception ex)

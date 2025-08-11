@@ -2,31 +2,25 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using AssetRipper.Assets;
 using AssetRipper.Assets.Bundles;
 using AssetRipper.Assets.Collections;
-using AssetRipper.Assets.IO;
-using AssetRipper.Assets.Metadata;
 using AssetRipper.Import.AssetCreation;
-using AssetRipper.Import.Structure.Assembly;
 using AssetRipper.Import.Structure.Assembly.Managers;
 using AssetRipper.Import.Structure.Assembly.Serializable;
-using AssetRipper.Import.Structure.Assembly.Serializable;
-using AssetRipper.IO.Files;
-using AssetRipper.IO.Files.SerializedFiles;
-using AssetRipper.IO.Files.SerializedFiles.Parser;
-using AssetRipper.SourceGenerated;
 using AssetRipper.SourceGenerated.Classes.ClassID_1;
 using AssetRipper.SourceGenerated.Classes.ClassID_114;
-using AssetRipper.SourceGenerated.Classes.ClassID_28;
+using AssetRipper.SourceGenerated.Classes.ClassID_212;
 using AssetRipper.SourceGenerated.Classes.ClassID_213;
+using AssetRipper.SourceGenerated.Classes.ClassID_28;
 using AssetRipper.SourceGenerated.Extensions;
-using AssetRipper.Export.Modules.Textures;
 using peglin_save_explorer.Data;
 using peglin_save_explorer.UI;
 using peglin_save_explorer.Utils;
 using peglin_save_explorer.Core;
+using peglin_save_explorer.Services;
+using peglin_save_explorer.Extractors.Models;
+using peglin_save_explorer.Extractors.Services;
 
 namespace peglin_save_explorer.Extractors
 {
@@ -36,42 +30,26 @@ namespace peglin_save_explorer.Extractors
     /// </summary>
     public class UnifiedAssetExtractor
     {
-        public class GameObjectData
-        {
-            public string Id { get; set; } = "";
-            public string Name { get; set; } = "";
-            public long PathID { get; set; }
-            public List<ComponentData> Components { get; set; } = new();
-            public Dictionary<string, object> RawData { get; set; } = new();
-        }
-
-        public class ComponentData
-        {
-            public string Type { get; set; } = "";
-            public string Name { get; set; } = "";
-            public long PathID { get; set; }
-            public Dictionary<string, object> Properties { get; set; } = new();
-        }
-
-        public class UnifiedExtractionResult
-        {
-            public Dictionary<string, RelicData> Relics { get; set; } = new();
-            public Dictionary<string, EnemyData> Enemies { get; set; } = new();
-            public Dictionary<string, OrbData> Orbs { get; set; } = new();
-            public Dictionary<string, OrbGroupedData> OrbFamilies { get; set; } = new();
-            public Dictionary<string, SpriteCacheManager.SpriteMetadata> Sprites { get; set; } = new();
-            public Dictionary<string, string> RelicSpriteCorrelations { get; set; } = new();
-            public Dictionary<string, string> EnemySpriteCorrelations { get; set; } = new();
-            public Dictionary<string, string> OrbSpriteCorrelations { get; set; } = new();
-        }
-
         private readonly ConsoleSession? _session;
         private readonly EnumExtractor _enumExtractor = new();
+        private readonly EntityDetectionService _entityDetectionService;
+        private readonly EntityExtractionService _entityExtractionService;
+        private readonly SpriteProcessingService _spriteProcessingService;
+        private readonly AssetProcessingService _assetProcessingService;
+        private readonly LocalizationProcessingService _localizationProcessingService;
+        
         private string? _currentPeglinPath;
+        private LocalizationService _localizationService = LocalizationService.Instance;
+        private Dictionary<string, string>? _globalRelicParameters;
 
         public UnifiedAssetExtractor(ConsoleSession? session = null)
         {
             _session = session;
+            _entityDetectionService = new EntityDetectionService();
+            _entityExtractionService = new EntityExtractionService();
+            _spriteProcessingService = new SpriteProcessingService();
+            _assetProcessingService = new AssetProcessingService();
+            _localizationProcessingService = new LocalizationProcessingService();
         }
 
         /// <summary>
@@ -81,11 +59,10 @@ namespace peglin_save_explorer.Extractors
         {
             _currentPeglinPath = peglinPath;
             var result = new UnifiedExtractionResult();
-
+            _enumExtractor.LoadAssembly(peglinPath);
+            _localizationService.EnsureLoaded();
             try
             {
-                // Load the assembly for enum reflection
-                _enumExtractor.LoadAssembly(peglinPath);
                 var bundleDirectory = PeglinPathHelper.GetStreamingAssetsBundlePath(peglinPath);
                 if (string.IsNullOrEmpty(bundleDirectory) || !Directory.Exists(bundleDirectory))
                 {
@@ -104,12 +81,12 @@ namespace peglin_save_explorer.Extractors
                 var gameBundle = ProcessAllBundlesWithDependencies(allFiles, result, progress);
 
                 // Consolidate orbs into families after extraction
-                ConsolidateOrbsIntoFamilies(result, progress);
+                _localizationProcessingService.ConsolidateOrbsIntoFamilies(result.Orbs, result.OrbFamilies);
 
                 var relicSprites = result.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Relic);
                 var enemySprites = result.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Enemy);
                 var orbSprites = result.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Orb);
-                
+
                 progress?.Report($"✅ Extracted {result.Relics.Count} relics, {result.Enemies.Count} enemies, {result.Orbs.Count} orbs ({result.OrbFamilies.Count} families), {result.Sprites.Count} sprites");
                 progress?.Report($"   📊 Sprite breakdown: {relicSprites} relic sprites, {enemySprites} enemy sprites, {orbSprites} orb sprites");
                 progress?.Report($"🔗 Correlated {result.RelicSpriteCorrelations.Count} relics, {result.EnemySpriteCorrelations.Count} enemies, {result.OrbSpriteCorrelations.Count} orbs with sprites");
@@ -141,18 +118,39 @@ namespace peglin_save_explorer.Extractors
 
                 progress?.Report($"   📊 Processing {gameBundle.FetchAssetCollections().Count()} asset collections...");
 
-                // Now process all collections with full cross-bundle context available
+                // Create shared sprite reference dictionaries that persist across all collections
+                // This is crucial for orb sprite correlation since orbs and their PachinkoBall sprites
+                // are often in different collections
+                var orbSpriteRefs = new Dictionary<string, IUnityAssetBase>(); // gameObject_PathID -> sprite asset reference
+
+                // Two-phase processing across ALL collections to ensure global relic parameters are available
                 var collections = gameBundle.FetchAssetCollections().ToList();
                 int processedCollections = 0;
 
+                // PHASE 1: Extract global relic parameters from ALL collections first
+                Logger.Debug($"🔤 Phase 1: Extracting global relic parameters from {collections.Count} collections");
+                foreach (var collection in collections)
+                {
+                    try
+                    {
+                        ExtractGlobalParametersFromCollection(collection);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warning($"Error extracting global parameters from collection {collection.Name}: {ex.Message}");
+                    }
+                }
+                Logger.Debug($"🔤 Phase 1 complete: {_globalRelicParameters?.Count ?? 0} global relic parameters available");
+
+                // PHASE 2: Process all collections with global parameters available
                 foreach (var collection in collections)
                 {
                     processedCollections++;
                     progress?.Report($"   📁 Processing collection {processedCollections}/{collections.Count}: {collection.Name}");
-                    
+
                     try
                     {
-                        ProcessCollectionWithCrossReferences(collection, gameBundle, result);
+                        ProcessCollectionWithCrossReferences(collection, gameBundle, result, orbSpriteRefs);
                     }
                     catch (Exception ex)
                     {
@@ -177,33 +175,32 @@ namespace peglin_save_explorer.Extractors
         /// <summary>
         /// Processes an asset collection with full cross-bundle reference resolution
         /// </summary>
-        private void ProcessCollectionWithCrossReferences(AssetCollection collection, GameBundle gameBundle, UnifiedExtractionResult result)
+        private void ProcessCollectionWithCrossReferences(AssetCollection collection, GameBundle gameBundle, UnifiedExtractionResult result, Dictionary<string, IUnityAssetBase> orbSpriteRefs)
         {
             try
             {
                 // Step 1: Build sprite information lookup tables from SpriteInformationObject assets
                 var spriteInfoLookup = BuildSpriteInformationLookup(collection, gameBundle);
                 Logger.Debug($"🗺️ Built sprite information lookup with {spriteInfoLookup.Count} mappings");
-                
+
                 // Step 2: Extract entity data (relics, enemies, orbs) and collect sprite references
                 var relicSpriteRefs = new Dictionary<string, IUnityAssetBase>(); // relic ID -> sprite asset reference
                 var enemySpriteRefs = new Dictionary<string, IUnityAssetBase>(); // enemy ID -> sprite asset reference
-                var orbSpriteRefs = new Dictionary<string, IUnityAssetBase>(); // orb ID -> sprite asset reference
+                // orbSpriteRefs is now passed in from ProcessAllBundlesWithDependencies to persist across collections
 
                 // Create a map of component PathID to component for GameObject processing
                 var componentMap = new Dictionary<long, IMonoBehaviour>();
-                
-                // First pass: collect all MonoBehaviour components and process them
+
+                // First pass: collect MonoBehaviour components into map (without processing them yet)
                 foreach (var asset in collection.Assets)
                 {
                     if (asset.Value is IMonoBehaviour monoBehaviour)
                     {
                         componentMap[monoBehaviour.PathID] = monoBehaviour;
-                        ProcessMonoBehaviour(monoBehaviour, collection, gameBundle, result, relicSpriteRefs, enemySpriteRefs, orbSpriteRefs);
                     }
                 }
 
-                // Second pass: process GameObjects to find orb entities
+                // Second pass: process GameObjects first to extract global parameters (like relic localization)
                 var gameObjectCount = 0;
                 var processedGameObjects = 0;
                 foreach (var asset in collection.Assets)
@@ -212,16 +209,17 @@ namespace peglin_save_explorer.Extractors
                     {
                         gameObjectCount++;
                         Logger.Debug($"🎮 Processing GameObject: {gameObject.Name} (PathID: {gameObject.PathID})");
-                        // Add special logging for doctorb
-                        if (gameObject.Name.String.Contains("doctorb", StringComparison.OrdinalIgnoreCase))
-                        {
-                            Logger.Info($"🔍🔍🔍 DOCTORB FOUND: Processing GameObject {gameObject.Name} (PathID: {gameObject.PathID})");
-                        }
                         ProcessGameObjectForOrbs(gameObject, componentMap, result, orbSpriteRefs, collection);
                         processedGameObjects++;
                     }
                 }
-                Logger.Info($"🎮 Processed {processedGameObjects} GameObjects out of {gameObjectCount} found in collection");
+
+                // Third pass: process MonoBehaviour components now that global parameters are available
+                foreach (var monoBehaviour in componentMap.Values)
+                {
+                    ProcessMonoBehaviour(monoBehaviour, collection, gameBundle, result, relicSpriteRefs, enemySpriteRefs, orbSpriteRefs);
+                }
+                Logger.Verbose($"🎮 Processed {processedGameObjects} GameObjects out of {gameObjectCount} found in collection");
 
                 // Step 2: Extract sprites and textures
                 var processedSprites = new HashSet<long>(); // Track processed PathIDs to avoid duplicates
@@ -244,19 +242,19 @@ namespace peglin_save_explorer.Extractors
                 // Process ALL other assets to find sprite-related types we might be missing
                 Logger.Verbose($"🔍 Scanning {collection.Assets.Count} total assets for sprite-related types...");
                 var assetTypeCounts = new Dictionary<string, int>();
-                
+
                 foreach (var asset in collection.Assets)
                 {
                     var assetType = asset.Value?.GetType()?.Name ?? "Unknown";
                     if (!assetTypeCounts.ContainsKey(assetType))
                         assetTypeCounts[assetType] = 0;
                     assetTypeCounts[assetType]++;
-                    
+
                     // Look for potential sprite-related assets we're not processing
                     if (asset.Value != null && !processedSprites.Contains(asset.Key))
                     {
                         var assetName = asset.Value.ToString() ?? "";
-                        
+
                         // Check for sprite-like asset types or names
                         if (assetType.Contains("Sprite", StringComparison.OrdinalIgnoreCase) ||
                             assetName.Contains("sprite", StringComparison.OrdinalIgnoreCase) ||
@@ -266,7 +264,7 @@ namespace peglin_save_explorer.Extractors
                                                           assetName.Contains("orb", StringComparison.OrdinalIgnoreCase))))
                         {
                             Logger.Debug($"🎯 Found potential sprite asset: {assetType} - {assetName} (PathID: {asset.Key})");
-                            
+
                             // Try to process as sprite-related asset
                             var collectionName = collection.Name ?? "unknown";
                             var potentialSpriteMetadata = ProcessPotentialSpriteAsset(asset.Value, collectionName);
@@ -282,7 +280,7 @@ namespace peglin_save_explorer.Extractors
                         }
                     }
                 }
-                
+
                 // Log asset type summary for debugging
                 var topAssetTypes = assetTypeCounts.OrderByDescending(kvp => kvp.Value).Take(10);
                 Logger.Debug($"📊 Top asset types in collection: {string.Join(", ", topAssetTypes.Select(kvp => $"{kvp.Key}({kvp.Value})"))}");
@@ -313,7 +311,7 @@ namespace peglin_save_explorer.Extractors
                     var resolvedSprite = ResolveSpriteWithLookup(spriteRef, gameBundle, spriteInfoLookup, SpriteCacheManager.SpriteType.Relic);
                     if (resolvedSprite != null)
                     {
-                        
+
                         // Always update/add the sprite with the correct type (overwrite if it exists with wrong type)
                         result.Sprites[resolvedSprite.Id] = resolvedSprite;
 
@@ -355,7 +353,7 @@ namespace peglin_save_explorer.Extractors
                     var resolvedSprite = ResolveSpriteWithLookup(spriteRef, gameBundle, spriteInfoLookup, SpriteCacheManager.SpriteType.Enemy);
                     if (resolvedSprite != null)
                     {
-                        
+
                         // Always update/add the sprite with the correct type (overwrite if it exists with wrong type)
                         result.Sprites[resolvedSprite.Id] = resolvedSprite;
 
@@ -381,7 +379,7 @@ namespace peglin_save_explorer.Extractors
                     var resolvedSprite = ResolveSpriteWithLookup(spriteRef, gameBundle, spriteInfoLookup, SpriteCacheManager.SpriteType.Orb);
                     if (resolvedSprite != null)
                     {
-                        
+
                         // Always update/add the sprite with the correct type (overwrite if it exists with wrong type)  
                         result.Sprites[resolvedSprite.Id] = resolvedSprite;
 
@@ -392,12 +390,110 @@ namespace peglin_save_explorer.Extractors
                             orb.CorrelatedSpriteId = resolvedSprite.Id;
                             orb.SpriteFilePath = resolvedSprite.FilePath;
                             orb.CorrelationConfidence = 1.0f;
-                            orb.CorrelationMethod = "Direct PPtr Resolution";
+                            orb.CorrelationMethod = "PachinkoBall Tracing";
                         }
 
                         Logger.Debug($"Correlated orb {orbId} with sprite {resolvedSprite.Id}");
                     }
                 }
+
+                // DEBUG: Detailed correlation analysis
+                Logger.Debug($"=== CORRELATION DEBUG ANALYSIS ===");
+                Logger.Debug($"📊 Total orbs found: {result.Orbs.Count}");
+                Logger.Debug($"📊 Total sprite references stored: {orbSpriteRefs.Count}");
+
+                // Log all available sprite reference keys
+                Logger.Debug($"🔑 Available sprite reference keys:");
+                foreach (var key in orbSpriteRefs.Keys.Take(20))
+                {
+                    Logger.Debug($"  - {key}");
+                }
+
+                // Log sample orb PathIDs
+                Logger.Debug($"🎮 Sample orb PathIDs:");
+                foreach (var orbEntry in result.Orbs.Take(10))
+                {
+                    var orb = orbEntry.Value;
+                    if (orb.RawData != null && orb.RawData.TryGetValue("PathID", out var pathIDObj))
+                    {
+                        Logger.Debug($"  - Orb '{orb.Id}': PathID = {pathIDObj} (GameObject key would be: gameObject_{pathIDObj})");
+                    }
+                    else
+                    {
+                        Logger.Debug($"  - Orb '{orb.Id}': NO PathID found in RawData");
+                        if (orb.RawData != null)
+                        {
+                            Logger.Debug($"    RawData keys: {string.Join(", ", orb.RawData.Keys.Take(10))}");
+                        }
+                    }
+                }
+
+                // ADDITIONAL CORRELATION STEP: Correlate remaining orbs with PachinkoBall sprites using GameObject PathID
+                var additionalCorrelationCount = 0;
+                var orbsWithoutPathID = 0;
+                var orbsWithPathIDButNoMatch = 0;
+
+                foreach (var orbEntry in result.Orbs.ToList())
+                {
+                    var orb = orbEntry.Value;
+                    // Check if this orb still needs correlation and has a GameObject PathID
+                    if (string.IsNullOrEmpty(orb.CorrelatedSpriteId) && orb.RawData != null &&
+                        orb.RawData.TryGetValue("PathID", out var orbPathIDObj) && orbPathIDObj is long orbPathID)
+                    {
+                        // Look for a PachinkoBall sprite with matching GameObject PathID
+                        var gameObjectKey = $"gameObject_{orbPathID}";
+                        Logger.Debug($"🔍 Looking for sprite with key: {gameObjectKey} for orb {orb.Id}");
+                        Logger.Debug($"🔍 orbSpriteRefs dictionary has {orbSpriteRefs.Count} keys at correlation time");
+                        Logger.Debug($"🔍 orbSpriteRefs keys near match: {string.Join(", ", orbSpriteRefs.Keys.Where(k => k.Contains(orbPathID.ToString())).Take(3))}");
+
+                        bool keyExists = orbSpriteRefs.ContainsKey(gameObjectKey);
+                        Logger.Debug($"🔍 ContainsKey({gameObjectKey}) = {keyExists}");
+                        if (keyExists)
+                        {
+                            Logger.Debug($"🎯 ENTERING CORRELATION BRANCH for orb {orb.Id}");
+                            var pachinkoBallSprite = orbSpriteRefs[gameObjectKey];
+                            Logger.Debug($"🎯 Retrieved pachinkoBallSprite: {pachinkoBallSprite?.GetType().Name}");
+
+                            // Resolve the sprite and get its file path
+                            // ResolveSpriteWithLookup handles both IUnityObjectBase and PPtr types
+                            var resolvedSprite = ResolveSpriteWithLookup(pachinkoBallSprite, gameBundle, spriteInfoLookup, SpriteCacheManager.SpriteType.Orb);
+                            Logger.Debug($"🎯 ResolveSpriteWithLookup returned: {resolvedSprite?.Id ?? "NULL"}");
+
+                            if (resolvedSprite != null)
+                            {
+                                orb.CorrelatedSpriteId = resolvedSprite.Id;
+                                orb.SpriteFilePath = resolvedSprite.FilePath;
+                                orb.CorrelationMethod = "PachinkoBall GameObject PathID";
+                                orb.CorrelationConfidence = 1.0f;
+                                additionalCorrelationCount++;
+
+                                // Also add to sprite correlations and make sure sprite is in result
+                                result.OrbSpriteCorrelations[orb.Id] = resolvedSprite.Id;
+                                result.Sprites[resolvedSprite.Id] = resolvedSprite;
+
+                                Logger.Debug($"🎯 ADDITIONAL CORRELATION! Orb {orb.Id} with PachinkoBall sprite {resolvedSprite.Id} -> {resolvedSprite.FilePath} (GameObject PathID: {orbPathID})");
+                            }
+                            else
+                            {
+                                Logger.Debug($"❌ Failed to resolve PachinkoBall sprite for orb {orb.Id} (GameObject PathID: {orbPathID})");
+                            }
+                        }
+                        else
+                        {
+                            orbsWithPathIDButNoMatch++;
+                            Logger.Debug($"❌ No sprite found for key {gameObjectKey} (orb: {orb.Id})");
+                        }
+                    }
+                    else if (string.IsNullOrEmpty(orb.CorrelatedSpriteId))
+                    {
+                        orbsWithoutPathID++;
+                    }
+                }
+
+                Logger.Debug($"🔗 Additional PachinkoBall correlations: {additionalCorrelationCount}");
+                Logger.Debug($"📊 Orbs without PathID: {orbsWithoutPathID}");
+                Logger.Debug($"📊 Orbs with PathID but no match: {orbsWithPathIDButNoMatch}");
+
             }
             catch (Exception ex)
             {
@@ -427,7 +523,16 @@ namespace peglin_save_explorer.Extractors
                 // Determine entity type and extract accordingly
                 if (IsRelicData(data))
                 {
-                    var relic = ExtractRelic(monoBehaviour.Name, data);
+                    // Use global relic parameters for token resolution
+                    if (_globalRelicParameters != null && _globalRelicParameters.Count > 0)
+                    {
+                        Logger.Debug($"🔤 Using {_globalRelicParameters.Count} global relic parameters for relic {monoBehaviour.Name}");
+                    }
+                    else
+                    {
+                        Logger.Debug($"🔤 No global relic parameters available for relic {monoBehaviour.Name}");
+                    }
+                    var relic = ExtractRelic(monoBehaviour.Name, data, _globalRelicParameters);
                     if (relic != null && !string.IsNullOrEmpty(relic.Id))
                     {
                         result.Relics[relic.Id] = relic;
@@ -466,11 +571,132 @@ namespace peglin_save_explorer.Extractors
                         Logger.Debug($"Found enemy: {enemy.Id} - {enemy.Name}");
                     }
                 }
-                // Skip direct MonoBehaviour orb extraction - only extract orbs from GameObjects with OrbComponent data
-                // This ensures we only get orbs with proper component structure and prefab sprite references
-                else if (IsOrbData(data))
+                // NOTE: Orb extraction is now handled in ProcessGameObjectForOrbs during GameObject processing
+                // This ensures proper correlation with PachinkoBall sprites using GameObject PathIDs
+                // else if (IsOrbData(data)) { ... }
+                // Also check for PachinkoBall MonoBehaviours with _renderer fields
+                else if (IsPachinkoBallData(data))
                 {
-                    Logger.Debug($"🔍 Skipping MonoBehaviour-only orb extraction for {monoBehaviour.Name} - will extract from GameObject if present");
+                    Logger.Debug($"🎯 Found PachinkoBall MonoBehaviour: {monoBehaviour.Name}, PathID: {monoBehaviour.PathID}");
+                    Logger.Debug($"🎯 PachinkoBall data keys: {string.Join(", ", data.Keys.Take(10))}");
+
+                    // Get GameObject PathID from the MonoBehaviour's GameObject property
+                    string? gameObjectKey = null;
+                    if (monoBehaviour.GameObject != null && !monoBehaviour.GameObject.IsNull())
+                    {
+                        gameObjectKey = $"gameObject_{monoBehaviour.GameObject.PathID}";
+                        Logger.Debug($"🎯 PachinkoBall belongs to GameObject with PathID: {monoBehaviour.GameObject.PathID}");
+                    }
+                    else
+                    {
+                        Logger.Debug($"❌ PachinkoBall MonoBehaviour GameObject property is null or empty");
+                    }
+
+                    if (data.ContainsKey("_renderer"))
+                    {
+                        Logger.Debug($"🎯 PachinkoBall HAS _renderer field: {data["_renderer"]}");
+
+                        // Try to extract sprite from _renderer field
+                        var rendererField = data["_renderer"];
+                        if (rendererField is Dictionary<string, object> rendererDict)
+                        {
+                            Logger.Debug($"🎯 _renderer is PPtr with keys: {string.Join(", ", rendererDict.Keys)}");
+
+                            // This is a PPtr reference to a SpriteRenderer
+                            if (rendererDict.ContainsKey("pathId") && rendererDict["pathId"] != null)
+                            {
+                                var pathIdStr = rendererDict["pathId"].ToString();
+                                if (long.TryParse(pathIdStr, out var pathId))
+                                {
+                                    Logger.Debug($"🎯 Following _renderer PPtr to pathId: {pathId}");
+
+                                    // Resolve the SpriteRenderer by PathID
+                                    var spriteRenderer = collection.TryGetAsset(pathId);
+                                    if (spriteRenderer != null)
+                                    {
+                                        Logger.Debug($"✅ Resolved SpriteRenderer: {spriteRenderer.GetType().Name}, Type: {spriteRenderer.GetType().FullName}");
+                                        Logger.Debug($"   Is ISpriteRenderer: {spriteRenderer is ISpriteRenderer}");
+                                        Logger.Debug($"   Is IMonoBehaviour: {spriteRenderer is IMonoBehaviour}");
+
+                                        // Now extract the sprite from the SpriteRenderer
+                                        // SpriteRenderer is NOT a MonoBehaviour, it's a Component with m_Sprite field
+                                        try
+                                        {
+                                            // Try to access the sprite via the ISpriteRenderer interface if available
+                                            if (spriteRenderer is ISpriteRenderer renderer)
+                                            {
+                                                // Use reflection to find the m_Sprite property since we don't know the exact property name
+                                                var spriteProperty = renderer.GetType().GetProperty("M_Sprite")
+                                                    ?? renderer.GetType().GetProperty("Sprite_C212P")
+                                                    ?? renderer.GetType().GetProperty("Sprite");
+
+                                                if (spriteProperty != null)
+                                                {
+                                                    var spritePPtr = spriteProperty.GetValue(renderer);
+                                                    if (spritePPtr != null)
+                                                    {
+                                                        // The sprite property returns a PPtr, we need to resolve it
+                                                        var sprite = ResolvePPtr(spritePPtr, collection);
+                                                        if (sprite != null)
+                                                        {
+                                                            // Use GameObject key if available, otherwise fall back to MonoBehaviour PathID
+                                                            var spriteKey = gameObjectKey ?? $"pachinkoBall_{monoBehaviour.PathID}";
+                                                            orbSpriteRefs[spriteKey] = sprite;
+                                                            Logger.Debug($"🎯 Extracted sprite from SpriteRenderer: {sprite.GetType().Name}, stored with key: {spriteKey}");
+
+                                                            // Log sprite name if available
+                                                            if (sprite is INamed namedSprite)
+                                                            {
+                                                                Logger.Debug($"   Sprite name: {namedSprite.Name}");
+                                                            }
+
+                                                        }
+                                                        else
+                                                        {
+                                                            Logger.Debug($"❌ Could not resolve sprite PPtr from SpriteRenderer");
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        Logger.Debug($"❌ Sprite property was null on SpriteRenderer");
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    Logger.Debug($"❌ No m_Sprite property found on SpriteRenderer type {renderer.GetType().Name}");
+                                                    // Log available properties for debugging
+                                                    var props = renderer.GetType().GetProperties().Select(p => p.Name);
+                                                    Logger.Debug($"   Available properties: {string.Join(", ", props.Take(10))}");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                Logger.Debug($"❌ SpriteRenderer is not ISpriteRenderer: {spriteRenderer.GetType().Name}");
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Logger.Debug($"❌ Error extracting sprite from SpriteRenderer: {ex.Message}");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Logger.Debug($"❌ Could not resolve SpriteRenderer at pathId: {pathId}");
+                                    }
+                                }
+                            }
+                        }
+                        else if (rendererField is IUnityAssetBase spriteAsset)
+                        {
+                            var tempKey = $"pachinkoBall_{monoBehaviour.PathID}";
+                            orbSpriteRefs[tempKey] = spriteAsset;
+                            Logger.Debug($"🎯 Direct sprite asset from PachinkoBall _renderer: {spriteAsset.GetType().Name}");
+                        }
+                        else
+                        {
+                            Logger.Debug($"🎯 _renderer field is not Dictionary or IUnityAssetBase, type: {rendererField?.GetType()?.Name}");
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -505,7 +731,7 @@ namespace peglin_save_explorer.Extractors
                         if (value.CValue is IUnityAssetBase debugAsset)
                         {
                             Logger.Debug($"🔍 Field '{field.Name}' has asset reference: {debugAsset.GetType().Name}");
-                            
+
                             // For orbs, prioritize the main "sprite" field over status effect icons
                             if (spriteReference == null)
                             {
@@ -571,7 +797,7 @@ namespace peglin_save_explorer.Extractors
                     {
                         return ConvertStructureToDict(subStructure, collection, out _);
                     }
-                    
+
                     // Handle asset references
                     else if (value.CValue is IUnityAssetBase asset)
                     {
@@ -582,9 +808,9 @@ namespace peglin_save_explorer.Extractors
                             ["name"] = asset.ToString() ?? "unknown"
                         };
                     }
-                    
+
                     // Handle arrays and collections - THIS IS THE KEY FIX!
-                    else if (value.CValue is System.Collections.IEnumerable enumerable && 
+                    else if (value.CValue is System.Collections.IEnumerable enumerable &&
                              !(value.CValue is string)) // strings are enumerable but we don't want to treat them as arrays
                     {
                         var list = new List<object>();
@@ -601,7 +827,7 @@ namespace peglin_save_explorer.Extractors
                         }
                         return list;
                     }
-                    
+
                     // Handle primitive values wrapped in CValue
                     return value.CValue;
                 }
@@ -613,18 +839,18 @@ namespace peglin_save_explorer.Extractors
                     try
                     {
                         var fieldName = GetFieldName(field)?.ToLowerInvariant() ?? "";
-                        
+
                         // For boolean fields, interpret as boolean
-                        if (fieldName.Contains("enabled") || fieldName.Contains("active") || fieldName.Contains("is") || 
+                        if (fieldName.Contains("enabled") || fieldName.Contains("active") || fieldName.Contains("is") ||
                             fieldName.Contains("can") || fieldName.Contains("has") || fieldName.Contains("should") ||
                             fieldName.Contains("exhaust") || fieldName.Contains("destroy"))
                             return value.AsBoolean;
-                        
+
                         // For float/damage fields, use float representation
                         if (fieldName.Contains("damage") || fieldName.Contains("force") || fieldName.Contains("scale") ||
                             fieldName.Contains("speed") || fieldName.Contains("time") || fieldName.Contains("delay"))
                             return value.AsSingle;
-                        
+
                         // Default to integer for level, count, id fields
                         return value.AsInt32;
                     }
@@ -633,7 +859,7 @@ namespace peglin_save_explorer.Extractors
                         return value.PValue;
                     }
                 }
-                
+
                 // Handle specific typed values
                 if (value.AsSingle != 0)
                     return value.AsSingle;
@@ -654,7 +880,7 @@ namespace peglin_save_explorer.Extractors
                 return value.ToString() ?? "";
             }
         }
-        
+
         /// <summary>
         /// Extracts field name from field object (handles dynamic/reflection types)
         /// </summary>
@@ -695,7 +921,7 @@ namespace peglin_save_explorer.Extractors
                 // These types have a TryGetAsset method that resolves the actual referenced object
                 var ptrType = spriteRef.GetType();
                 var tryGetAssetMethod = ptrType.GetMethod("TryGetAsset");
-                
+
                 if (tryGetAssetMethod != null)
                 {
                     try
@@ -707,7 +933,7 @@ namespace peglin_save_explorer.Extractors
                         {
                             var parameters = new object?[] { candidateCollection, null };
                             var collectionResult = tryGetAssetMethod.Invoke(spriteRef, parameters);
-                            
+
                             if (collectionResult is bool collectionSuccess && collectionSuccess && parameters[1] is IUnityObjectBase resolvedAsset)
                             {
                                 if (resolvedAsset is ISprite resolvedSprite)
@@ -726,12 +952,12 @@ namespace peglin_save_explorer.Extractors
                                     // Dump full properties of this asset to understand its structure
                                     DumpAssetPropertiesForAnalysis(resolvedAsset, $"PPtr_Resolved_{resolvedAsset.GetType().Name}");
                                 }
-                                
+
                                 // Successfully resolved, break out of collection loop
                                 break;
                             }
                         }
-                        
+
                         Logger.Debug($"❌ PPtr resolution failed for {ptrType.Name} across all collections");
                     }
                     catch (Exception ex)
@@ -777,7 +1003,7 @@ namespace peglin_save_explorer.Extractors
                 // These types have a TryGetAsset method that resolves the actual referenced object
                 var ptrType = spriteRef.GetType();
                 var tryGetAssetMethod = ptrType.GetMethod("TryGetAsset");
-                
+
                 if (tryGetAssetMethod != null)
                 {
                     try
@@ -789,7 +1015,7 @@ namespace peglin_save_explorer.Extractors
                         {
                             var parameters = new object?[] { candidateCollection, null };
                             var collectionResult = tryGetAssetMethod.Invoke(spriteRef, parameters);
-                            
+
                             if (collectionResult is bool collectionSuccess && collectionSuccess && parameters[1] is IUnityObjectBase resolvedAsset)
                             {
                                 if (resolvedAsset is ISprite resolvedSprite)
@@ -808,12 +1034,12 @@ namespace peglin_save_explorer.Extractors
                                     // Dump full properties of this asset to understand its structure
                                     DumpAssetPropertiesForAnalysis(resolvedAsset, $"PPtr_Resolved_{resolvedAsset.GetType().Name}");
                                 }
-                                
+
                                 // Successfully resolved, break out of collection loop
                                 break;
                             }
                         }
-                        
+
                         Logger.Debug($"❌ PPtr resolution failed for {ptrType.Name} across all collections (forced type: {forcedSpriteType})");
                     }
                     catch (Exception ex)
@@ -853,8 +1079,12 @@ namespace peglin_save_explorer.Extractors
                     Id = spriteId,
                     Name = sprite.Name ?? texture.Name,
                     Type = spriteType,
-                    Width = (int)sprite.RD.TextureRect.Width,
-                    Height = (int)sprite.RD.TextureRect.Height,
+                    Width = texture.Width_C28,
+                    Height = texture.Height_C28,
+                    FrameWidth = (int)sprite.RD.TextureRect.Width,
+                    FrameHeight = (int)sprite.RD.TextureRect.Height,
+                    FrameX = (int)sprite.RD.TextureRect.X,
+                    FrameY = (int)sprite.RD.TextureRect.Y,
                     FilePath = GetSpriteFilePath(spriteId, spriteType),
                     SourceBundle = ""
                 };
@@ -888,6 +1118,11 @@ namespace peglin_save_explorer.Extractors
                     Type = spriteType,
                     Width = texture.Width_C28,
                     Height = texture.Height_C28,
+                    // For standalone textures processed as sprites, frame dimensions equal texture dimensions
+                    FrameWidth = texture.Width_C28,
+                    FrameHeight = texture.Height_C28,
+                    FrameX = 0,
+                    FrameY = 0,
                     FilePath = GetSpriteFilePath(spriteId, spriteType),
                     SourceBundle = ""
                 };
@@ -982,16 +1217,16 @@ namespace peglin_save_explorer.Extractors
         private bool IsEnemyData(Dictionary<string, object> data)
         {
             // Use the same field detection logic as AssetRipperEnemyExtractor
-            var enemyFields = new[] 
+            var enemyFields = new[]
             { 
                 // From Enemy MonoBehaviour
                 "CurrentHealth", "StartingHealth", "DamagePerMeleeAttack", "AttackRange", "enemyTypes",
                 // From EnemyData ScriptableObject  
                 "MaxHealth", "MaxHealthCruciball", "MeleeAttackDamage", "RangedAttackDamage", "location", "Type"
             };
-            
+
             var matchCount = enemyFields.Count(field => data.ContainsKey(field));
-            
+
             // Also check for specific patterns in values that indicate enemy data
             if (data.ContainsKey("LocKey") && data["LocKey"] is string locKey)
             {
@@ -1001,7 +1236,7 @@ namespace peglin_save_explorer.Extractors
                     matchCount += 2; // Boost confidence for pattern match
                 }
             }
-            
+
             return matchCount >= 2;
         }
 
@@ -1009,50 +1244,66 @@ namespace peglin_save_explorer.Extractors
         {
             // Based on actual analysis: orb MonoBehaviour data is flattened, not nested in m_Structure
             // Look directly for orb-specific fields in the data
-            
+
             // Debug logging to see what keys we have
             var keys = string.Join(", ", data.Keys.Take(20)); // Show first 20 keys
             Logger.Debug($"🔍 IsOrbData checking data with keys: {keys}");
-            
+
             // Check for orb-specific fields directly in the data (not in m_Structure)
             var requiredOrbFields = new[] { "locNameString", "locName", "DamagePerPeg", "CritDamagePerPeg", "Level" };
             var requiredFieldCount = requiredOrbFields.Count(field => data.ContainsKey(field));
-            
+
             Logger.Debug($"🔍 Required orb fields found: {requiredFieldCount}/5 - {string.Join(", ", requiredOrbFields.Where(field => data.ContainsKey(field)))}");
-            
+
             // Must have at least 3 of the 5 required orb fields
             if (requiredFieldCount < 3)
             {
                 Logger.Debug($"🔍 Not enough required orb fields ({requiredFieldCount} < 3)");
                 return false;
             }
-            
+
             // If we have 4+ required fields, it's definitely an orb (like doctorb)
             if (requiredFieldCount >= 4)
             {
                 Logger.Debug($"🔍 Strong match: {requiredFieldCount}/5 required orb fields found - definitely an orb!");
                 return true;
             }
-            
+
             // For 3 required fields, check for additional evidence
             // Check for attack-type specific fields that distinguish orb types
             var attackTypeFields = new[] { "shotPrefab", "_shotPrefab", "_thunderPrefab", "_criticalShotPrefab", "_criticalThunderPrefab", "targetColumn", "verticalAttack", "targetingType" };
             var hasAttackTypeFields = attackTypeFields.Any(field => data.ContainsKey(field));
-            
+
             // Check for MonoBehaviour script references that identify orb component types
             var hasScriptRef = data.ContainsKey("m_Script");
-            
+
             Logger.Debug($"🔍 Attack type fields: {hasAttackTypeFields}, Script ref: {hasScriptRef}");
-            
+
             var isOrb = requiredFieldCount >= 3 && (hasAttackTypeFields || hasScriptRef);
             Logger.Debug($"🔍 IsOrb result: {isOrb} (required fields: {requiredFieldCount >= 3}, type indicators: {hasAttackTypeFields || hasScriptRef})");
-            
+
             // Must have required fields and either be a strong match or have attack-type indicators
             return isOrb;
         }
 
+        private bool IsPachinkoBallData(Dictionary<string, object> data)
+        {
+            // PachinkoBall MonoBehaviours have physics/rendering fields but not orb data fields
+            var pachinkoBallFields = new[] { "_renderer", "FireForce", "GravityScale", "MaxBounceCount", "MultiballForceMod" };
+            var pachinkoBallCount = pachinkoBallFields.Count(field => data.ContainsKey(field));
+
+            // Must have _renderer field and at least 2 other PachinkoBall-specific fields
+            return data.ContainsKey("_renderer") && pachinkoBallCount >= 3;
+        }
+
+        private static bool IsLocalizationParamsManager(Dictionary<string, object> data)
+        {
+            // LocalizationParamsManager components have _Params array and _IsGlobalManager field
+            return data.ContainsKey("_Params") && data.ContainsKey("_IsGlobalManager");
+        }
+
         // Entity extraction methods
-        private RelicData? ExtractRelic(string assetName, Dictionary<string, object> data)
+        private RelicData? ExtractRelic(string assetName, Dictionary<string, object> data, Dictionary<string, string>? localizationParams = null)
         {
             try
             {
@@ -1062,19 +1313,31 @@ namespace peglin_save_explorer.Extractors
                     Id = CleanEntityId(assetName ?? "unknown")
                 };
 
-                if (data.TryGetValue("englishDisplayName", out var name))
+                if (data.TryGetValue("locKey", out var locKey))
                 {
-                    relic.Name = name?.ToString() ?? assetName;
+                    string nameKey = $"Relics/{locKey}_name";
+                    bool hasDescMod = data.TryGetValue("descMod", out var descMod);
+                    string descKey = $"Relics/{locKey}_desc{descMod?.ToString() ?? ""}";
+                    relic.Name = localizationService.GetTranslation(nameKey) ?? assetName ?? "Unknown Relic";
+                    relic.Description = localizationService.GetTranslation(descKey) ?? "Unknown Relic Description";
                 }
-                else if (data.TryGetValue("locKey", out var locKey))
+                if (string.IsNullOrEmpty(relic.Name) || string.IsNullOrEmpty(relic.Description))
                 {
-                    relic.Name = locKey?.ToString() ?? assetName;
+                    if (data.TryGetValue("englishDisplayName", out var name))
+                    {
+                        relic.Name = name?.ToString() ?? assetName ?? "Unknown Relic";
+                    }
+                    else
+                    {
+                        relic.Name = assetName ?? "Unknown Relic";
+                    }
+                    if (data.TryGetValue("englishDescription", out var desc))
+                    {
+                        relic.Description = desc?.ToString() ?? "";
+                    }
                 }
 
-                if (data.TryGetValue("englishDescription", out var desc))
-                {
-                    relic.Description = desc?.ToString() ?? "";
-                }
+
 
                 if (data.TryGetValue("effect", out var effect))
                 {
@@ -1085,6 +1348,38 @@ namespace peglin_save_explorer.Extractors
                 {
                     relic.RarityValue = rarityInt;
                     relic.Rarity = _enumExtractor.GetEnumName("RelicRarity", rarityInt);
+                }
+
+                // Apply token resolution if we have localization parameters
+                if (localizationParams != null && localizationParams.Count > 0)
+                {
+                    Logger.Debug($"🔤 Applying token resolution to relic {relic.Name} with {localizationParams.Count} parameters: {string.Join(", ", localizationParams.Select(p => $"{p.Key}={p.Value}"))}");
+                    
+                    // Resolve tokens in description
+                    if (!string.IsNullOrEmpty(relic.Description))
+                    {
+                        var resolvedDescription = ResolveTokens(relic.Description, localizationParams);
+                        if (resolvedDescription != relic.Description)
+                        {
+                            Logger.Debug($"🔤 Resolved relic description: '{relic.Description}' -> '{resolvedDescription}'");
+                            relic.Description = resolvedDescription;
+                        }
+                    }
+                    
+                    // Resolve tokens in effect field if it's a string (some relics might have textual effects)
+                    if (!string.IsNullOrEmpty(relic.Effect))
+                    {
+                        var resolvedEffect = ResolveTokens(relic.Effect, localizationParams);
+                        if (resolvedEffect != relic.Effect)
+                        {
+                            Logger.Debug($"🔤 Resolved relic effect: '{relic.Effect}' -> '{resolvedEffect}'");
+                            relic.Effect = resolvedEffect;
+                        }
+                    }
+                }
+                else if (localizationParams != null)
+                {
+                    Logger.Debug($"🔤 No parameters available for token resolution in relic {relic.Name}");
                 }
 
                 return relic;
@@ -1165,50 +1460,46 @@ namespace peglin_save_explorer.Extractors
                 {
                     orb.LocKey = locNameString?.ToString();
                 }
-                
-                // Extract display name from locName  
-                if (data.TryGetValue("locName", out var locName))
+
+                // Prefer localization key-based name over pre-translated fields
+                if (!string.IsNullOrEmpty(orb.LocKey))
+                {
+                    try
+                    {
+
+                        var nameKey = $"{orb.LocKey}_name";
+                        var localizedName = localizationService.GetTranslation($"Orbs/{nameKey}");
+                        if (!string.IsNullOrWhiteSpace(localizedName))
+                        {
+                            orb.Name = localizedName;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"⚠️ Failed to get localized name for orb {assetName} using LocKey {orb.LocKey}: {ex.Message}");
+                    }
+                }
+
+                // Fallback to pre-translated locName if localization key failed
+                if (string.IsNullOrWhiteSpace(orb.Name) && data.TryGetValue("locName", out var locName))
                 {
                     orb.Name = locName?.ToString();
                 }
-                
-                // Fallback to formatted asset name if no name found
+
+                // Final fallback to formatted asset name
                 if (string.IsNullOrWhiteSpace(orb.Name))
                 {
                     orb.Name = assetName ?? "Unknown Orb";
                 }
-                
-                // Extract description from locDescription (try direct path first, then nested)
-                if (data.TryGetValue("locDescription", out var locDescription))
-                {
-                    orb.Description = locDescription?.ToString() ?? "";
-                }
-                else if (data.TryGetValue("ComponentData", out var componentDataObj) &&
-                    componentDataObj is Dictionary<string, object> componentData &&
-                    componentData.TryGetValue("OrbComponent", out var orbComponentObj) &&
-                    orbComponentObj is Dictionary<string, object> orbComponent &&
-                    orbComponent.TryGetValue("locDescription", out var nestedLocDescription))
-                {
-                    orb.Description = nestedLocDescription?.ToString() ?? "";
-                }
-                else if (data.TryGetValue("RawData", out var rawDataObj) &&
-                    rawDataObj is Dictionary<string, object> rawData &&
-                    rawData.TryGetValue("ComponentData", out var rawComponentDataObj) &&
-                    rawComponentDataObj is Dictionary<string, object> rawComponentData &&
-                    rawComponentData.TryGetValue("OrbComponent", out var rawOrbComponentObj) &&
-                    rawOrbComponentObj is Dictionary<string, object> rawOrbComponent &&
-                    rawOrbComponent.TryGetValue("locDescription", out var rawLocDescription))
-                {
-                    orb.Description = rawLocDescription?.ToString() ?? "";
-                }
-                
+
                 // Look for locDescStrings array and translate to DescriptionStrings
-                List<string>? locDescStrings = null;
-                
-                if (data.TryGetValue("locDescStrings", out var directLocDescStrings) && 
+                IEnumerable<object>? locDescStringsArray = null;
+
+                // Try various nested paths for locDescStrings
+                if (data.TryGetValue("locDescStrings", out var directLocDescStrings) &&
                     directLocDescStrings is IEnumerable<object> directArray)
                 {
-                    locDescStrings = directArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                    locDescStringsArray = directArray;
                 }
                 else if (data.TryGetValue("ComponentData", out var componentDataObj) &&
                     componentDataObj is Dictionary<string, object> componentData &&
@@ -1217,7 +1508,7 @@ namespace peglin_save_explorer.Extractors
                     orbComponent.TryGetValue("locDescStrings", out var nestedLocDescStrings) &&
                     nestedLocDescStrings is IEnumerable<object> nestedArray)
                 {
-                    locDescStrings = nestedArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                    locDescStringsArray = nestedArray;
                 }
                 else if (data.TryGetValue("RawData", out var rawDataObj) &&
                     rawDataObj is Dictionary<string, object> rawData &&
@@ -1228,65 +1519,34 @@ namespace peglin_save_explorer.Extractors
                     rawOrbComponent.TryGetValue("locDescStrings", out var rawLocDescStrings) &&
                     rawLocDescStrings is IEnumerable<object> rawArray)
                 {
-                    locDescStrings = rawArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+                    locDescStringsArray = rawArray;
                 }
-                
+
                 // Translate locDescStrings to DescriptionStrings for frontend rendering
-                if (locDescStrings != null && locDescStrings.Count > 0)
+                if (locDescStringsArray != null)
                 {
-                    Logger.Debug($"🔍 Found {locDescStrings.Count} locDescStrings for orb {orb.Name}: [{string.Join(", ", locDescStrings)}]");
-                    try
+                    var locDescStringsList = locDescStringsArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
+
+                    if (locDescStringsList.Count > 0)
                     {
-                        var localizationService = Services.LocalizationService.Instance;
-                        Logger.Debug($"🌐 LocalizationService loaded: {localizationService.IsLoaded}");
-                        if (localizationService.EnsureLoaded())
+                        try
                         {
+
                             var translatedStrings = new List<string>();
-                            foreach (var descKey in locDescStrings)
+                            foreach (var descKey in locDescStringsList)
                             {
-                                var translation = localizationService.GetTranslation(descKey);
-                                Logger.Debug($"🔤 Translation for '{descKey}': '{translation}'");
+                                var translation = localizationService.GetTranslation($"Orbs/{descKey}");
                                 if (!string.IsNullOrWhiteSpace(translation))
                                 {
                                     translatedStrings.Add(translation);
                                 }
                             }
                             orb.DescriptionStrings = translatedStrings;
-                            Logger.Debug($"✅ Translated {translatedStrings.Count} description strings for orb {orb.Name}");
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            Logger.Debug($"❌ LocalizationService could not be loaded for orb {orb.Name}");
+                            Logger.Debug($"⚠️ Failed to get localized descriptions from locDescStrings for orb {orb.Name}: {ex.Message}");
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Debug($"⚠️ Failed to get localized descriptions from locDescStrings for orb {orb.Name}: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    Logger.Debug($"⏭️ No locDescStrings found for orb {orb.Name}");
-                }
-                
-                // Handle single LocKey for Description field if no direct description exists
-                if (string.IsNullOrWhiteSpace(orb.Description) && !string.IsNullOrWhiteSpace(orb.LocKey))
-                {
-                    try
-                    {
-                        var localizationService = Services.LocalizationService.Instance;
-                        if (localizationService.EnsureLoaded())
-                        {
-                            var localizedDescription = localizationService.GetTranslation(orb.LocKey);
-                            if (!string.IsNullOrWhiteSpace(localizedDescription))
-                            {
-                                orb.Description = localizedDescription;
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Debug($"⚠️ Failed to get localized description for orb {orb.Name} (LocKey: {orb.LocKey}): {ex.Message}");
                     }
                 }
 
@@ -1324,12 +1584,6 @@ namespace peglin_save_explorer.Extractors
                                 Logger.Debug($"Extracted PValue {extractedDamage} from SerializableValue string for {assetName}");
                             }
                         }
-                    }
-                    
-                    // Log for doctorb debugging
-                    if (assetName?.Contains("doctorb", StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        Logger.Info($"🎯 DOCTORB: DamagePerPeg raw value: {damagePerPegValue} (type: {damagePerPegValue?.GetType()?.Name}), extracted: {orb.DamagePerPeg}");
                     }
                 }
 
@@ -1371,18 +1625,13 @@ namespace peglin_save_explorer.Extractors
                     {
                         extractedLevel = parsedLevel;
                     }
-                    
+
                     if (extractedLevel.HasValue)
                     {
                         // Store level info in RawData for future processing
                         if (orb.RawData == null) orb.RawData = new Dictionary<string, object>();
                         orb.RawData["Level"] = extractedLevel.Value;
-                        
-                        // Log for doctorb debugging
-                        if (assetName?.Contains("doctorb", StringComparison.OrdinalIgnoreCase) == true)
-                        {
-                            Logger.Info($"🎯 DOCTORB: Level raw value: {levelValue} (type: {levelValue?.GetType()?.Name}), extracted: {extractedLevel}");
-                        }
+                        orb.Level = extractedLevel.Value;
                     }
                 }
 
@@ -1392,7 +1641,7 @@ namespace peglin_save_explorer.Extractors
                 // Set default rarity (orbs typically don't have explicit rarity like relics)
                 orb.RarityValue = 1;
                 orb.Rarity = "COMMON";
-                
+
                 // Try to resolve sprite references from prefab fields
                 ResolvePrefabSprites(orb, data);
 
@@ -1414,19 +1663,19 @@ namespace peglin_save_explorer.Extractors
             {
                 // List of prefab fields that might contain sprites
                 var prefabFields = new[] { "_shotPrefab", "_criticalShotPrefab", "_thunderPrefab", "_criticalThunderPrefab" };
-                
+
                 foreach (var fieldName in prefabFields)
                 {
-                    if (data.TryGetValue(fieldName, out var prefabRef) && 
+                    if (data.TryGetValue(fieldName, out var prefabRef) &&
                         prefabRef is Dictionary<string, object> prefabDict)
                     {
                         Logger.Debug($"🔍 Found prefab reference {fieldName} in orb {orb.Name}");
-                        
+
                         // Try to resolve this prefab reference and extract sprites from it
                         // Store the prefab reference info for now - actual resolution would need 
                         // access to the AssetCollection to call TryGetAsset
                         if (orb.RawData == null) orb.RawData = new Dictionary<string, object>();
-                        
+
                         // Extract PathID if available for later correlation
                         if (prefabDict.TryGetValue("pathId", out var pathIdObj))
                         {
@@ -1435,17 +1684,17 @@ namespace peglin_save_explorer.Extractors
                         }
                     }
                 }
-                
+
                 // Also check for direct sprite field references that were found in debug logs
                 var spriteFields = new[] { "pierceSprite", "originalSprite", "dullSprite" };
-                
+
                 foreach (var fieldName in spriteFields)
                 {
-                    if (data.TryGetValue(fieldName, out var spriteRef) && 
+                    if (data.TryGetValue(fieldName, out var spriteRef) &&
                         spriteRef is Dictionary<string, object> spriteDict)
                     {
                         Logger.Debug($"🎨 Found direct sprite reference {fieldName} in orb {orb.Name}");
-                        
+
                         if (spriteDict.TryGetValue("pathId", out var pathIdObj))
                         {
                             if (orb.RawData == null) orb.RawData = new Dictionary<string, object>();
@@ -1464,7 +1713,7 @@ namespace peglin_save_explorer.Extractors
         private string DetermineOrbTypeFromData(string assetName, Dictionary<string, object> data)
         {
             var lowerName = assetName.ToLowerInvariant();
-            
+
             // Check for specific orb type patterns in name
             if (lowerName.Contains("heal") || lowerName.Contains("support"))
                 return "UTILITY";
@@ -1472,7 +1721,7 @@ namespace peglin_save_explorer.Extractors
                 return "SPECIAL";
             if (lowerName.Contains("attack") || lowerName.Contains("damage") || data.ContainsKey("DamagePerPeg"))
                 return "ATTACK";
-                
+
             return "ATTACK"; // Default to attack type
         }
 
@@ -1491,41 +1740,79 @@ namespace peglin_save_explorer.Extractors
                 {
                     orb.LocKey = locNameString?.ToString();
                 }
-                
-                // Extract display name from locName
-                if (structure.TryGetValue("locName", out var locName))
+
+                // Prefer localization key-based name over pre-translated fields
+                if (!string.IsNullOrEmpty(orb.LocKey))
+                {
+                    try
+                    {
+                        var nameKey = $"{orb.LocKey}_name";
+                        var localizedName = localizationService.GetTranslation($"Orbs/{nameKey}");
+                        if (!string.IsNullOrWhiteSpace(localizedName))
+                        {
+                            orb.Name = localizedName;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"⚠️ Failed to get localized name for orb {assetName} using LocKey {orb.LocKey}: {ex.Message}");
+                    }
+                }
+
+                // Fallback to pre-translated locName if localization key failed
+                if (string.IsNullOrWhiteSpace(orb.Name) && structure.TryGetValue("locName", out var locName))
                 {
                     orb.Name = locName?.ToString();
                 }
-                
-                // Fallback to asset name if no localized name found
+
+                // Final fallback to asset name
                 if (string.IsNullOrWhiteSpace(orb.Name))
                 {
                     orb.Name = assetName ?? "Unknown Orb";
                 }
-                
-                // Extract description from locDescription (try structure first, then componentData fallback)
-                if (structure.TryGetValue("locDescription", out var locDescription))
+
+                // Prefer localization key-based description over pre-translated fields
+                if (!string.IsNullOrEmpty(orb.LocKey))
                 {
-                    orb.Description = locDescription?.ToString() ?? "";
+                    try
+                    {
+                        var localizedDesc = localizationService.GetTranslation($"Orbs/{orb.LocKey}");
+                        if (!string.IsNullOrWhiteSpace(localizedDesc))
+                        {
+                            // orb.Description = localizedDesc; // Removed: use DescriptionStrings instead
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"⚠️ Failed to get localized description for orb {assetName} using LocKey {orb.LocKey}: {ex.Message}");
+                    }
                 }
-                else if (componentData.TryGetValue("locDescription", out var componentLocDescription))
+
+                // Fallback to pre-translated locDescription if localization key failed
+                if (string.IsNullOrWhiteSpace(orb.Description))
                 {
-                    orb.Description = componentLocDescription?.ToString() ?? "";
+                    if (structure.TryGetValue("locDescription", out var locDescription))
+                    {
+                        // orb.Description = locDescription?.ToString() ?? ""; // Removed: use DescriptionStrings instead
+                    }
+                    else if (componentData.TryGetValue("locDescription", out var componentLocDescription))
+                    {
+                        // orb.Description = componentLocDescription?.ToString() ?? ""; // Removed: use DescriptionStrings instead
+                    }
+                    else if (componentData.TryGetValue("ComponentData", out var nestedComponentDataObj) &&
+                        nestedComponentDataObj is Dictionary<string, object> nestedComponentData &&
+                        nestedComponentData.TryGetValue("OrbComponent", out var orbComponentObj) &&
+                        orbComponentObj is Dictionary<string, object> orbComponent &&
+                        orbComponent.TryGetValue("locDescription", out var nestedLocDescription))
+                    {
+                        // orb.Description = nestedLocDescription?.ToString() ?? ""; // Removed: use DescriptionStrings instead
+                    }
                 }
-                else if (componentData.TryGetValue("ComponentData", out var nestedComponentDataObj) &&
-                    nestedComponentDataObj is Dictionary<string, object> nestedComponentData &&
-                    nestedComponentData.TryGetValue("OrbComponent", out var orbComponentObj) &&
-                    orbComponentObj is Dictionary<string, object> orbComponent &&
-                    orbComponent.TryGetValue("locDescription", out var nestedLocDescription))
-                {
-                    orb.Description = nestedLocDescription?.ToString() ?? "";
-                }
-                
+
                 // Look for locDescStrings array and translate to DescriptionStrings
                 List<string>? locDescStrings = null;
-                
-                if (structure.TryGetValue("locDescStrings", out var structureLocDescStrings) && 
+
+                if (structure.TryGetValue("locDescStrings", out var structureLocDescStrings) &&
                     structureLocDescStrings is IEnumerable<object> structureArray)
                 {
                     locDescStrings = structureArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
@@ -1555,34 +1842,25 @@ namespace peglin_save_explorer.Extractors
                 {
                     locDescStrings = rawArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
                 }
-                
+
                 // Translate locDescStrings to DescriptionStrings for frontend rendering
                 if (locDescStrings != null && locDescStrings.Count > 0)
                 {
                     Logger.Debug($"🔍 Found {locDescStrings.Count} locDescStrings for orb {orb.Name}: [{string.Join(", ", locDescStrings)}]");
                     try
                     {
-                        var localizationService = Services.LocalizationService.Instance;
-                        Logger.Debug($"🌐 LocalizationService loaded: {localizationService.IsLoaded}");
-                        if (localizationService.EnsureLoaded())
+                        var translatedStrings = new List<string>();
+                        foreach (var descKey in locDescStrings)
                         {
-                            var translatedStrings = new List<string>();
-                            foreach (var descKey in locDescStrings)
+                            var translation = localizationService.GetTranslation($"Orbs/{descKey}");
+                            Logger.Debug($"🔤 Translation for '{descKey}': '{translation}'");
+                            if (!string.IsNullOrWhiteSpace(translation))
                             {
-                                var translation = localizationService.GetTranslation(descKey);
-                                Logger.Debug($"🔤 Translation for '{descKey}': '{translation}'");
-                                if (!string.IsNullOrWhiteSpace(translation))
-                                {
-                                    translatedStrings.Add(translation);
-                                }
+                                translatedStrings.Add(translation);
                             }
-                            orb.DescriptionStrings = translatedStrings;
-                            Logger.Debug($"✅ Translated {translatedStrings.Count} description strings for orb {orb.Name}");
                         }
-                        else
-                        {
-                            Logger.Debug($"❌ LocalizationService could not be loaded for orb {orb.Name}");
-                        }
+                        orb.DescriptionStrings = translatedStrings;
+                        Logger.Debug($"✅ Translated {translatedStrings.Count} description strings for orb {orb.Name}");
                     }
                     catch (Exception ex)
                     {
@@ -1593,20 +1871,16 @@ namespace peglin_save_explorer.Extractors
                 {
                     Logger.Debug($"⏭️ No locDescStrings found for orb {orb.Name}");
                 }
-                
+
                 // Handle single LocKey for Description field if no direct description exists  
                 if (string.IsNullOrWhiteSpace(orb.Description) && !string.IsNullOrWhiteSpace(orb.LocKey))
                 {
                     try
                     {
-                        var localizationService = Services.LocalizationService.Instance;
-                        if (localizationService.EnsureLoaded())
+                        var localizedDescription = localizationService.GetTranslation($"Orbs/{orb.LocKey}");
+                        if (!string.IsNullOrWhiteSpace(localizedDescription))
                         {
-                            var localizedDescription = localizationService.GetTranslation(orb.LocKey);
-                            if (!string.IsNullOrWhiteSpace(localizedDescription))
-                            {
-                                orb.Description = localizedDescription;
-                            }
+                            // orb.Description = localizedDescription; // Removed: use DescriptionStrings instead
                         }
                     }
                     catch (Exception ex)
@@ -1616,23 +1890,16 @@ namespace peglin_save_explorer.Extractors
                 }
 
                 // Extract damage values directly from structure
-                if (structure.TryGetValue("DamagePerPeg", out var damagePerPeg) && 
+                if (structure.TryGetValue("DamagePerPeg", out var damagePerPeg) &&
                     float.TryParse(damagePerPeg?.ToString(), out var damage))
                 {
                     orb.DamagePerPeg = damage;
                 }
 
-                if (structure.TryGetValue("CritDamagePerPeg", out var critDamagePerPeg) && 
+                if (structure.TryGetValue("CritDamagePerPeg", out var critDamagePerPeg) &&
                     float.TryParse(critDamagePerPeg?.ToString(), out var critDamage))
                 {
                     orb.CritDamagePerPeg = critDamage;
-                }
-
-                // Extract level from structure
-                if (structure.TryGetValue("Level", out var levelObj) && 
-                    int.TryParse(levelObj?.ToString(), out var level))
-                {
-                    // orb.Level = level; // TODO: Enable when Level property is available
                 }
 
                 // Derive base ID from locNameString (clean base name without level)  
@@ -1672,17 +1939,12 @@ namespace peglin_save_explorer.Extractors
         /// <summary>
         /// Processes a GameObject to check if it represents an orb and extract orb data
         /// </summary>
-        private void ProcessGameObjectForOrbs(IGameObject gameObject, Dictionary<long, IMonoBehaviour> componentMap, 
+        private void ProcessGameObjectForOrbs(IGameObject gameObject, Dictionary<long, IMonoBehaviour> componentMap,
             UnifiedExtractionResult result, Dictionary<string, IUnityAssetBase> orbSpriteRefs, AssetCollection collection)
         {
             try
             {
-                var isDoctorb = gameObject.Name.String.Contains("doctorb", StringComparison.OrdinalIgnoreCase);
-                if (isDoctorb)
-                {
-                    Logger.Info($"🎯🎯🎯 DOCTORB: Starting ProcessGameObjectForOrbs for {gameObject.Name}");
-                }
-                
+
                 var gameObjectData = new GameObjectData
                 {
                     Id = CleanEntityId(gameObject.Name),
@@ -1690,33 +1952,19 @@ namespace peglin_save_explorer.Extractors
                     PathID = gameObject.PathID
                 };
 
-                if (isDoctorb)
-                {
-                    Logger.Info($"🎯 DOCTORB: Extracting components from GameObject");
-                }
-                
                 // Extract components from the GameObject
                 ExtractGameObjectComponents(gameObject, componentMap, gameObjectData, collection);
 
-                // Check if this looks like an orb based on its components
-                if (isDoctorb)
-                {
-                    Logger.Info($"🎯 DOCTORB: Components found: {string.Join(", ", gameObjectData.Components.Select(c => c.Type))}");
-                    Logger.Info($"🎯 DOCTORB: RawData keys: {(gameObjectData.RawData != null ? string.Join(", ", ((Dictionary<string, object>)gameObjectData.RawData).Keys) : "null")}");
-                }
-                
+
                 Logger.Debug($"🔍 Checking if GameObject {gameObjectData.Name} is an orb. Components: {string.Join(", ", gameObjectData.Components.Select(c => c.Type))}");
                 if (IsOrbGameObject(gameObjectData))
                 {
-                    if (isDoctorb)
-                    {
-                        Logger.Info($"✅✅✅ DOCTORB: GameObject {gameObjectData.Name} identified as orb!");
-                    }
                     Logger.Debug($"✅ GameObject {gameObjectData.Name} identified as orb");
                     // Convert GameObject data to OrbData
                     var orbData = ConvertGameObjectToOrbData(gameObjectData);
                     if (orbData != null && !string.IsNullOrEmpty(orbData.Id))
                     {
+                        // Store orb with its natural ID, but track GameObject PathID for sprite correlation
                         result.Orbs[orbData.Id] = orbData;
 
                         // Try to find sprite reference (look for sprite components or references)
@@ -1724,20 +1972,41 @@ namespace peglin_save_explorer.Extractors
                         if (spriteReference != null)
                         {
                             orbSpriteRefs[orbData.Id] = spriteReference;
-                            Logger.Debug($"⚪ Found sprite reference for orb GameObject {orbData.Id}: {spriteReference.GetType().Name}");
+                            Logger.Debug($"⚪ Found sprite reference for orb {orbData.Id}: {spriteReference.GetType().Name}");
+                        }
+
+                        // Check if we have a PachinkoBall sprite for this GameObject
+                        var gameObjectKey = $"gameObject_{gameObject.PathID}";
+                        if (orbSpriteRefs.ContainsKey(gameObjectKey))
+                        {
+                            // Correlate the PachinkoBall sprite with this orb
+                            var pachinkoBallSprite = orbSpriteRefs[gameObjectKey];
+                            if (pachinkoBallSprite is IUnityObjectBase spriteObj)
+                            {
+                                orbData.CorrelatedSpriteId = $"sprite_{spriteObj.PathID}";
+                                orbData.CorrelationMethod = "PachinkoBall";
+                                orbData.CorrelationConfidence = 1.0f;
+                                Logger.Debug($"🎯 Correlated orb {orbData.Id} with PachinkoBall sprite {orbData.CorrelatedSpriteId}");
+                            }
+                            else
+                            {
+                                Logger.Debug($"❌ PachinkoBall sprite is not IUnityObjectBase: {pachinkoBallSprite.GetType().Name}");
+                            }
+                        }
+                        else
+                        {
+                            Logger.Debug($"❌ No PachinkoBall sprite found for GameObject {gameObjectKey}");
                         }
 
                         Logger.Debug($"Found orb GameObject: {orbData.Id} - {orbData.Name}");
                     }
+                    else
+                    {
+                        Logger.Debug($"❌ Failed to convert GameObject {gameObjectData.Name} to OrbData");
+                    }
                 }
                 else
                 {
-                    if (isDoctorb)
-                    {
-                        Logger.Info($"❌❌❌ DOCTORB: GameObject {gameObjectData.Name} REJECTED as orb! Why?");
-                        Logger.Info($"❌ DOCTORB: Name: {gameObjectData.Name}, Id: {gameObjectData.Id}");
-                        Logger.Info($"❌ DOCTORB: Component count: {gameObjectData.Components.Count}");
-                    }
                     Logger.Debug($"❌ GameObject {gameObjectData.Name} rejected as orb");
                 }
             }
@@ -1750,7 +2019,7 @@ namespace peglin_save_explorer.Extractors
         /// <summary>
         /// Extracts components from a GameObject
         /// </summary>
-        private void ExtractGameObjectComponents(IGameObject gameObject, Dictionary<long, IMonoBehaviour> componentMap, 
+        private void ExtractGameObjectComponents(IGameObject gameObject, Dictionary<long, IMonoBehaviour> componentMap,
             GameObjectData gameObjectData, AssetCollection collection)
         {
             try
@@ -1761,18 +2030,13 @@ namespace peglin_save_explorer.Extractors
                     ["Name"] = gameObject.Name,
                     ["PathID"] = gameObject.PathID
                 };
-                
+
                 // Fetch all components from the GameObject
                 var components = gameObject.FetchComponents();
                 var extractedComponentData = new Dictionary<string, object>();
                 var orbComponentsFound = new List<Dictionary<string, object>>();
-                
-                var isDoctorb = gameObject.Name.String.Contains("doctorb", StringComparison.OrdinalIgnoreCase);
-                if (isDoctorb)
-                {
-                    Logger.Info($"🔎 DOCTORB ExtractGameObjectComponents: Found {components.Count()} component references");
-                }
-                
+                Dictionary<string, string>? localizationParams = null;
+
                 foreach (var componentPtr in components)
                 {
                     try
@@ -1784,45 +2048,106 @@ namespace peglin_save_explorer.Extractors
                             // Handle MonoBehaviour components (orb data, etc.)
                             if (component is IMonoBehaviour monoBehaviour)
                             {
-                                if (isDoctorb)
-                                {
-                                    Logger.Info($"🔎 DOCTORB: Found MonoBehaviour component: {monoBehaviour.Name} (PathID: {monoBehaviour.PathID})");
-                                }
-                                
+
                                 // Load the structure data from the MonoBehaviour
                                 var structure = monoBehaviour.LoadStructure();
                                 if (structure != null)
                                 {
+                                    // Check if this might be a LocalizationParamsManager before conversion
+                                    bool isLocalizationManager = false;
+                                    try
+                                    {
+                                        // Try to access the raw structure to see if we can get better parameter data
+                                        foreach (var field in structure.Type.Fields)
+                                        {
+                                            if (field.Name == "_Params" && structure.TryGetField(field.Name, out var paramsValue))
+                                            {
+                                                Logger.Debug($"🔍 Found raw _Params field in {gameObject.Name}, type: {field.Type?.Name ?? "unknown"}");
+                                                Logger.Debug($"🔍 Raw _Params value type: {paramsValue.GetType().Name}");
+                                                Logger.Debug($"🔍 Raw _Params CValue type: {paramsValue.CValue?.GetType().Name ?? "null"}");
+                                                
+                                                // Try to access the raw array data
+                                                if (paramsValue.CValue != null)
+                                                {
+                                                    Logger.Debug($"🔍 Raw _Params CValue: {paramsValue.CValue}");
+                                                    isLocalizationManager = true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Logger.Debug($"Error accessing raw structure: {ex.Message}");
+                                    }
+
                                     // Convert to dictionary for processing
                                     IUnityAssetBase? spriteRef = null;
                                     var componentData = ConvertStructureToDict(structure, collection, out spriteRef);
-                                    
-                                    if (isDoctorb)
+
+                                    // Check if this is LocalizationParamsManager
+                                    if (IsLocalizationParamsManager(componentData))
                                     {
-                                        Logger.Info($"🔎 DOCTORB: MonoBehaviour data keys: {string.Join(", ", componentData.Keys.Take(10))}");
-                                    }
-                                    
-                                    // Check if this is orb data
-                                    if (IsOrbData(componentData))
-                                    {
-                                        if (isDoctorb)
-                                        {
-                                            Logger.Info($"✅✅ DOCTORB: Found orb MonoBehaviour in GameObject {gameObject.Name}!");
-                                        }
-                                        Logger.Debug($"✅ Found orb MonoBehaviour in GameObject {gameObject.Name}");
+                                        Logger.Debug($"✅ Found LocalizationParamsManager in GameObject {gameObject.Name}");
                                         
+                                        // Try the raw structure approach if we detected it earlier
+                                        Dictionary<string, string>? extractedParams = null;
+                                        if (isLocalizationManager)
+                                        {
+                                            extractedParams = ExtractLocalizationParamsFromRawStructure(structure);
+                                        }
+                                        
+                                        // Fallback to the converted data approach
+                                        if (extractedParams == null)
+                                        {
+                                            extractedParams = ExtractLocalizationParams(componentData);
+                                        }
+                                        
+                                        if (extractedParams != null && extractedParams.Count > 0)
+                                        {
+                                            localizationParams = extractedParams;
+                                            Logger.Debug($"🔤 Extracted {extractedParams.Count} localization parameters: {string.Join(", ", extractedParams.Keys)}");
+                                            
+                                            // Store localization parameters in ComponentData for later use
+                                            extractedComponentData["LocalizationParams"] = localizationParams;
+                                            
+                                            // Store global relic parameters for later use with all relics
+                                            if (gameObject.Name.ToString().Contains("relic", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                Logger.Debug($"🔤 Storing global relic parameters from GameObject {gameObject.Name}: {extractedParams.Count} parameters");
+                                                
+                                                // Accumulate parameters instead of overwriting
+                                                if (_globalRelicParameters == null)
+                                                {
+                                                    _globalRelicParameters = new Dictionary<string, string>(extractedParams);
+                                                }
+                                                else
+                                                {
+                                                    foreach (var kvp in extractedParams)
+                                                    {
+                                                        _globalRelicParameters[kvp.Key] = kvp.Value;
+                                                    }
+                                                    Logger.Debug($"🔤 Total accumulated global relic parameters: {_globalRelicParameters.Count}");
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Logger.Debug($"❌ LocalizationParamsManager found but no parameters extracted from GameObject {gameObject.Name}");
+                                        }
+                                    }
+                                    // Check if this is orb data
+                                    else if (IsOrbData(componentData))
+                                    {
+                                        Logger.Debug($"✅ Found orb MonoBehaviour in GameObject {gameObject.Name}");
+
                                         // Collect all orb components for aggregation
                                         orbComponentsFound.Add(componentData);
                                     }
-                                    else if (isDoctorb)
-                                    {
-                                        Logger.Info($"❌ DOCTORB: MonoBehaviour NOT identified as orb data. Keys: {string.Join(", ", componentData.Keys)}");
-                                    }
-                                    
+
                                     // Store component info even if not orb data
                                     var componentType = monoBehaviour.GetType().Name;
-                                    gameObjectData.Components.Add(new ComponentData 
-                                    { 
+                                    gameObjectData.Components.Add(new ComponentData
+                                    {
                                         Type = componentType,
                                         Properties = componentData
                                     });
@@ -1832,14 +2157,14 @@ namespace peglin_save_explorer.Extractors
                             else if (component is ISprite sprite)
                             {
                                 Logger.Debug($"🎨 Found Sprite component in GameObject {gameObject.Name}: {sprite.Name}");
-                                
+
                                 var spriteData = new Dictionary<string, object>
                                 {
                                     ["Name"] = sprite.Name,
                                     ["PathID"] = sprite.PathID,
                                     ["Type"] = "Sprite"
                                 };
-                                
+
                                 // Try to get the texture associated with this sprite
                                 try
                                 {
@@ -1855,10 +2180,10 @@ namespace peglin_save_explorer.Extractors
                                 {
                                     Logger.Debug($"Could not resolve texture for sprite {sprite.Name}: {ex.Message}");
                                 }
-                                
+
                                 // Store sprite data for correlation
                                 extractedComponentData["SpriteComponent"] = spriteData;
-                                
+
                                 gameObjectData.Components.Add(new ComponentData
                                 {
                                     Type = "Sprite",
@@ -1871,17 +2196,17 @@ namespace peglin_save_explorer.Extractors
                             else if (component is ITexture2D texture2D)
                             {
                                 Logger.Debug($"🖼️ Found Texture2D component in GameObject {gameObject.Name}: {texture2D.Name}");
-                                
+
                                 var textureData = new Dictionary<string, object>
                                 {
                                     ["Name"] = texture2D.Name,
                                     ["PathID"] = texture2D.PathID,
                                     ["Type"] = "Texture2D"
                                 };
-                                
+
                                 // Store texture data for correlation
                                 extractedComponentData["TextureComponent"] = textureData;
-                                
+
                                 gameObjectData.Components.Add(new ComponentData
                                 {
                                     Type = "Texture2D",
@@ -1895,7 +2220,7 @@ namespace peglin_save_explorer.Extractors
                                 // Handle other component types
                                 var componentType = component.GetType().Name;
                                 Logger.Debug($"🔧 Found component type {componentType} in GameObject {gameObject.Name}");
-                                
+
                                 gameObjectData.Components.Add(new ComponentData
                                 {
                                     Type = componentType,
@@ -1911,19 +2236,83 @@ namespace peglin_save_explorer.Extractors
                         Logger.Debug($"Could not resolve component for GameObject {gameObject.Name}: {ex.Message}");
                     }
                 }
-                
+
                 // Aggregate all orb components if we found multiple
                 if (orbComponentsFound.Count > 0)
                 {
                     Logger.Debug($"🔄 Aggregating {orbComponentsFound.Count} orb components for GameObject {gameObject.Name}");
-                    
+
                     // Create an aggregated orb data from all components
                     var aggregatedOrbData = AggregateOrbComponents(gameObject.Name, orbComponentsFound);
                     if (aggregatedOrbData != null)
                     {
+                        // Apply token resolution if we have localization parameters
+                        if (localizationParams != null && (localizationParams.ContainsKey("_HasLocalizationParams") || localizationParams.Count > 1))
+                        {
+                            // Use extracted parameters directly if available, otherwise fall back to known params
+                            Dictionary<string, string> parametersToUse = localizationParams;
+                            
+                            if (localizationParams.ContainsKey("_HasLocalizationParams"))
+                            {
+                                // Get the orb level from the data for fallback
+                                var orbLevel = 1;
+                                if (aggregatedOrbData.RawData?.TryGetValue("Level", out var levelObj) == true &&
+                                    int.TryParse(levelObj?.ToString(), out var parsedLevel))
+                                {
+                                    orbLevel = parsedLevel;
+                                }
+                                
+                                // Get known parameters for this orb
+                                var knownParams = GetKnownLocalizationParams(aggregatedOrbData.Name ?? "", orbLevel);
+                                if (knownParams != null && knownParams.Count > 0)
+                                {
+                                    parametersToUse = knownParams;
+                                }
+                            }
+                            
+                            if (parametersToUse.Count > 0 && !parametersToUse.ContainsKey("_HasLocalizationParams"))
+                            {
+                                Logger.Debug($"🔤 Applying token resolution to orb {aggregatedOrbData.Name} with {parametersToUse.Count} parameters: {string.Join(", ", parametersToUse.Select(p => $"{p.Key}={p.Value}"))}");
+                                
+                                // Resolve tokens in name
+                                if (!string.IsNullOrEmpty(aggregatedOrbData.Name))
+                                {
+                                    var resolvedName = ResolveTokens(aggregatedOrbData.Name, parametersToUse);
+                                    if (resolvedName != aggregatedOrbData.Name)
+                                    {
+                                        Logger.Debug($"🔤 Resolved orb name: '{aggregatedOrbData.Name}' -> '{resolvedName}'");
+                                        aggregatedOrbData.Name = resolvedName;
+                                    }
+                                }
+                                
+                                // Resolve tokens in description strings
+                                if (aggregatedOrbData.DescriptionStrings != null && aggregatedOrbData.DescriptionStrings.Count > 0)
+                                {
+                                    var resolvedDescriptions = ResolveTokens(aggregatedOrbData.DescriptionStrings, parametersToUse);
+                                    var hasChanges = false;
+                                    for (int i = 0; i < aggregatedOrbData.DescriptionStrings.Count; i++)
+                                    {
+                                        if (i < resolvedDescriptions.Count && resolvedDescriptions[i] != aggregatedOrbData.DescriptionStrings[i])
+                                        {
+                                            hasChanges = true;
+                                            Logger.Debug($"🔤 Resolved description[{i}]: '{aggregatedOrbData.DescriptionStrings[i]}' -> '{resolvedDescriptions[i]}'");
+                                        }
+                                    }
+                                    if (hasChanges)
+                                    {
+                                        aggregatedOrbData.DescriptionStrings = resolvedDescriptions;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                Logger.Debug($"🔤 No parameters available for token resolution in orb {aggregatedOrbData.Name}");
+                            }
+                        }
+
                         gameObjectData.Name = aggregatedOrbData.Name ?? gameObject.Name;
                         gameObjectData.RawData = aggregatedOrbData.RawData;
-                        
+
                         // Store the aggregated component data
                         extractedComponentData["OrbComponent"] = aggregatedOrbData.RawData;
                         extractedComponentData["HasOrbData"] = true;
@@ -1933,15 +2322,15 @@ namespace peglin_save_explorer.Extractors
                         extractedComponentData["ComponentCount"] = orbComponentsFound.Count;
                     }
                 }
-                
+
                 // Store the extracted component data in RawData
                 if (extractedComponentData.Count > 0)
                 {
                     gameObjectInfo["ComponentData"] = extractedComponentData;
                 }
-                
+
                 gameObjectData.RawData = gameObjectInfo;
-                
+
                 // For now, create a placeholder component based on the GameObject name
                 var placeholderComponent = new ComponentData
                 {
@@ -1950,7 +2339,7 @@ namespace peglin_save_explorer.Extractors
                     PathID = gameObject.PathID,
                     Properties = gameObjectInfo
                 };
-                
+
                 gameObjectData.Components.Add(placeholderComponent);
             }
             catch (Exception ex)
@@ -1965,19 +2354,19 @@ namespace peglin_save_explorer.Extractors
         private OrbData? AggregateOrbComponents(string gameObjectName, List<Dictionary<string, object>> orbComponents)
         {
             if (orbComponents.Count == 0) return null;
-            
+
             Logger.Debug($"🔀 Aggregating {orbComponents.Count} orb components for {gameObjectName}");
-            
+
             // Start with an empty dictionary to aggregate all fields
             var aggregatedData = new Dictionary<string, object>();
-            
+
             // Merge all component data, later components can add to or override earlier ones
             foreach (var component in orbComponents)
             {
                 foreach (var kvp in component)
                 {
                     // For nested dictionaries, merge them recursively
-                    if (kvp.Value is Dictionary<string, object> nestedDict && 
+                    if (kvp.Value is Dictionary<string, object> nestedDict &&
                         aggregatedData.TryGetValue(kvp.Key, out var existingValue) &&
                         existingValue is Dictionary<string, object> existingDict)
                     {
@@ -1998,19 +2387,19 @@ namespace peglin_save_explorer.Extractors
                     }
                 }
             }
-            
+
             Logger.Debug($"📊 Aggregated data contains {aggregatedData.Count} fields from {orbComponents.Count} components");
-            
+
             // Now extract an OrbData from the aggregated data
             var orbData = ExtractOrb(gameObjectName, aggregatedData);
-            
+
             if (orbData != null)
             {
                 // Store the aggregated raw data
                 orbData.RawData = aggregatedData;
                 Logger.Debug($"✅ Successfully created aggregated OrbData for {gameObjectName} with {aggregatedData.Count} fields");
             }
-            
+
             return orbData;
         }
 
@@ -2020,7 +2409,7 @@ namespace peglin_save_explorer.Extractors
         private string DetermineComponentTypeFromName(string name)
         {
             var lowerName = name.ToLowerInvariant();
-            
+
             // Guess component types based on naming patterns
             if (lowerName.Contains("attack") || lowerName.Contains("damage"))
                 return "Attack";
@@ -2030,7 +2419,7 @@ namespace peglin_save_explorer.Extractors
                 return "OrbData";
             if (lowerName.Contains("upgrade"))
                 return "UnlimitedUpgrades";
-                
+
             return "MonoBehaviour";
         }
 
@@ -2039,44 +2428,89 @@ namespace peglin_save_explorer.Extractors
         /// </summary>
         private static bool IsOrbGameObject(GameObjectData gameObjectData)
         {
-            // Check if the GameObject has orb-related components
-            var componentTypes = gameObjectData.Components.Select(c => c.Type.ToLowerInvariant()).ToList();
-            
-            // Look for orb-specific component patterns
-            var orbComponentPatterns = new[] 
-            { 
-                "attack", "pachinkoball", "orbdata", "ball", "projectile", 
-                "damage", "critdamage", "unlimitedupgrades"
+            var name = gameObjectData.Name.ToLowerInvariant();
+            var id = gameObjectData.Id.ToLowerInvariant();
+
+            // First, check for definite exclusions - UI elements, sprites, and non-gameplay objects
+            var strongExcludePatterns = new[]
+            {
+                "ui", "menu", "button", "text", "canvas", "camera", "light", "manager",
+                "controller", "system", "effect", "particle", "enemy", "relic", "statue",
+                "icon", "image", "sprite", "background", "frame", "mask", "preview", "tooltip",
+                "container", "panel", "widget", "display", "layout", "grid", "row", "option",
+                "confirmation", "upgrade", "catalog", "editor", "select", "view", "boss", "prefab",
+                "projectile", "arrow", "damage", "health", "flames", "explosion", "flash", "wheel",
+                "progress", "details", "inventory", "carousel", "silhouette", "shadow", "outline",
+                "transform", "spawntransform", "starttransform", "ballspawntransform",
+                // Projectile/shot variants that are animations, not orbs
+                "shot", "crit", "startup", "vine", "capsule", "stats", "doodad", "scenari",
+                // UI-specific orb elements that aren't actual orbs
+                "orbname", "orbcount", "orblist", "orbtitle", "orbinsert", "cycleorb",
+                "cruciball", "debug", "navigation"
             };
-            
-            var hasOrbComponents = orbComponentPatterns.Any(pattern => 
-                componentTypes.Any(type => type.Contains(pattern)));
-            
-            if (!hasOrbComponents)
+
+            var isStronglyExcluded = strongExcludePatterns.Any(pattern =>
+                name.Contains(pattern) || id.Contains(pattern));
+
+            if (isStronglyExcluded)
             {
                 return false;
             }
-            
-            // Additional filtering based on name patterns
-            var name = gameObjectData.Name.ToLowerInvariant();
-            var id = gameObjectData.Id.ToLowerInvariant();
-            
-            // Include if name/id suggests it's an orb
-            var orbNamePatterns = new[] { "orb", "ball", "attack", "projectile" };
-            var hasOrbName = orbNamePatterns.Any(pattern => 
-                name.Contains(pattern) || id.Contains(pattern));
-            
-            // Exclude non-orb entities
-            var excludePatterns = new[] 
-            { 
-                "ui", "menu", "button", "text", "canvas", "camera", "light", "manager", 
-                "controller", "system", "effect", "particle", "enemy", "relic", "statue"
-            };
-            
-            var isExcluded = excludePatterns.Any(pattern => 
-                name.Contains(pattern) || id.Contains(pattern));
-            
-            return hasOrbComponents && (hasOrbName || componentTypes.Count > 0) && !isExcluded;
+
+            // Check if the GameObject actually has OrbComponent data in its RawData
+            if (gameObjectData.RawData is Dictionary<string, object> rawData)
+            {
+                // Look for ComponentData.OrbComponent structure which indicates actual orb data
+                if (rawData.TryGetValue("ComponentData", out var componentDataObj) &&
+                    componentDataObj is Dictionary<string, object> componentData &&
+                    componentData.ContainsKey("OrbComponent"))
+                {
+                    Logger.Debug($"✅ GameObject {name} has OrbComponent data - confirmed orb");
+                    return true;
+                }
+
+                // Look for direct OrbComponent in RawData
+                if (rawData.ContainsKey("OrbComponent"))
+                {
+                    Logger.Debug($"✅ GameObject {name} has direct OrbComponent data - confirmed orb");
+                    return true;
+                }
+
+                // Look for orb-specific fields that indicate this is actual orb data
+                var orbSpecificFields = new[] { "DamagePerPeg", "CritDamagePerPeg", "Level", "locNameString", "locName" };
+                var hasOrbFields = orbSpecificFields.Count(field => rawData.ContainsKey(field)) >= 3;
+
+                if (hasOrbFields)
+                {
+                    Logger.Debug($"✅ GameObject {name} has orb-specific fields - confirmed orb");
+                    return true;
+                }
+            }
+
+            // Check component types for specific orb-related components (more restrictive than before)
+            var componentTypes = gameObjectData.Components.Select(c => c.Type.ToLowerInvariant()).ToList();
+            var restrictiveOrbComponents = new[] { "pachinkoball", "orbdata", "unlimitedupgrades" };
+            var hasRestrictiveOrbComponents = restrictiveOrbComponents.Any(pattern =>
+                componentTypes.Any(type => type.Contains(pattern)));
+
+            if (hasRestrictiveOrbComponents)
+            {
+                Logger.Debug($"✅ GameObject {name} has restrictive orb components - confirmed orb");
+                return true;
+            }
+
+            // Only include objects with "orb" or "-lvl" patterns that suggest they're actual orb entities
+            var hasOrbPattern = name.Contains("orb") || name.Contains("-lvl") ||
+                               id.Contains("orb") || id.Contains("-lvl");
+
+            if (!hasOrbPattern)
+            {
+                Logger.Debug($"❌ GameObject {name} lacks orb patterns - not an orb");
+                return false;
+            }
+
+            Logger.Debug($"🔍 GameObject {name} passed basic orb pattern check but lacks component data");
+            return false;
         }
 
         /// <summary>
@@ -2094,32 +2528,32 @@ namespace peglin_save_explorer.Extractors
                 };
 
                 // Check if we have extracted component data with orb information
-                if (gameObjectData.RawData != null && 
+                if (gameObjectData.RawData != null &&
                     gameObjectData.RawData.TryGetValue("ComponentData", out var componentDataObj) &&
                     componentDataObj is Dictionary<string, object> componentData)
                 {
                     // Use the extracted orb data from the MonoBehaviour component
-                    if (componentData.TryGetValue("HasOrbData", out var hasOrbData) && 
+                    if (componentData.TryGetValue("HasOrbData", out var hasOrbData) &&
                         hasOrbData is bool && (bool)hasOrbData)
                     {
                         // Extract all the orb fields we found
                         if (componentData.TryGetValue("LocKey", out var locKey))
                             orb.LocKey = locKey?.ToString();
-                            
+
                         if (componentData.TryGetValue("DamagePerPeg", out var damage))
                             orb.DamagePerPeg = damage as float?;
-                            
+
                         if (componentData.TryGetValue("CritDamagePerPeg", out var critDamage))
                             orb.CritDamagePerPeg = critDamage as float?;
-                            
+
                         // Extract description from componentData.OrbComponent.locDescription path
                         if (componentData.TryGetValue("OrbComponent", out var orbComponentObj) &&
                             orbComponentObj is Dictionary<string, object> orbComponent &&
                             orbComponent.TryGetValue("locDescription", out var locDescription))
                         {
-                            orb.Description = locDescription?.ToString() ?? "";
+                            // orb.Description = locDescription?.ToString() ?? ""; // Removed: use DescriptionStrings instead
                         }
-                        
+
                         // Extract and translate locDescStrings from componentData.OrbComponent.locDescStrings
                         if (componentData.TryGetValue("OrbComponent", out var orbComponentObjForStrings) &&
                             orbComponentObjForStrings is Dictionary<string, object> orbComponentForStrings &&
@@ -2127,33 +2561,47 @@ namespace peglin_save_explorer.Extractors
                             locDescStringsObj is IEnumerable<object> locDescStringsArray)
                         {
                             var locDescStrings = locDescStringsArray.Select(x => x?.ToString()).Where(x => !string.IsNullOrEmpty(x)).Cast<string>().ToList();
-                            
+
                             if (locDescStrings.Count > 0)
                             {
                                 Logger.Debug($"🔍 Found {locDescStrings.Count} locDescStrings for orb {orb.Name}: [{string.Join(", ", locDescStrings)}]");
                                 try
                                 {
-                                    var localizationService = Services.LocalizationService.Instance;
-                                    Logger.Debug($"🌐 LocalizationService loaded: {localizationService.IsLoaded}");
-                                    if (localizationService.EnsureLoaded())
+
+                                    var translatedStrings = new List<string>();
+                                    foreach (var descKey in locDescStrings)
                                     {
-                                        var translatedStrings = new List<string>();
-                                        foreach (var descKey in locDescStrings)
+                                        var translation = localizationService.GetTranslation($"Orbs/{descKey}");
+                                        Logger.Debug($"🔤 Translation for '{descKey}': '{translation}'");
+                                        if (!string.IsNullOrWhiteSpace(translation))
                                         {
-                                            var translation = localizationService.GetTranslation(descKey);
-                                            Logger.Debug($"🔤 Translation for '{descKey}': '{translation}'");
-                                            if (!string.IsNullOrWhiteSpace(translation))
+                                            translatedStrings.Add(translation);
+                                        }
+                                    }
+                                    
+                                    // Apply token resolution if we have LocalizationParams
+                                    if (componentData.TryGetValue("LocalizationParams", out var locParamsObj) &&
+                                        locParamsObj is Dictionary<string, string> locParams)
+                                    {
+                                        Logger.Debug($"🔤 Applying token resolution to {translatedStrings.Count} translated strings using {locParams.Count} parameters");
+                                        var resolvedStrings = ResolveTokens(translatedStrings, locParams);
+                                        
+                                        // Log any resolved strings
+                                        for (int i = 0; i < translatedStrings.Count; i++)
+                                        {
+                                            if (i < resolvedStrings.Count && resolvedStrings[i] != translatedStrings[i])
                                             {
-                                                translatedStrings.Add(translation);
+                                                Logger.Debug($"🔤 Resolved translation[{i}]: '{translatedStrings[i]}' -> '{resolvedStrings[i]}'");
                                             }
                                         }
-                                        orb.DescriptionStrings = translatedStrings;
-                                        Logger.Debug($"✅ Translated {translatedStrings.Count} description strings for orb {orb.Name}");
+                                        
+                                        orb.DescriptionStrings = resolvedStrings;
                                     }
                                     else
                                     {
-                                        Logger.Debug($"❌ LocalizationService could not be loaded for orb {orb.Name}");
+                                        orb.DescriptionStrings = translatedStrings;
                                     }
+                                    Logger.Debug($"✅ Translated {translatedStrings.Count} description strings for orb {orb.Name}");
                                 }
                                 catch (Exception ex)
                                 {
@@ -2165,12 +2613,12 @@ namespace peglin_save_explorer.Extractors
                                 Logger.Debug($"⏭️ No valid locDescStrings found for orb {orb.Name}");
                             }
                         }
-                        
+
                         // Set default values for other fields
                         orb.OrbType = "ATTACK";
                         orb.RarityValue = 1;
                         orb.Rarity = "COMMON";
-                        
+
                         Logger.Debug($"✅ Successfully extracted orb data from GameObject {gameObjectData.Name}: LocKey={orb.LocKey}, Damage={orb.DamagePerPeg}");
                     }
                 }
@@ -2182,12 +2630,12 @@ namespace peglin_save_explorer.Extractors
                         if (component.Type.ToLowerInvariant().Contains("attack"))
                         {
                             // Try to find damage values in component properties
-                            if (component.Properties.TryGetValue("DamagePerPeg", out var damage) && 
+                            if (component.Properties.TryGetValue("DamagePerPeg", out var damage) &&
                                 float.TryParse(damage?.ToString(), out var damageFloat))
                             {
                                 orb.DamagePerPeg = damageFloat;
                             }
-                            if (component.Properties.TryGetValue("CritDamagePerPeg", out var critDamage) && 
+                            if (component.Properties.TryGetValue("CritDamagePerPeg", out var critDamage) &&
                                 float.TryParse(critDamage?.ToString(), out var critDamageFloat))
                             {
                                 orb.CritDamagePerPeg = critDamageFloat;
@@ -2206,20 +2654,248 @@ namespace peglin_save_explorer.Extractors
         }
 
         /// <summary>
-        /// Finds sprite reference for a GameObject
+        /// Finds sprite reference for a GameObject by tracing orb -> PachinkoBall -> SpriteRenderer -> Sprite
         /// </summary>
-        private IUnityAssetBase? FindGameObjectSpriteReference(IGameObject gameObject, Dictionary<long, IMonoBehaviour> componentMap, 
+        private IUnityAssetBase? FindGameObjectSpriteReference(IGameObject gameObject, Dictionary<long, IMonoBehaviour> componentMap,
             AssetCollection collection)
         {
             try
             {
-                // This would need proper implementation to traverse GameObject's component array
-                // For now, return null - sprite correlation will be handled by the sprite extractor
+                Logger.Debug($"🔍 Tracing sprite reference for GameObject {gameObject.Name}");
+
+                // Get all components from the GameObject
+                var components = gameObject.FetchComponents();
+
+                foreach (var componentPtr in components)
+                {
+                    try
+                    {
+                        var component = componentPtr.TryGetAsset(collection);
+                        if (component is IMonoBehaviour monoBehaviour)
+                        {
+                            // Load the MonoBehaviour structure to check if it's PachinkoBall
+                            var structure = monoBehaviour.LoadStructure();
+                            if (structure != null)
+                            {
+                                var componentData = ConvertStructureToDict(structure, collection, out _);
+
+                                // Check if this is a PachinkoBall MonoBehaviour by looking for _renderer field
+                                if (componentData.ContainsKey("_renderer") || componentData.ContainsKey("renderer"))
+                                {
+                                    Logger.Debug($"✅ Found PachinkoBall MonoBehaviour in GameObject {gameObject.Name}");
+
+                                    // Extract the _renderer field (reference to SpriteRenderer)
+                                    var rendererField = componentData.ContainsKey("_renderer") ? componentData["_renderer"] : componentData["renderer"];
+
+                                    if (rendererField is Dictionary<string, object> rendererDict)
+                                    {
+                                        Logger.Debug($"🔄 Processing _renderer reference in PachinkoBall");
+
+                                        // Look for asset reference in the dictionary
+                                        if (rendererDict.ContainsKey("type") && rendererDict.ContainsKey("pathId"))
+                                        {
+                                            var typeName = rendererDict["type"]?.ToString();
+                                            var pathIdStr = rendererDict["pathId"]?.ToString();
+
+                                            Logger.Debug($"🔍 Found renderer reference: type={typeName}, pathId={pathIdStr}");
+
+                                            if (typeName?.Contains("SpriteRenderer") == true && long.TryParse(pathIdStr, out var pathId))
+                                            {
+                                                // Find the SpriteRenderer component by PathID
+                                                var spriteRenderer = FindAssetByPathId(collection, pathId);
+                                                if (spriteRenderer != null)
+                                                {
+                                                    Logger.Debug($"✅ Resolved SpriteRenderer: {spriteRenderer.GetType().Name}");
+
+                                                    // Extract sprite reference from SpriteRenderer
+                                                    var sprite = ExtractSpriteFromRenderer(spriteRenderer, collection);
+                                                    if (sprite != null)
+                                                    {
+                                                        Logger.Debug($"✅ Successfully traced sprite: {sprite.GetType().Name}");
+                                                        return sprite;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else if (rendererField is IUnityAssetBase rendererAsset)
+                                    {
+                                        // Direct asset reference
+                                        Logger.Debug($"🔄 Processing direct _renderer asset in PachinkoBall");
+                                        var sprite = ExtractSpriteFromRenderer(rendererAsset, collection);
+                                        if (sprite != null)
+                                        {
+                                            Logger.Debug($"✅ Successfully traced sprite from direct asset: {sprite.GetType().Name}");
+                                            return sprite;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"Error processing component in GameObject {gameObject.Name}: {ex.Message}");
+                    }
+                }
+
+                Logger.Debug($"❌ No sprite reference found for GameObject {gameObject.Name}");
                 return null;
             }
             catch (Exception ex)
             {
                 Logger.Debug($"Error finding sprite reference for GameObject {gameObject.Name}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Finds an asset by PathID in the collection
+        /// </summary>
+        private IUnityAssetBase? FindAssetByPathId(AssetCollection collection, long pathId)
+        {
+            try
+            {
+                return collection.TryGetAsset(pathId);
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Error finding asset by PathID {pathId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Resolves a PPtr reference to an actual asset
+        /// </summary>
+        private IUnityAssetBase? ResolvePPtr(object pptr, AssetCollection collection)
+        {
+            try
+            {
+                // Check if it's already an IUnityAssetBase
+                if (pptr is IUnityAssetBase asset)
+                {
+                    return asset;
+                }
+
+                // Check if it has a TryGetAsset method (for PPtr types)
+                var tryGetMethod = pptr.GetType().GetMethod("TryGetAsset");
+                if (tryGetMethod != null)
+                {
+                    var result = tryGetMethod.Invoke(pptr, new object[] { collection });
+                    return result as IUnityAssetBase;
+                }
+
+                // Try to get PathID property and resolve it
+                var pathIdProperty = pptr.GetType().GetProperty("PathID")
+                    ?? pptr.GetType().GetProperty("M_PathID")
+                    ?? pptr.GetType().GetProperty("m_PathID");
+
+                if (pathIdProperty != null)
+                {
+                    var pathIdValue = pathIdProperty.GetValue(pptr);
+                    if (pathIdValue is long pathId)
+                    {
+                        return collection.TryGetAsset(pathId);
+                    }
+                }
+
+                Logger.Debug($"Could not resolve PPtr of type {pptr.GetType().Name}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Error resolving PPtr: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Extracts sprite reference from a SpriteRenderer component
+        /// </summary>
+        private IUnityAssetBase? ExtractSpriteFromRenderer(IUnityAssetBase spriteRenderer, AssetCollection collection)
+        {
+            try
+            {
+                // Try to extract sprite field from the component data
+                if (spriteRenderer is IMonoBehaviour rendererBehaviour)
+                {
+                    var structure = rendererBehaviour.LoadStructure();
+                    if (structure != null)
+                    {
+                        var rendererData = ConvertStructureToDict(structure, collection, out var spriteReference);
+
+                        // If ConvertStructureToDict found a sprite reference directly, return it
+                        if (spriteReference != null)
+                        {
+                            Logger.Debug($"✅ Found sprite reference from structure: {spriteReference.GetType().Name}");
+                            return spriteReference;
+                        }
+
+                        // Otherwise, look for sprite fields manually
+                        return ExtractSpriteFromRendererDict(rendererData, collection);
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Error extracting sprite from renderer: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Extracts sprite reference from SpriteRenderer data dictionary
+        /// </summary>
+        private IUnityAssetBase? ExtractSpriteFromRendererDict(Dictionary<string, object> rendererData, AssetCollection collection)
+        {
+            try
+            {
+                // Look for common sprite field names in SpriteRenderer
+                var spriteFieldNames = new[] { "m_Sprite", "sprite", "Sprite", "m_sprite" };
+
+                foreach (var fieldName in spriteFieldNames)
+                {
+                    if (rendererData.ContainsKey(fieldName))
+                    {
+                        var spriteField = rendererData[fieldName];
+
+                        if (spriteField is Dictionary<string, object> spriteDict)
+                        {
+                            // Handle asset reference dictionary
+                            if (spriteDict.ContainsKey("type") && spriteDict.ContainsKey("pathId"))
+                            {
+                                var typeName = spriteDict["type"]?.ToString();
+                                var pathIdStr = spriteDict["pathId"]?.ToString();
+
+                                Logger.Debug($"🔄 Following {fieldName} reference: type={typeName}, pathId={pathIdStr}");
+
+                                if (long.TryParse(pathIdStr, out var pathId))
+                                {
+                                    var sprite = FindAssetByPathId(collection, pathId);
+                                    if (sprite != null)
+                                    {
+                                        Logger.Debug($"✅ Resolved sprite from {fieldName}: {sprite.GetType().Name}");
+                                        return sprite;
+                                    }
+                                }
+                            }
+                        }
+                        else if (spriteField is IUnityAssetBase spriteAsset)
+                        {
+                            Logger.Debug($"✅ Direct sprite asset from {fieldName}: {spriteAsset.GetType().Name}");
+                            return spriteAsset;
+                        }
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Error extracting sprite from renderer dictionary: {ex.Message}");
                 return null;
             }
         }
@@ -2238,9 +2914,9 @@ namespace peglin_save_explorer.Extractors
         private static bool CouldBeSpriteField(string fieldName)
         {
             if (string.IsNullOrEmpty(fieldName)) return false;
-            
+
             var fieldLower = fieldName.ToLowerInvariant();
-            
+
             // Common patterns in Unity assets
             var potentialSpritePatterns = new[]
             {
@@ -2249,7 +2925,7 @@ namespace peglin_save_explorer.Extractors
                 "asset", // Generic asset references
                 "visual", "portrait", "thumbnail"
             };
-            
+
             return potentialSpritePatterns.Any(pattern => fieldLower.Contains(pattern));
         }
 
@@ -2260,8 +2936,8 @@ namespace peglin_save_explorer.Extractors
         {
             if (value is Dictionary<string, object> dict)
             {
-                return dict.ContainsKey("m_AssetGUID") && 
-                       dict.TryGetValue("m_AssetGUID", out var guid) && 
+                return dict.ContainsKey("m_AssetGUID") &&
+                       dict.TryGetValue("m_AssetGUID", out var guid) &&
                        !string.IsNullOrEmpty(guid?.ToString());
             }
             return false;
@@ -2307,7 +2983,7 @@ namespace peglin_save_explorer.Extractors
             try
             {
                 Logger.Debug($"🔄 Converting texture '{texture.Name}' to PNG...");
-                
+
                 var directory = Path.GetDirectoryName(outputPath);
                 if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 {
@@ -2318,12 +2994,12 @@ namespace peglin_save_explorer.Extractors
                 if (TextureConverter.TryConvertToBitmap(texture, out DirectBitmap bitmap))
                 {
                     Logger.Debug($"✅ Successfully converted texture '{texture.Name}' to bitmap");
-                    
+
                     // Save as PNG using AssetRipper's built-in PNG export
                     using var fileStream = File.Create(outputPath);
                     bitmap.SaveAsPng(fileStream);
                     // DirectBitmap doesn't have Dispose, it's managed by GC
-                    
+
                     Logger.Debug($"🎉 Successfully saved PNG to: {outputPath}");
                     return true;
                 }
@@ -2363,7 +3039,7 @@ namespace peglin_save_explorer.Extractors
                 var spriteName = CleanSpriteName(sprite.Name);
                 var spriteType = DetermineSpriteType(spriteName);
                 var spriteId = GenerateSpriteId(spriteName);
-                
+
                 Logger.Debug($"🎯 Processing sprite '{spriteName}' as {spriteType} with ID: {spriteId}");
 
                 var metadata = new SpriteCacheManager.SpriteMetadata
@@ -2383,7 +3059,26 @@ namespace peglin_save_explorer.Extractors
                 {
                     metadata.Width = texture.Width_C28;
                     metadata.Height = texture.Height_C28;
-                    
+
+                    // Set frame dimensions from sprite's TextureRect
+                    metadata.FrameWidth = (int)sprite.RD.TextureRect.Width;
+                    metadata.FrameHeight = (int)sprite.RD.TextureRect.Height;
+                    metadata.FrameX = (int)sprite.RD.TextureRect.X;
+                    metadata.FrameY = (int)sprite.RD.TextureRect.Y;
+
+                    // Calculate frame count if this is a sprite sheet
+                    var frameCount = 1;
+                    if (metadata.FrameWidth > 0 && metadata.FrameHeight > 0 &&
+                        (metadata.Width > metadata.FrameWidth || metadata.Height > metadata.FrameHeight))
+                    {
+                        var framesX = metadata.Width / metadata.FrameWidth;
+                        var framesY = metadata.Height / metadata.FrameHeight;
+                        frameCount = Math.Max(1, framesX * framesY);
+                        Logger.Debug($"Detected sprite sheet {spriteName}: {frameCount} frames ({framesX}x{framesY})");
+                        metadata.IsAtlas = frameCount > 1;
+                    }
+                    metadata.FrameCount = frameCount;
+
                     // Use improved conversion method
                     if (ConvertTextureToPngImproved(texture, metadata.FilePath, spriteName))
                     {
@@ -2419,7 +3114,7 @@ namespace peglin_save_explorer.Extractors
                 var textureName = CleanSpriteName(texture.Name);
                 var spriteType = DetermineSpriteType(textureName);
                 var spriteId = GenerateSpriteId(textureName);
-                
+
                 Logger.Debug($"🎯 Processing texture '{textureName}' as {spriteType} with ID: {spriteId}");
 
                 var metadata = new SpriteCacheManager.SpriteMetadata
@@ -2429,6 +3124,11 @@ namespace peglin_save_explorer.Extractors
                     Type = spriteType,
                     Width = texture.Width_C28,
                     Height = texture.Height_C28,
+                    // For standalone textures, frame dimensions equal texture dimensions
+                    FrameWidth = texture.Width_C28,
+                    FrameHeight = texture.Height_C28,
+                    FrameX = 0,
+                    FrameY = 0,
                     FilePath = GetSpriteFilePath(spriteId, spriteType),
                     SourceBundle = "", // Will be set by caller
                     ExtractedAt = DateTime.Now,
@@ -2463,22 +3163,44 @@ namespace peglin_save_explorer.Extractors
             {
                 var spriteName = CleanSpriteName(sprite.Name);
                 var spriteId = GenerateSpriteId(spriteName);
-                
-                Logger.Debug($"🎯 Processing sprite '{spriteName}' with FORCED type {forcedType} and ID: {spriteId}");
 
-                var metadata = new SpriteCacheManager.SpriteMetadata
-                {
-                    Id = spriteId,
-                    Name = spriteName,
-                    Type = forcedType,
-                    Width = (int)sprite.RD.TextureRect.Width,
-                    Height = (int)sprite.RD.TextureRect.Height,
-                    FilePath = GetSpriteFilePath(spriteId, forcedType),
-                    SourceBundle = ""
-                };
+                Logger.Debug($"🎯 Processing sprite '{spriteName}' with FORCED type {forcedType} and ID: {spriteId}");
 
                 if (sprite.RD.Texture.TryGetAsset(sprite.Collection, out ITexture2D? texture) && texture != null)
                 {
+                    var frameWidth = (int)sprite.RD.TextureRect.Width;
+                    var frameHeight = (int)sprite.RD.TextureRect.Height;
+                    var textureWidth = texture.Width_C28;
+                    var textureHeight = texture.Height_C28;
+
+                    // Calculate frame count if this is a sprite sheet
+                    var frameCount = 1;
+                    if (frameWidth > 0 && frameHeight > 0 &&
+                        (textureWidth > frameWidth || textureHeight > frameHeight))
+                    {
+                        var framesX = textureWidth / frameWidth;
+                        var framesY = textureHeight / frameHeight;
+                        frameCount = Math.Max(1, framesX * framesY);
+                        Logger.Debug($"Detected sprite sheet {spriteName}: {frameCount} frames ({framesX}x{framesY})");
+                    }
+
+                    var metadata = new SpriteCacheManager.SpriteMetadata
+                    {
+                        Id = spriteId,
+                        Name = spriteName,
+                        Type = forcedType,
+                        Width = textureWidth,
+                        Height = textureHeight,
+                        FrameWidth = frameWidth,
+                        FrameHeight = frameHeight,
+                        FrameX = (int)sprite.RD.TextureRect.X,
+                        FrameY = (int)sprite.RD.TextureRect.Y,
+                        FrameCount = frameCount,
+                        IsAtlas = frameCount > 1,
+                        FilePath = GetSpriteFilePath(spriteId, forcedType),
+                        SourceBundle = ""
+                    };
+
                     var saved = ConvertTextureToPngImproved(texture, metadata.FilePath, spriteName);
                     if (saved)
                     {
@@ -2506,9 +3228,9 @@ namespace peglin_save_explorer.Extractors
             {
                 var textureName = CleanSpriteName(texture.Name);
                 var spriteId = GenerateSpriteId(textureName);
-                
+
                 Logger.Debug($"🎯 Processing texture '{textureName}' with FORCED type {forcedType} and ID: {spriteId}");
-                
+
                 var metadata = new SpriteCacheManager.SpriteMetadata
                 {
                     Id = spriteId,
@@ -2516,6 +3238,11 @@ namespace peglin_save_explorer.Extractors
                     Type = forcedType,
                     Width = texture.Width_C28,
                     Height = texture.Height_C28,
+                    // For standalone textures, frame dimensions equal texture dimensions
+                    FrameWidth = texture.Width_C28,
+                    FrameHeight = texture.Height_C28,
+                    FrameX = 0,
+                    FrameY = 0,
                     FilePath = GetSpriteFilePath(spriteId, forcedType),
                     SourceBundle = ""
                 };
@@ -2561,11 +3288,11 @@ namespace peglin_save_explorer.Extractors
                 if (TextureConverter.TryConvertToBitmap(texture, out DirectBitmap bitmap))
                 {
                     Logger.Debug($"✅ Converted texture '{displayName}' to bitmap ({texture.Width_C28}x{texture.Height_C28})");
-                    
+
                     // Save as PNG using AssetRipper's built-in PNG export
                     using var fileStream = File.Create(fullPath);
                     bitmap.SaveAsPng(fileStream);
-                    
+
                     Logger.Debug($"🎉 Successfully saved PNG: {Path.GetFileName(fullPath)} (format: {texture.Format_C28E})");
                     return true;
                 }
@@ -2589,36 +3316,36 @@ namespace peglin_save_explorer.Extractors
         private bool DetectIfSpriteSheet(string name, int width, int height)
         {
             var lowerName = name.ToLowerInvariant();
-            
+
             // Check for sprite sheet naming patterns
             var spriteSheetPatterns = new[]
             {
                 "spritesheet", "sheet", "anim", "animated", "frames", "idle", "walk", "run", "attack", "death", "hurt"
             };
-            
+
             var hasSpriteSheetName = spriteSheetPatterns.Any(pattern => lowerName.Contains(pattern));
-            
+
             // Check for dimensions that suggest a sprite sheet
             var possibleFrameSizes = new[] { 16, 24, 32, 48, 64, 80, 96, 128, 160 };
-            
+
             // Check if width is a multiple of height (horizontal strip)
             var isHorizontalStrip = height <= 160 && width > height && width % height == 0 && (width / height) >= 2;
-            
+
             // Check if height is a multiple of width (vertical strip) 
             var isVerticalStrip = width <= 160 && height > width && height % width == 0 && (height / width) >= 2;
-            
+
             // Check if both dimensions are multiples of common frame sizes (grid layout)
-            var isGrid = possibleFrameSizes.Any(frameSize => 
+            var isGrid = possibleFrameSizes.Any(frameSize =>
                 width >= frameSize * 2 && height >= frameSize * 2 &&
                 width % frameSize == 0 && height % frameSize == 0);
-            
+
             var result = hasSpriteSheetName || isHorizontalStrip || isVerticalStrip || isGrid;
-            
+
             if (result)
             {
                 Logger.Debug($"🎞️ Detected sprite sheet: {name} ({width}x{height})");
             }
-            
+
             return result;
         }
 
@@ -2628,7 +3355,7 @@ namespace peglin_save_explorer.Extractors
         private string CleanSpriteName(string name)
         {
             if (string.IsNullOrEmpty(name)) return "unknown";
-            
+
             // Remove common Unity asset suffixes
             var cleaned = name;
             var suffixesToRemove = new[] { "(Clone)", "_1", "_2", "_3", "_Instance" };
@@ -2639,7 +3366,7 @@ namespace peglin_save_explorer.Extractors
                     cleaned = cleaned[..^suffix.Length];
                 }
             }
-            
+
             return cleaned.Trim();
         }
 
@@ -2649,7 +3376,7 @@ namespace peglin_save_explorer.Extractors
         private Dictionary<long, long> BuildSpriteInformationLookup(AssetCollection collection, GameBundle gameBundle)
         {
             var spriteToTextureLookup = new Dictionary<long, long>();
-            
+
             try
             {
                 // Look for SpriteInformationObject assets in all collections
@@ -2658,9 +3385,9 @@ namespace peglin_save_explorer.Extractors
                     foreach (var asset in assetCollection.Assets)
                     {
                         if (asset.Value == null) continue;
-                        
+
                         var assetType = asset.Value.GetType().Name;
-                        
+
                         // Look for any asset that contains sprite information mapping
                         // This could be named differently but should have Texture and Sprites properties
                         if (assetType.Contains("SpriteInformation", StringComparison.OrdinalIgnoreCase) ||
@@ -2677,10 +3404,10 @@ namespace peglin_save_explorer.Extractors
             {
                 Logger.Warning($"Error building sprite information lookup: {ex.Message}");
             }
-            
+
             return spriteToTextureLookup;
         }
-        
+
         /// <summary>
         /// Checks if an asset has properties that suggest it contains sprite information
         /// </summary>
@@ -2691,7 +3418,7 @@ namespace peglin_save_explorer.Extractors
                 var type = asset.GetType();
                 var hasTexture = type.GetProperty("Texture") != null;
                 var hasSprites = type.GetProperty("Sprites") != null;
-                
+
                 return hasTexture && hasSprites;
             }
             catch
@@ -2699,7 +3426,7 @@ namespace peglin_save_explorer.Extractors
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Processes a sprite information object to extract sprite PathID -> texture PathID mappings
         /// </summary>
@@ -2708,7 +3435,7 @@ namespace peglin_save_explorer.Extractors
             try
             {
                 Logger.Debug($"🔍 Processing sprite information object: {spriteInfoObject.GetType().Name}");
-                
+
                 // Get the Texture property (should point to the actual texture)
                 var textureProperty = spriteInfoObject.GetType().GetProperty("Texture");
                 if (textureProperty == null)
@@ -2716,18 +3443,18 @@ namespace peglin_save_explorer.Extractors
                     Logger.Debug($"❌ No Texture property found on {spriteInfoObject.GetType().Name}");
                     return;
                 }
-                
+
                 var textureRef = textureProperty.GetValue(spriteInfoObject);
                 var texturePathId = ExtractPathIdFromReference(textureRef);
-                
+
                 if (texturePathId == 0)
                 {
                     Logger.Debug($"❌ Could not extract texture PathID from reference");
                     return;
                 }
-                
+
                 Logger.Debug($"🎯 Found texture PathID: {texturePathId}");
-                
+
                 // Get the Sprites property (should be a collection of sprite PathID mappings)
                 var spritesProperty = spriteInfoObject.GetType().GetProperty("Sprites");
                 if (spritesProperty == null)
@@ -2735,24 +3462,24 @@ namespace peglin_save_explorer.Extractors
                     Logger.Debug($"❌ No Sprites property found on {spriteInfoObject.GetType().Name}");
                     return;
                 }
-                
+
                 var spritesValue = spritesProperty.GetValue(spriteInfoObject);
                 if (spritesValue == null)
                 {
                     Logger.Debug($"❌ Sprites property is null");
                     return;
                 }
-                
+
                 // Process the sprites collection (likely a Dictionary or Array of Key-Value pairs)
                 ProcessSpritesCollection(spritesValue, texturePathId, spriteToTextureLookup);
-                
+
             }
             catch (Exception ex)
             {
                 Logger.Debug($"❌ Error processing sprite information object: {ex.Message}");
             }
         }
-        
+
         /// <summary>
         /// Processes a collection of sprite mappings (sprite PathID -> texture PathID)
         /// </summary>
@@ -2766,14 +3493,14 @@ namespace peglin_save_explorer.Extractors
                     foreach (var item in enumerable)
                     {
                         if (item == null) continue;
-                        
+
                         // Look for Key property (sprite PathID)
                         var keyProperty = item.GetType().GetProperty("Key");
                         if (keyProperty != null)
                         {
                             var keyValue = keyProperty.GetValue(item);
                             var spritePathId = ExtractPathIdFromReference(keyValue);
-                            
+
                             if (spritePathId != 0)
                             {
                                 spriteToTextureLookup[spritePathId] = texturePathId;
@@ -2788,14 +3515,14 @@ namespace peglin_save_explorer.Extractors
                 Logger.Debug($"❌ Error processing sprites collection: {ex.Message}");
             }
         }
-        
+
         /// <summary>
         /// Extracts PathID from a Unity asset reference (handles PPtr structures)
         /// </summary>
         private long ExtractPathIdFromReference(object? reference)
         {
             if (reference == null) return 0;
-            
+
             try
             {
                 // Look for m_PathID property (standard Unity reference structure)
@@ -2812,7 +3539,7 @@ namespace peglin_save_explorer.Extractors
                         return intPathId;
                     }
                 }
-                
+
                 // Also try PathID (without m_ prefix)
                 var pathIdProperty2 = reference.GetType().GetProperty("PathID");
                 if (pathIdProperty2 != null)
@@ -2832,10 +3559,10 @@ namespace peglin_save_explorer.Extractors
             {
                 // Ignore extraction errors
             }
-            
+
             return 0;
         }
-        
+
         /// <summary>
         /// Resolves a sprite reference using the sprite information lookup table
         /// </summary>
@@ -2848,18 +3575,18 @@ namespace peglin_save_explorer.Extractors
                 if (spritePathId != 0)
                 {
                     Logger.Debug($"🔍 Looking up sprite PathID {spritePathId} in sprite info lookup table");
-                    
+
                     // Check if this sprite PathID maps to a texture PathID
                     if (spriteInfoLookup.TryGetValue(spritePathId, out var texturePathId))
                     {
                         Logger.Debug($"🗺️ Found mapping: sprite PathID {spritePathId} -> texture PathID {texturePathId}");
-                        
+
                         // Now find the texture with this PathID across all collections
                         var texture = FindTextureByPathId(texturePathId, gameBundle);
                         if (texture != null)
                         {
                             Logger.Debug($"✅ Found texture for PathID {texturePathId}: {texture.Name}");
-                            return forcedSpriteType.HasValue 
+                            return forcedSpriteType.HasValue
                                 ? ExtractTextureWithImprovedProcessing(texture, forcedSpriteType.Value)
                                 : ExtractTextureWithImprovedProcessing(texture);
                         }
@@ -2873,10 +3600,10 @@ namespace peglin_save_explorer.Extractors
                         Logger.Debug($"❌ No mapping found for sprite PathID {spritePathId}");
                     }
                 }
-                
+
                 // Fall back to original resolution method
                 Logger.Debug($"🔄 Falling back to original sprite resolution method");
-                return forcedSpriteType.HasValue 
+                return forcedSpriteType.HasValue
                     ? ResolveSprite(spriteRef, gameBundle, forcedSpriteType.Value)
                     : ResolveSprite(spriteRef, gameBundle);
             }
@@ -2884,12 +3611,12 @@ namespace peglin_save_explorer.Extractors
             {
                 Logger.Debug($"❌ Error in sprite lookup resolution: {ex.Message}");
                 // Fall back to original resolution method
-                return forcedSpriteType.HasValue 
+                return forcedSpriteType.HasValue
                     ? ResolveSprite(spriteRef, gameBundle, forcedSpriteType.Value)
                     : ResolveSprite(spriteRef, gameBundle);
             }
         }
-        
+
         /// <summary>
         /// Extracts PathID from a Unity asset
         /// </summary>
@@ -2911,7 +3638,7 @@ namespace peglin_save_explorer.Extractors
                         return intPathId;
                     }
                 }
-                
+
                 // For PPtr types, look for the m_PathID field in the referenced object
                 if (asset.GetType().Name.StartsWith("PPtr_"))
                 {
@@ -2932,10 +3659,10 @@ namespace peglin_save_explorer.Extractors
             {
                 // Ignore extraction errors
             }
-            
+
             return 0;
         }
-        
+
         /// <summary>
         /// Finds a texture asset by PathID across all collections in the game bundle
         /// </summary>
@@ -2955,7 +3682,7 @@ namespace peglin_save_explorer.Extractors
             {
                 Logger.Debug($"❌ Error finding texture by PathID {pathId}: {ex.Message}");
             }
-            
+
             return null;
         }
 
@@ -2968,28 +3695,28 @@ namespace peglin_save_explorer.Extractors
             {
                 var assetType = asset.GetType().Name;
                 var assetName = asset.ToString() ?? "unknown";
-                
+
                 Logger.Debug($"🔍 Processing potential sprite asset: {assetType} - {assetName}");
-                
+
                 // Handle ISprite (should already be processed, but just in case)
                 if (asset is ISprite sprite)
                 {
                     return ExtractSpriteWithImprovedProcessing(sprite);
                 }
-                
+
                 // Handle ITexture2D directly
                 if (asset is ITexture2D texture)
                 {
                     return ExtractTextureWithImprovedProcessing(texture);
                 }
-                
+
                 // Try to handle other potential sprite types through reflection
                 // This is where we'd handle SpriteInformationObject and similar types
-                
+
                 // Look for texture-related properties using reflection
                 var textureProperty = asset.GetType().GetProperty("Texture");
                 var textureField = asset.GetType().GetField("texture");
-                
+
                 if (textureProperty != null)
                 {
                     Logger.Debug($"🔍 Found Texture property on {assetType}");
@@ -3006,7 +3733,7 @@ namespace peglin_save_explorer.Extractors
                         return metadata;
                     }
                 }
-                
+
                 if (textureField != null)
                 {
                     Logger.Debug($"🔍 Found texture field on {assetType}");
@@ -3023,12 +3750,12 @@ namespace peglin_save_explorer.Extractors
                         return metadata;
                     }
                 }
-                
+
                 // Look for sprite-related properties
                 var spriteProperties = asset.GetType().GetProperties()
                     .Where(p => p.Name.Contains("Sprite", StringComparison.OrdinalIgnoreCase))
                     .ToList();
-                    
+
                 foreach (var spriteProp in spriteProperties)
                 {
                     Logger.Debug($"🔍 Found sprite property: {spriteProp.Name} on {assetType}");
@@ -3051,7 +3778,7 @@ namespace peglin_save_explorer.Extractors
                         Logger.Debug($"⚠️ Error accessing sprite property {spriteProp.Name}: {ex.Message}");
                     }
                 }
-                
+
                 Logger.Debug($"❌ Could not extract sprite/texture from {assetType}: {assetName}");
                 return null;
             }
@@ -3071,18 +3798,18 @@ namespace peglin_save_explorer.Extractors
             {
                 var assetType = asset.GetType();
                 var assetName = asset.ToString() ?? "Unknown";
-                
+
                 Logger.Info($"🔍 === ASSET PROPERTY DUMP: {contextName} ===");
                 Logger.Info($"   Type: {assetType.Name}");
                 Logger.Info($"   Name: {assetName}");
                 Logger.Info($"   Full Type: {assetType.FullName}");
-                
+
                 // Dump all properties
                 var properties = assetType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
                     .Where(p => p.CanRead)
                     .OrderBy(p => p.Name)
                     .ToList();
-                
+
                 Logger.Info($"   Properties ({properties.Count}):");
                 foreach (var prop in properties)
                 {
@@ -3091,7 +3818,7 @@ namespace peglin_save_explorer.Extractors
                         var value = prop.GetValue(asset);
                         var valueStr = FormatPropertyValue(value, prop.PropertyType);
                         Logger.Info($"     {prop.Name} ({prop.PropertyType.Name}): {valueStr}");
-                        
+
                         // If this property contains texture/sprite references, log additional details
                         if (value is IUnityObjectBase refAsset)
                         {
@@ -3103,12 +3830,12 @@ namespace peglin_save_explorer.Extractors
                         Logger.Info($"     {prop.Name} ({prop.PropertyType.Name}): [Error: {ex.Message}]");
                     }
                 }
-                
+
                 // Dump all fields
                 var fields = assetType.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
                     .OrderBy(f => f.Name)
                     .ToList();
-                
+
                 if (fields.Any())
                 {
                     Logger.Info($"   Fields ({fields.Count}):");
@@ -3119,7 +3846,7 @@ namespace peglin_save_explorer.Extractors
                             var value = field.GetValue(asset);
                             var valueStr = FormatPropertyValue(value, field.FieldType);
                             Logger.Info($"     {field.Name} ({field.FieldType.Name}): {valueStr}");
-                            
+
                             // If this field contains texture/sprite references, log additional details
                             if (value is IUnityObjectBase refAsset)
                             {
@@ -3132,7 +3859,7 @@ namespace peglin_save_explorer.Extractors
                         }
                     }
                 }
-                
+
                 // Look specifically for any members that might contain "texture", "sprite", or "image" in their names
                 var spriteRelatedMembers = properties.Cast<System.Reflection.MemberInfo>()
                     .Concat(fields.Cast<System.Reflection.MemberInfo>())
@@ -3141,7 +3868,7 @@ namespace peglin_save_explorer.Extractors
                                m.Name.ToLowerInvariant().Contains("image") ||
                                m.Name.ToLowerInvariant().Contains("icon"))
                     .ToList();
-                
+
                 if (spriteRelatedMembers.Any())
                 {
                     Logger.Info($"   🎯 Sprite/Texture-related members ({spriteRelatedMembers.Count}):");
@@ -3150,7 +3877,7 @@ namespace peglin_save_explorer.Extractors
                         Logger.Info($"     🎨 {member.Name} ({member.MemberType})");
                     }
                 }
-                
+
                 Logger.Info($"🔍 === END ASSET DUMP: {contextName} ===");
             }
             catch (Exception ex)
@@ -3165,23 +3892,23 @@ namespace peglin_save_explorer.Extractors
         private string FormatPropertyValue(object? value, Type valueType)
         {
             if (value == null) return "null";
-            
+
             if (value is string str) return $"\"{str}\"";
             if (value is bool b) return b.ToString().ToLower();
             if (valueType.IsPrimitive) return value.ToString() ?? "null";
-            
+
             if (value is IUnityObjectBase unityObj)
             {
                 return $"{unityObj.GetType().Name}('{unityObj}')";
             }
-            
+
             if (value is System.Collections.IEnumerable enumerable && !(value is string))
             {
                 var items = enumerable.Cast<object>().Take(5).ToList();
                 var preview = string.Join(", ", items.Select(i => i?.ToString() ?? "null"));
                 return $"[{preview}{(items.Count == 5 ? "..." : "")}]";
             }
-            
+
             return value.ToString() ?? "null";
         }
 
@@ -3193,7 +3920,7 @@ namespace peglin_save_explorer.Extractors
             // Temporarily disabled due to compilation issues with BaseId and OrbFamily properties
             progress?.Report($"⚠️ Orb family consolidation temporarily disabled");
             return;
-            
+
             /*try
             {
                 progress?.Report($"🔄 Consolidating {result.Orbs.Count} orbs into families...");
@@ -3348,19 +4075,269 @@ namespace peglin_save_explorer.Extractors
         /// </summary>
         */ // Close the commented ConsolidateOrbsIntoFamilies method
         }
-        
+
         private static string StripLevelMarkers(string s)
         {
             if (string.IsNullOrEmpty(s)) return s;
-            
+
             var res = s;
             // Strip suffixes like _L1, _L2, _Level1, _Level2, etc.
             res = System.Text.RegularExpressions.Regex.Replace(res, @"(_|\.)?_(L|Lvl|Level)\s*0*(\d+)$", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             // Strip trailing digits that might be level indicators
             res = System.Text.RegularExpressions.Regex.Replace(res, @"(\d+)$", string.Empty);
-            
+
             return string.IsNullOrWhiteSpace(res) ? s : res;
         }
-        
+
+        /// <summary>
+        /// Extracts localization parameters from a LocalizationParamsManager component data
+        /// Since AssetRipper doesn't properly deserialize the parameter structure,
+        /// we'll use a fallback approach based on known orb parameter patterns
+        /// </summary>
+        private static Dictionary<string, string>? ExtractLocalizationParams(Dictionary<string, object> componentData)
+        {
+            try
+            {
+                // Look for _Params array to confirm this is a LocalizationParamsManager
+                if (componentData.TryGetValue("_Params", out var paramsObj) &&
+                    paramsObj is IEnumerable<object> paramsArray)
+                {
+                    var paramCount = paramsArray.Cast<object>().Count();
+                    Logger.Debug($"🔍 Found LocalizationParamsManager with {paramCount} parameters");
+                    
+                    // Since AssetRipper doesn't deserialize the parameters correctly,
+                    // we'll return a placeholder that indicates we found a LocalizationParamsManager
+                    // The actual parameter resolution will be handled by GetKnownLocalizationParams
+                    return new Dictionary<string, string> { ["_HasLocalizationParams"] = "true" };
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Failed to extract localization parameters: {ex.Message}");
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// Attempts to extract localization parameters directly from the raw SerializableStructure
+        /// This bypasses the ConvertStructureToDict conversion which might be losing data
+        /// </summary>
+        private static Dictionary<string, string>? ExtractLocalizationParamsFromRawStructure(SerializableStructure structure)
+        {
+            try
+            {
+                // Look for _Params field in the raw structure
+                if (structure.TryGetField("_Params", out var paramsValue))
+                {
+                    Logger.Debug($"🔍 Raw _Params found, attempting to extract parameters...");
+                    
+                    if (paramsValue.CValue is System.Collections.IEnumerable enumerable)
+                    {
+                        var parameters = new Dictionary<string, string>();
+                        var itemCount = 0;
+                        
+                        foreach (var item in enumerable)
+                        {
+                            itemCount++;
+                            Logger.Debug($"🔍 Raw param item {itemCount}: {item?.GetType().Name ?? "null"} = {item}");
+                            
+                            // If the item is a SerializableStructure, try to extract Name/Value
+                            if (item is SerializableStructure paramStruct)
+                            {
+                                string? name = null, value = null;
+                                
+                                if (paramStruct.TryGetField("Name", out var nameField))
+                                {
+                                    name = nameField.AsString ?? nameField.CValue?.ToString();
+                                }
+                                
+                                if (paramStruct.TryGetField("Value", out var valueField))
+                                {
+                                    value = valueField.AsString ?? valueField.CValue?.ToString();
+                                }
+                                
+                                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(value))
+                                {
+                                    parameters[name] = value;
+                                    Logger.Debug($"🔍 Extracted raw param: {name} = {value}");
+                                }
+                            }
+                            // Handle other possible structures
+                            else if (item != null)
+                            {
+                                Logger.Debug($"🔍 Unhandled raw param item type: {item.GetType().FullName}");
+                            }
+                        }
+                        
+                        Logger.Debug($"🔍 Extracted {parameters.Count} parameters from {itemCount} raw items");
+                        return parameters.Count > 0 ? parameters : null;
+                    }
+                    else
+                    {
+                        Logger.Debug($"🔍 Raw _Params CValue is not enumerable: {paramsValue.CValue?.GetType().Name ?? "null"}");
+                    }
+                }
+                else
+                {
+                    Logger.Debug($"🔍 No _Params field found in raw structure");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Error extracting from raw structure: {ex.Message}");
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// Gets known localization parameters for specific orbs based on game knowledge
+        /// This is a fallback since AssetRipper doesn't properly parse LocalizationParamsManager
+        /// </summary>
+        private static Dictionary<string, string>? GetKnownLocalizationParams(string orbName, int level)
+        {
+            var orbNameLower = orbName.ToLowerInvariant();
+            
+            // Orbelisk parameters based on level
+            if (orbNameLower.Contains("orbelisk"))
+            {
+                return level switch
+                {
+                    1 => new Dictionary<string, string>
+                    {
+                        ["STONE_BONUS_DMG"] = "1",
+                        ["STONE_BONUS_CRIT"] = "1",
+                        ["PERSIST_LEVEL"] = "1"
+                    },
+                    2 => new Dictionary<string, string>
+                    {
+                        ["STONE_BONUS_DMG"] = "1",
+                        ["STONE_BONUS_CRIT"] = "1",
+                        ["PERSIST_LEVEL"] = "1",
+                        ["REG_DMG_TO_GIVE"] = "1",
+                        ["CRIT_DMG_TO_GIVE"] = "1"
+                    },
+                    3 => new Dictionary<string, string>
+                    {
+                        ["STONE_BONUS_DMG"] = "2",
+                        ["STONE_BONUS_CRIT"] = "2",
+                        ["PERSIST_LEVEL"] = "1",
+                        ["REG_DMG_TO_GIVE"] = "1",
+                        ["CRIT_DMG_TO_GIVE"] = "1"
+                    },
+                    _ => new Dictionary<string, string>
+                    {
+                        ["STONE_BONUS_DMG"] = level.ToString(),
+                        ["STONE_BONUS_CRIT"] = level.ToString(),
+                        ["PERSIST_LEVEL"] = "1"
+                    }
+                };
+            }
+            
+            // Add more orb parameter mappings here as needed
+            // For now, return null for other orbs
+            return null;
+        }
+
+        /// <summary>
+        /// Resolves tokens in localization strings using provided parameters
+        /// </summary>
+        private static string ResolveTokens(string input, Dictionary<string, string> parameters)
+        {
+            if (string.IsNullOrEmpty(input) || parameters.Count == 0)
+                return input;
+
+            var result = input;
+            
+            // Replace tokens in format {[PARAMETER_NAME]}
+            foreach (var param in parameters)
+            {
+                var token = $"{{[{param.Key}]}}";
+                result = result.Replace(token, param.Value);
+            }
+            
+            return result;
+        }
+
+        /// <summary>
+        /// Resolves tokens in an array of localization strings
+        /// </summary>
+        private static List<string> ResolveTokens(List<string> inputs, Dictionary<string, string> parameters)
+        {
+            if (inputs == null || parameters.Count == 0)
+                return inputs ?? new List<string>();
+
+            return inputs.Select(input => ResolveTokens(input, parameters)).ToList();
+        }
+
+        /// <summary>
+        /// Extract only global relic parameters from a collection without processing any entities
+        /// </summary>
+        private void ExtractGlobalParametersFromCollection(AssetCollection collection)
+        {
+            // Only process GameObjects to extract global localization parameters
+            foreach (var asset in collection.Assets)
+            {
+                if (asset.Value is IGameObject gameObject)
+                {
+                    try
+                    {
+                        ExtractGlobalParametersFromGameObject(gameObject);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"Error extracting parameters from GameObject {gameObject.Name}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Extract global relic parameters from a single GameObject if it contains LocalizationParamsManager
+        /// </summary>
+        private void ExtractGlobalParametersFromGameObject(IGameObject gameObject)
+        {
+            var components = gameObject.FetchComponents();
+            if (components == null) return;
+
+            foreach (var componentPtr in components)
+            {
+                var component = componentPtr.TryGetAsset(gameObject.Collection);
+                if (component == null) continue;
+
+                if (component is not IMonoBehaviour monoBehaviour) continue;
+
+                var structure = monoBehaviour.LoadStructure();
+                if (structure != null)
+                {
+                    // Try to extract localization parameters directly from the raw structure
+                    var extractedParams = ExtractLocalizationParamsFromRawStructure(structure);
+                    if (extractedParams != null && extractedParams.Count > 0)
+                    {
+                        // Store global relic parameters for later use with all relics
+                        if (gameObject.Name.ToString().Contains("relic", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.Debug($"🔤 [Phase 1] Extracting global relic parameters from GameObject {gameObject.Name}: {extractedParams.Count} parameters");
+                            
+                            // Accumulate parameters instead of overwriting
+                            if (_globalRelicParameters == null)
+                            {
+                                _globalRelicParameters = new Dictionary<string, string>(extractedParams);
+                            }
+                            else
+                            {
+                                foreach (var kvp in extractedParams)
+                                {
+                                    _globalRelicParameters[kvp.Key] = kvp.Value;
+                                }
+                                Logger.Debug($"🔤 [Phase 1] Total accumulated global relic parameters: {_globalRelicParameters.Count}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     }
 }

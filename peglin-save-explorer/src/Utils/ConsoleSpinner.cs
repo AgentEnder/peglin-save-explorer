@@ -5,6 +5,8 @@ namespace peglin_save_explorer.Utils
 {
     public class ConsoleSpinner
     {
+        public static ConsoleSpinner Instance { get; } = new ConsoleSpinner();
+
         private static readonly string[] SpinnerChars = { "|", "/", "-", "\\" };
         private int _currentSpinnerIndex = 0;
         private string _currentMessage = "";
@@ -72,6 +74,24 @@ namespace peglin_save_explorer.Utils
                 Console.WriteLine();
             }
         }
+
+        public void LogLineAbove(string message, LogLevel level = LogLevel.Info)
+        {
+
+            lock (_lock)
+            {
+                // Clear the spinner line
+                ClearLines(_lastMessageLines);
+                _lastMessageLines = 0;
+
+                // Write the new message above the spinner
+                var prefix = Logger.GetLogPrefix(level);
+                Console.WriteLine($"{prefix}{message}");
+            }
+        }
+
+        public bool IsActive => _isRunning;
+
 
         private void Spin(object? state)
         {

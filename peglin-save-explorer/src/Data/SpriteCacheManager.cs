@@ -81,7 +81,13 @@ namespace peglin_save_explorer.Data
             public int Height { get; set; }
             public string SourceBundle { get; set; } = "";
             public DateTime ExtractedAt { get; set; }
-            
+
+            public int FrameX { get; set; }
+            public int FrameY { get; set; }
+            public int FrameWidth { get; set; }
+            public int FrameHeight { get; set; }
+            public int FrameCount { get; set; } = 1;
+
             // Atlas-specific properties
             public bool IsAtlas { get; set; } = false;
             public List<SpriteFrame> AtlasFrames { get; set; } = new List<SpriteFrame>();
@@ -185,7 +191,7 @@ namespace peglin_save_explorer.Data
                 }
 
                 var hashBuilder = new StringBuilder();
-                
+
                 // Get all bundle files and their modification times
                 var bundleFiles = Directory.GetFiles(bundleDirectory, "*.bundle", SearchOption.AllDirectories)
                     .OrderBy(f => f)
@@ -257,7 +263,7 @@ namespace peglin_save_explorer.Data
                     return new List<SpriteMetadata>();
 
                 var sprites = metadata.Sprites.Values.ToList();
-                
+
                 if (type.HasValue)
                 {
                     sprites = sprites.Where(s => s.Type == type.Value).ToList();
@@ -370,7 +376,7 @@ namespace peglin_save_explorer.Data
                     // Check if directories exist
                     var relicDirExists = Directory.Exists(RelicSpritesDirectory);
                     var enemyDirExists = Directory.Exists(EnemySpritesDirectory);
-                    
+
                     Console.WriteLine($"Relic Directory: {(relicDirExists ? "✅" : "❌")} {RelicSpritesDirectory}");
                     Console.WriteLine($"Enemy Directory: {(enemyDirExists ? "✅" : "❌")} {EnemySpritesDirectory}");
                 }

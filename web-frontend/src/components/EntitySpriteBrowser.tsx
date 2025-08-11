@@ -21,6 +21,7 @@ import {
 import { Search as SearchIcon, HelpOutline } from "@mui/icons-material";
 import { useEntities, useSpriteLoading, useSpriteError, useSpriteActions, Entity, Sprite } from "../store/useSpriteStore";
 import SpriteText from "./SpriteText";
+import AnimatedSpriteViewer from "./AnimatedSpriteViewer";
 import { getRarityName, getRarityColor, getRarityTooltip, isUnavailableRarity } from "../utils/rarityHelper";
 
 // Types imported from sprite store
@@ -302,27 +303,14 @@ const EntitySpriteBrowser: React.FC = () => {
                   return (
                     <Grid container spacing={1}>
                       <Grid item>
-                        <Card
-                          variant="outlined"
-                          sx={{ p: 1, textAlign: "center" }}
-                        >
-                          <Avatar
-                            src={sprite.url}
-                            alt={sprite.name}
-                            variant="rounded"
-                            sx={{ width: 64, height: 64, mx: "auto", mb: 1 }}
-                          />
-                          <Typography variant="caption" display="block">
-                            {sprite.name}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            display="block"
-                          >
-                            {sprite.width}×{sprite.height}
-                          </Typography>
-                        </Card>
+                        <AnimatedSpriteViewer
+                          sprite={sprite}
+                          size={64}
+                          showControls={true}
+                          showFrameInfo={true}
+                          autoPlay={false}
+                          frameRate={2}
+                        />
                       </Grid>
                     </Grid>
                   );

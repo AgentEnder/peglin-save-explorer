@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
@@ -113,10 +114,27 @@ namespace peglin_save_explorer.Data
 
                 if (orbs != null && orbs.Count > 0)
                 {
-                    var orbJson = JsonConvert.SerializeObject(orbs, Formatting.Indented);
+                    // Filter out orbs without descriptions - these are likely not actual gameplay orbs
+                    var filteredOrbs = orbs.Where(kvp => 
+                        !string.IsNullOrEmpty(kvp.Value.Description) || 
+                        (kvp.Value.DescriptionStrings != null && kvp.Value.DescriptionStrings.Count > 0))
+                        .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                    
+                    var removedCount = orbs.Count - filteredOrbs.Count;
+                    if (removedCount > 0)
+                    {
+                        Logger.Info($"🧹 Filtered out {removedCount} orbs without descriptions (likely UI elements or non-gameplay objects)");
+                        var removedItems = orbs.Where(kvp => 
+                            string.IsNullOrEmpty(kvp.Value.Description) && 
+                            (kvp.Value.DescriptionStrings == null || kvp.Value.DescriptionStrings.Count == 0))
+                            .Select(kvp => kvp.Key).ToList();
+                        Logger.Debug($"🧹 Removed orbs: {string.Join(", ", removedItems)}");
+                    }
+                    
+                    var orbJson = JsonConvert.SerializeObject(filteredOrbs, Formatting.Indented);
                     File.WriteAllText(OrbsFilePath, orbJson);
-                    _cachedOrbs = orbs; // keep memory cache in sync
-                    Logger.Debug($"Saved {orbs.Count} orbs to cache: {OrbsFilePath}");
+                    _cachedOrbs = filteredOrbs; // keep memory cache in sync with filtered data
+                    Logger.Debug($"Saved {filteredOrbs.Count} orbs to cache: {OrbsFilePath}");
                 }
                 
                 // // Save orb families
