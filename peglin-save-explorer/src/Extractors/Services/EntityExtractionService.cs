@@ -26,8 +26,8 @@ namespace peglin_save_explorer.Extractors.Services
         {
             try
             {
-                var relic = new RelicData 
-                { 
+                var relic = new RelicData
+                {
                     Id = CleanEntityId(assetName),
                     RawData = data // Preserve the raw data for debugging
                 };
@@ -75,7 +75,7 @@ namespace peglin_save_explorer.Extractors.Services
                     relic.Rarity = rarityInt switch
                     {
                         0 => "COMMON",
-                        1 => "UNCOMMON", 
+                        1 => "UNCOMMON",
                         2 => "RARE",
                         3 => "BOSS",
                         _ => "UNKNOWN"
@@ -86,7 +86,7 @@ namespace peglin_save_explorer.Extractors.Services
                 if (localizationParams != null && localizationParams.Count > 0)
                 {
                     Logger.Debug($"🔤 Applying token resolution to relic {relic.Name ?? relic.Id} with {localizationParams.Count} parameters");
-                    
+
                     if (!string.IsNullOrEmpty(relic.Description))
                     {
                         var resolvedDescription = ResolveTokens(relic.Description, localizationParams);
@@ -135,8 +135,8 @@ namespace peglin_save_explorer.Extractors.Services
         {
             try
             {
-                var enemy = new EnemyData 
-                { 
+                var enemy = new EnemyData
+                {
                     Id = CleanEntityId(assetName),
                     RawData = data // Preserve the raw data for debugging
                 };
@@ -195,15 +195,14 @@ namespace peglin_save_explorer.Extractors.Services
         /// <summary>
         /// Extracts orb data from the given asset data
         /// </summary>
-        public OrbData? ExtractOrb(string assetName, Dictionary<string, object> data)
+        public OrbData? ExtractOrb(string assetName, Dictionary<string, object> data, Dictionary<string, string>? localizationParams = null)
         {
             try
             {
-                Logger.Debug($"ExtractOrb called for '{assetName}'");
-                Logger.Debug($"🔍 ExtractOrb called for '{assetName}' with {data.Count} fields: {string.Join(", ", data.Keys.Take(10))}");
-                
-                var orb = new OrbData 
-                { 
+                Logger.Debug($"ExtractOrb called for '{assetName}' with {data.Count} fields");
+
+                var orb = new OrbData
+                {
                     Id = CleanEntityId(assetName),
                     RawData = data // Preserve the raw data for debugging
                 };
@@ -240,13 +239,14 @@ namespace peglin_save_explorer.Extractors.Services
                 // Extract description strings
                 ExtractDescriptionStrings(orb, data);
 
+                // Apply localization parameters if available
+                ApplyLocalizationToOrb(orb, localizationParams);
+
                 // Extract damage values
                 ExtractDamageValues(orb, data);
 
                 // Extract level
                 ExtractLevel(orb, data);
-                
-                Logger.Debug($"🔍 After ExtractLevel, RawData has {orb.RawData?.Count ?? 0} fields");
 
                 // Determine orb type
                 orb.OrbType = DetermineOrbTypeFromData(assetName, data);
@@ -255,12 +255,8 @@ namespace peglin_save_explorer.Extractors.Services
                 orb.RarityValue = 1;
                 orb.Rarity = "COMMON";
 
-                Logger.Debug($"🔍 Before return, RawData has {orb.RawData?.Count ?? 0} fields: {string.Join(", ", orb.RawData?.Keys.Take(5) ?? new string[0])}");
-                
                 // Sanitize RawData for JSON serialization
                 orb.RawData = SanitizeRawDataForSerialization(orb.RawData);
-                
-                Logger.Debug($"🔍 After sanitization, RawData has {orb.RawData?.Count ?? 0} fields: {string.Join(", ", orb.RawData?.Keys.Take(5) ?? new string[0])}");
 
                 return orb;
             }
@@ -322,69 +318,51 @@ namespace peglin_save_explorer.Extractors.Services
 
         private void ExtractLevel(OrbData orb, Dictionary<string, object> data)
         {
-            Logger.Debug($"ExtractLevel called for orb {orb.Id ?? "unknown"}");
-            Logger.Debug($"🔍 ExtractLevel called for orb {orb.Id ?? "unknown"}");
-            Logger.Debug($"🔍 Data keys available: {string.Join(", ", data.Keys.Take(20))}");
-            Logger.Debug($"🔍 Data count: {data.Count}");
-            
-            // Log some sample values to understand the data structure
-            foreach (var kvp in data.Take(5))
-            {
-                Logger.Debug($"🔍 Sample data - {kvp.Key}: {kvp.Value?.GetType()?.Name ?? "null"} = {kvp.Value?.ToString()?.Substring(0, Math.Min(50, kvp.Value?.ToString()?.Length ?? 0)) ?? "null"}");
-            }
-            
-            // First try to find Level at the top level of the data passed to ExtractOrb
-            if (data.TryGetValue("Level", out var levelValue))
-            {
-                Logger.Debug($"🔍 Found Level at top level: {levelValue} (type: {levelValue?.GetType()})");
-                int? extractedLevel = ParseIntValue(levelValue);
-                if (extractedLevel.HasValue)
-                {
-                    orb.Level = extractedLevel.Value;
-                    Logger.Debug($"🔍 Successfully extracted Level: {orb.Level}");
-                    return;
-                }
-                else
-                {
-                    Logger.Debug($"🔍 Failed to parse Level value: {levelValue}");
-                }
-            }
-            else
-            {
-                Logger.Debug($"🔍 Level not found at top level");
-            }
-
-            // Based on the JSON output, Level is directly available in the data
-            // The data passed to ExtractOrb already contains all the fields including Level
-            // Let me check all possible locations for Level
-            var searchPaths = new[]
-            {
-                "Level",
-                "level", 
-                "orbLevel",
-                "OrbLevel"
-            };
+            // Try common level field names
+            var searchPaths = new[] { "Level", "level", "orbLevel", "OrbLevel" };
 
             foreach (var path in searchPaths)
             {
                 if (data.TryGetValue(path, out var value))
                 {
-                    Logger.Debug($"🔍 Found Level at '{path}': {value} (type: {value?.GetType()})");
                     int? extractedLevel = ParseIntValue(value);
                     if (extractedLevel.HasValue)
                     {
                         orb.Level = extractedLevel.Value;
-                        Logger.Debug($"🔍 Successfully extracted Level from '{path}': {orb.Level}");
                         return;
-                    }
-                    else
-                    {
-                        Logger.Debug($"🔍 Failed to parse Level value from '{path}': {value}");
                     }
                 }
             }
 
-            Logger.Debug($"🔍 Level extraction failed for orb {orb.Id ?? "unknown"} - no Level field found in any expected location");
+            // Log only if level extraction fails completely
+            Logger.Debug($"Level field not found for orb {orb.Id ?? "unknown"}");
+        }
+
+        /// <summary>
+        /// Applies localization parameter substitution to orb DescriptionStrings
+        /// </summary>
+        private void ApplyLocalizationToOrb(OrbData orb, Dictionary<string, string>? localizationParams)
+        {
+            if (localizationParams != null && localizationParams.Count > 0 && orb.DescriptionStrings != null)
+            {
+                Logger.Debug($"🔤 Applying token resolution to orb {orb.Name ?? orb.Id} with {localizationParams.Count} parameters");
+
+                var resolvedStrings = new List<string>();
+                foreach (var desc in orb.DescriptionStrings)
+                {
+                    var resolved = ResolveTokens(desc, localizationParams);
+                    resolvedStrings.Add(resolved);
+                    if (resolved != desc)
+                    {
+                        Logger.Debug($"🔤 Resolved orb description: '{desc}' -> '{resolved}'");
+                    }
+                }
+                orb.DescriptionStrings = resolvedStrings;
+            }
+            else
+            {
+                Logger.Debug($"🔤 No localization parameters available for orb {orb.Name ?? orb.Id} (params: {localizationParams?.Count ?? 0})");
+            }
         }
 
         private float? ParseFloatValue(object? value)
@@ -463,7 +441,7 @@ namespace peglin_save_explorer.Extractors.Services
             foreach (var kvp in rawData)
             {
                 var value = kvp.Value;
-                
+
                 if (value == null)
                 {
                     sanitized[kvp.Key] = null!;

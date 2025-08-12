@@ -10,23 +10,23 @@ namespace peglin_save_explorer.Extractors.Services
     public class EntityDetectionService
     {
         private static readonly string[] RelicFields = { "locKey", "englishDisplayName", "effect", "globalRarity", "sprite" };
-        
-        private static readonly string[] EnemyFields = 
-        { 
+
+        private static readonly string[] EnemyFields =
+        {
             "CurrentHealth", "StartingHealth", "DamagePerMeleeAttack", "AttackRange", "enemyTypes",
             "MaxHealth", "MaxHealthCruciball", "MeleeAttackDamage", "RangedAttackDamage", "location", "Type"
         };
-        
-        private static readonly string[] EnemyPatterns = 
+
+        private static readonly string[] EnemyPatterns =
             { "enemy", "boss", "slime", "ballista", "dragon", "demon", "sapper", "knight", "archer" };
-        
-        private static readonly string[] RequiredOrbFields = 
+
+        private static readonly string[] RequiredOrbFields =
             { "locNameString", "locName", "DamagePerPeg", "CritDamagePerPeg", "Level" };
-        
-        private static readonly string[] AttackTypeFields = 
+
+        private static readonly string[] AttackTypeFields =
             { "shotPrefab", "_shotPrefab", "_thunderPrefab", "_criticalShotPrefab", "_criticalThunderPrefab", "targetColumn", "verticalAttack", "targetingType" };
-        
-        private static readonly string[] PachinkoBallFields = 
+
+        private static readonly string[] PachinkoBallFields =
             { "_renderer", "FireForce", "GravityScale", "MaxBounceCount", "MultiballForceMod" };
 
         /// <summary>
@@ -102,8 +102,22 @@ namespace peglin_save_explorer.Extractors.Services
         public bool IsPachinkoBallData(Dictionary<string, object> data)
         {
             var pachinkoBallCount = PachinkoBallFields.Count(field => data.ContainsKey(field));
+            var hasRenderer = data.ContainsKey("_renderer");
+
+            // Debug logging for components that have any PachinkoBall fields
+            if (pachinkoBallCount > 0 || hasRenderer)
+            {
+                Console.WriteLine($"🔍 PachinkoBall check: renderer={hasRenderer}, fields={pachinkoBallCount}/5, keys={string.Join(",", data.Keys.Take(10))}");
+                Console.WriteLine($"   PachinkoBall fields found: {string.Join(", ", PachinkoBallFields.Where(f => data.ContainsKey(f)))}");
+            }
+
             // Must have _renderer field and at least 2 other PachinkoBall-specific fields
-            return data.ContainsKey("_renderer") && pachinkoBallCount >= 3;
+            var result = hasRenderer && pachinkoBallCount >= 3;
+            if (result)
+            {
+                Console.WriteLine($"✅ Detected PachinkoBall data!");
+            }
+            return result;
         }
 
         /// <summary>
@@ -120,60 +134,93 @@ namespace peglin_save_explorer.Extractors.Services
         public bool IsOrbGameObject(Models.GameObjectData gameObjectData)
         {
             var name = gameObjectData.Name?.ToLowerInvariant() ?? "";
-            
-            // Strong exclusion patterns - these are definitely NOT orbs
-            var strongExclusions = new[] { "ui", "canvas", "text", "button", "panel", "scroll", "image", "background" };
+            var id = gameObjectData.Id?.ToLowerInvariant() ?? "";
+
+            // Debug: Log all GameObjects with "orb" in the name
+
+            // First, check for definite exclusions - UI elements, sprites, and non-gameplay objects
+            var strongExclusions = new[] { "ui", "canvas", "text", "button", "panel", "scroll", "image", "background", "main camera", "directional light" };
             var isStronglyExcluded = strongExclusions.Any(exclusion => name.Contains(exclusion));
-            
+
             if (isStronglyExcluded)
             {
+                Logger.Debug($"❌ GameObject {name} excluded by strong exclusion patterns");
                 return false;
             }
 
+            // Check for definitive orb data structures
             if (gameObjectData.RawData is Dictionary<string, object> rawData)
             {
+                // Debug: log structure for orb GameObjects
+                if (name.Contains("debuffOrb", StringComparison.OrdinalIgnoreCase) || name.Contains("debufforb", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"\n🔍 {name} RawData structure:");
+                    Console.WriteLine($"   RawData keys: {string.Join(", ", rawData.Keys)}");
+                    foreach (var key in rawData.Keys)
+                    {
+                        if (rawData[key] is Dictionary<string, object> subDict)
+                        {
+                            Console.WriteLine($"   {key} -> Dictionary with keys: {string.Join(", ", subDict.Keys.Take(10))}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"   {key} -> {rawData[key]?.GetType().Name ?? "null"}");
+                        }
+                    }
+                }
+
+                // Look for ComponentData.OrbComponent structure which indicates actual orb data
                 if (rawData.TryGetValue("ComponentData", out var componentDataObj) &&
                     componentDataObj is Dictionary<string, object> componentData &&
                     componentData.ContainsKey("OrbComponent"))
                 {
+                    Console.WriteLine($"✅ GameObject {name} has OrbComponent data - confirmed orb");
                     return true;
                 }
 
+                // Look for direct OrbComponent in RawData
                 if (rawData.ContainsKey("OrbComponent"))
                 {
+                    Logger.Debug($"✅ GameObject {name} has direct OrbComponent data - confirmed orb");
                     return true;
                 }
 
-                // Check for orb fields in raw data
-                var orbFields = new[] { "DamagePerPeg", "CritDamagePerPeg", "Level", "locNameString", "locDescStrings" };
-                var hasOrbFields = orbFields.Any(field => rawData.ContainsKey(field));
+                // Look for orb-specific fields that indicate this is actual orb data
+                var orbSpecificFields = new[] { "DamagePerPeg", "CritDamagePerPeg", "Level", "locNameString", "locName" };
+                var hasOrbFields = orbSpecificFields.Count(field => rawData.ContainsKey(field)) >= 3;
 
                 if (hasOrbFields)
                 {
+                    Logger.Debug($"✅ GameObject {name} has orb-specific fields - confirmed orb");
                     return true;
                 }
             }
 
-            // Check component types for restrictive orb patterns
+            // Check component types for specific orb-related components (more restrictive than before)
+            var componentTypes = gameObjectData.Components.Select(c => c.Type).ToList();
             var restrictiveOrbComponents = new[] { "OrbComponent", "AttackComponent", "PachinkoBallComponent" };
-            var hasRestrictiveOrbComponents = gameObjectData.Components.Any(comp => 
-                restrictiveOrbComponents.Any(pattern => comp.Type.ToLowerInvariant().Contains(pattern.ToLowerInvariant())));
-
-            // Check name patterns
-            var orbPatterns = new[] { "orb", "ball", "attack", "projectile" };
-            var hasOrbPattern = orbPatterns.Any(pattern => name.Contains(pattern));
+            var hasRestrictiveOrbComponents = restrictiveOrbComponents.Any(pattern =>
+                componentTypes.Any(type => type.Contains(pattern)));
 
             if (hasRestrictiveOrbComponents)
             {
+                Logger.Debug($"✅ GameObject {name} has restrictive orb components - confirmed orb");
                 return true;
             }
 
+            // Only include objects with "orb" or "-lvl" patterns that suggest they're actual orb entities
+            var hasOrbPattern = name.Contains("orb") || name.Contains("-lvl") ||
+                               id.Contains("orb") || id.Contains("-lvl");
+
             if (!hasOrbPattern)
             {
+                Logger.Debug($"❌ GameObject {name} lacks orb patterns - not an orb");
                 return false;
             }
 
-            return hasOrbPattern && gameObjectData.Components.Count > 0;
+            Logger.Debug($"🔍 GameObject {name} passed basic orb pattern check but lacks component data");
+            return false;
         }
+
     }
 }

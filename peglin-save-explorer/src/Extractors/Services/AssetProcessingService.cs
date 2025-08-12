@@ -98,12 +98,12 @@ namespace peglin_save_explorer.Extractors.Services
                 // Handle primitive values - prioritize proper typed accessors
                 // For numeric fields, prefer typed accessors even if they're 0
                 // Only skip if the field appears to be unset (all values are default)
-                
+
                 // Check if we have any actual numeric data (non-default values)
-                bool hasNumericData = value.AsSingle != 0 || value.AsDouble != 0 || 
-                                     value.AsInt32 != 0 || value.AsInt64 != 0 || 
+                bool hasNumericData = value.AsSingle != 0 || value.AsDouble != 0 ||
+                                     value.AsInt32 != 0 || value.AsInt64 != 0 ||
                                      value.PValue != 0;
-                
+
                 // If we have numeric data or no string value, use typed accessors
                 if (hasNumericData || string.IsNullOrEmpty(value.AsString))
                 {
@@ -113,7 +113,7 @@ namespace peglin_save_explorer.Extractors.Services
                                          fieldName.Equals("Count", StringComparison.OrdinalIgnoreCase) ||
                                          fieldName.EndsWith("Level", StringComparison.OrdinalIgnoreCase) ||
                                          fieldName.EndsWith("Count", StringComparison.OrdinalIgnoreCase);
-                    
+
                     if (shouldBeInteger)
                     {
                         // Prioritize integer values for integer fields
@@ -121,7 +121,7 @@ namespace peglin_save_explorer.Extractors.Services
                         if (value.AsInt64 != 0) return value.AsInt64;
                         if (value.AsSingle != 0) return (int)Math.Round(value.AsSingle); // Convert float to int
                         if (value.AsDouble != 0) return (int)Math.Round(value.AsDouble); // Convert double to int
-                        
+
                         // If all are zero, return 0 as integer for integer fields
                         return 0;
                     }
@@ -132,13 +132,14 @@ namespace peglin_save_explorer.Extractors.Services
                         if (value.AsDouble != 0) return value.AsDouble;
                         if (value.AsInt32 != 0) return value.AsInt32;
                         if (value.AsInt64 != 0) return value.AsInt64;
-                        
+
                         // If all typed values are 0 but we detected numeric data, return the most appropriate type
                         return value.AsSingle; // Default to float for damage values
                     }
                 }
-                
-                if (value.AsBoolean) return value.AsBoolean;                return value.ToString() ?? "";
+
+                if (value.AsBoolean) return value.AsBoolean;
+                return value.ToString() ?? "";
             }
             catch (Exception ex)
             {
@@ -157,7 +158,7 @@ namespace peglin_save_explorer.Extractors.Services
                 // Try common field name properties
                 if (field?.Name != null) return field.Name.ToString();
                 if (field?.FieldName != null) return field.FieldName.ToString();
-                
+
                 return field?.ToString();
             }
             catch
@@ -167,7 +168,7 @@ namespace peglin_save_explorer.Extractors.Services
         }
 
         /// <summary>
-        /// Extracts components from a GameObject
+        /// Extracts components from a GameObject, including localization parameters and orb data aggregation
         /// </summary>
         public void ExtractGameObjectComponents(IGameObject gameObject, Dictionary<long, IMonoBehaviour> componentMap,
             GameObjectData gameObjectData, AssetCollection collection)
@@ -176,6 +177,12 @@ namespace peglin_save_explorer.Extractors.Services
             {
                 var components = gameObject.FetchComponents();
                 if (components == null) return;
+
+                Dictionary<string, string>? localizationParams = null;
+                var entityDetectionService = new EntityDetectionService();
+                var localizationService = new LocalizationProcessingService();
+                var orbComponentsFound = new List<Dictionary<string, object>>();
+                var extractedComponentData = new Dictionary<string, object>();
 
                 foreach (var componentPtr in components)
                 {
@@ -197,7 +204,26 @@ namespace peglin_save_explorer.Extractors.Services
                                 var structure = monoBehaviour.LoadStructure();
                                 if (structure != null)
                                 {
-                                    componentData.Properties = ConvertStructureToDict(structure, collection, out _);
+                                    var properties = ConvertStructureToDict(structure, collection, out _);
+                                    componentData.Properties = properties;
+
+                                    // Check if this component is a LocalizationParamsManager
+                                    if (entityDetectionService.IsLocalizationParamsManager(properties))
+                                    {
+                                        Logger.Debug($"✅ Found LocalizationParamsManager in GameObject {gameObject.GetBestName()}");
+                                        var extractedParams = localizationService.ExtractLocalizationParams(properties);
+                                        if (extractedParams != null && extractedParams.Count > 0)
+                                        {
+                                            localizationParams = extractedParams;
+                                            Logger.Debug($"🔤 Extracted {extractedParams.Count} localization parameters for GameObject: {string.Join(", ", extractedParams.Keys)}");
+                                        }
+                                    }
+                                    // Check if this component contains orb data
+                                    else if (entityDetectionService.IsOrbData(properties))
+                                    {
+                                        Logger.Debug($"🔮 Found orb component in GameObject {gameObject.GetBestName()}: {component.ClassName}");
+                                        orbComponentsFound.Add(properties);
+                                    }
                                 }
                             }
                             else
@@ -215,6 +241,50 @@ namespace peglin_save_explorer.Extractors.Services
                     catch (Exception ex)
                     {
                         Logger.Debug($"⚠️ Error extracting component: {ex.Message}");
+                    }
+                }
+
+                // Aggregate orb components if found
+                if (orbComponentsFound.Count > 0)
+                {
+                    Logger.Debug($"🔄 Aggregating {orbComponentsFound.Count} orb components for GameObject {gameObject.GetBestName()}");
+                    var aggregatedOrbData = AggregateOrbComponents(orbComponentsFound);
+                    if (aggregatedOrbData != null)
+                    {
+                        // Store the aggregated component data
+                        extractedComponentData["OrbComponent"] = aggregatedOrbData;
+                        extractedComponentData["HasOrbData"] = true;
+
+                        // Extract key fields for easy access
+                        if (aggregatedOrbData.TryGetValue("locNameString", out var locKey))
+                            extractedComponentData["LocKey"] = locKey?.ToString();
+                        if (aggregatedOrbData.TryGetValue("DamagePerPeg", out var damage))
+                            extractedComponentData["DamagePerPeg"] = damage;
+                        if (aggregatedOrbData.TryGetValue("CritDamagePerPeg", out var critDamage))
+                            extractedComponentData["CritDamagePerPeg"] = critDamage;
+
+                        extractedComponentData["ComponentCount"] = orbComponentsFound.Count;
+
+                        Logger.Debug($"✅ Aggregated orb data for GameObject {gameObject.GetBestName()}: LocKey={extractedComponentData.GetValueOrDefault("LocKey")}");
+                    }
+                }
+
+                // Store component data and localization parameters in the GameObject's RawData
+                if (localizationParams != null && localizationParams.Count > 0)
+                {
+                    extractedComponentData["LocalizationParams"] = localizationParams;
+                    Logger.Debug($"🔤 Added {localizationParams.Count} localization parameters to component data");
+                }
+
+                if (extractedComponentData.Count > 0)
+                {
+                    if (gameObjectData.RawData == null)
+                        gameObjectData.RawData = new Dictionary<string, object>();
+
+                    if (gameObjectData.RawData is Dictionary<string, object> rawDataDict)
+                    {
+                        rawDataDict["ComponentData"] = extractedComponentData;
+                        Logger.Debug($"🔤 Stored component data in GameObject RawData with {extractedComponentData.Count} entries");
                     }
                 }
             }
@@ -274,7 +344,7 @@ namespace peglin_save_explorer.Extractors.Services
 
             if (reference is Dictionary<string, object> dict)
             {
-                if (dict.TryGetValue("pathId", out var pathIdObj) && 
+                if (dict.TryGetValue("pathId", out var pathIdObj) &&
                     long.TryParse(pathIdObj?.ToString(), out var pathId))
                 {
                     return pathId;

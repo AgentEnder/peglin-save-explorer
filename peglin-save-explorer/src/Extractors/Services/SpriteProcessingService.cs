@@ -44,7 +44,7 @@ namespace peglin_save_explorer.Extractors.Services
                 if (tryGetAssetMethod != null)
                 {
                     Logger.Debug($"🔍 Attempting to resolve PPtr type: {ptrType.Name}");
-                    
+
                     try
                     {
                         // Call TryGetAsset to resolve the PPtr reference  

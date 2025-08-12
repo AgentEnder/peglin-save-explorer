@@ -21,32 +21,32 @@ namespace peglin_save_explorer.Extractors.Services
             {
                 var parameters = new Dictionary<string, string>();
 
-                Logger.Debug($"🔍 ExtractLocalizationParams: Found {componentData.Count} keys: {string.Join(", ", componentData.Keys)}");
+                // Logger.Debug($"🔍 ExtractLocalizationParams: Found {componentData.Count} keys: {string.Join(", ", componentData.Keys)}");
 
                 // Try to extract from _Params field
                 if (componentData.TryGetValue("_Params", out var paramsObj))
                 {
-                    Logger.Debug($"🔍 _Params field found. Type: {paramsObj?.GetType().Name ?? "null"}");
-                    
+                    // Logger.Debug($"🔍 _Params field found. Type: {paramsObj?.GetType().Name ?? "null"}");
+
                     if (paramsObj is IEnumerable<object> paramsArray)
                     {
                         var paramsList = paramsArray.ToList();
-                        Logger.Debug($"🔍 _Params is enumerable with {paramsList.Count} items");
-                        
+                        // Logger.Debug($"🔍 _Params is enumerable with {paramsList.Count} items");
+
                         if (paramsList.Count == 0)
                         {
-                            Logger.Debug($"🔍 _Params array is empty");
+                            // Logger.Debug($"🔍 _Params array is empty");
                             return null;
                         }
-                        
+
                         foreach (var param in paramsList)
                         {
-                            Logger.Debug($"🔍 Processing param: Type={param?.GetType().Name}");
-                            
+                            // Logger.Debug($"🔍 Processing param: Type={param?.GetType().Name}");
+
                             // Handle SerializableStructure objects (the actual format)
                             if (param is SerializableStructure structure)
                             {
-                                Logger.Debug($"🔍 Converting SerializableStructure to dictionary...");
+                                // Logger.Debug($"🔍 Converting SerializableStructure to dictionary...");
                                 try
                                 {
                                     var paramDict = new Dictionary<string, object>();
@@ -57,21 +57,21 @@ namespace peglin_save_explorer.Extractors.Services
                                             paramDict[field.Name] = fieldValue.AsString ?? fieldValue.CValue ?? fieldValue.PValue;
                                         }
                                     }
-                                    
-                                    Logger.Debug($"🔍 SerializableStructure converted to dict with keys: {string.Join(", ", paramDict.Keys)}");
-                                    
+
+                                    // Logger.Debug($"🔍 SerializableStructure converted to dict with keys: {string.Join(", ", paramDict.Keys)}");
+
                                     // Try both "Name"/"Value" (from backup analysis) and "key"/"value" (current assumption)
                                     var key = paramDict.TryGetValue("Name", out var nameObj) ? nameObj?.ToString() :
                                              paramDict.TryGetValue("key", out var keyObj) ? keyObj?.ToString() : null;
                                     var value = paramDict.TryGetValue("Value", out var valueObj) ? valueObj?.ToString() :
                                                paramDict.TryGetValue("value", out var val2Obj) ? val2Obj?.ToString() : null;
 
-                                    Logger.Debug($"🔍 Extracted: key='{key}', value='{value}' (from Name/Value or key/value)");
+                                    // Logger.Debug($"🔍 Extracted: key='{key}', value='{value}' (from Name/Value or key/value)");
 
                                     if (!string.IsNullOrEmpty(key) && value != null)
                                     {
                                         parameters[key] = value;
-                                        Logger.Debug($"✅ Added parameter: {key} = {value}");
+                                        // Logger.Debug($"✅ Added parameter: {key} = {value}");
                                     }
                                 }
                                 catch (Exception ex)
@@ -82,15 +82,15 @@ namespace peglin_save_explorer.Extractors.Services
                             // Fallback for dictionary format (original logic)
                             else if (param is Dictionary<string, object> paramDict)
                             {
-                                Logger.Debug($"🔍 Param dict has keys: {string.Join(", ", paramDict.Keys)}");
-                                
+                                // Logger.Debug($"🔍 Param dict has keys: {string.Join(", ", paramDict.Keys)}");
+
                                 // Try both "Name"/"Value" (from backup analysis) and "key"/"value" (current assumption)
                                 var key = paramDict.TryGetValue("Name", out var nameObj) ? nameObj?.ToString() :
                                          paramDict.TryGetValue("key", out var keyObj) ? keyObj?.ToString() : null;
                                 var value = paramDict.TryGetValue("Value", out var valueObj) ? valueObj?.ToString() :
                                            paramDict.TryGetValue("value", out var val2Obj) ? val2Obj?.ToString() : null;
 
-                                Logger.Debug($"🔍 Extracted: key='{key}', value='{value}' (from Name/Value or key/value)");
+                                // Logger.Debug($"🔍 Extracted: key='{key}', value='{value}' (from Name/Value or key/value)");
 
                                 if (!string.IsNullOrEmpty(key) && value != null)
                                 {
@@ -214,7 +214,11 @@ namespace peglin_save_explorer.Extractors.Services
             var result = input;
             foreach (var kvp in parameters)
             {
-                // Support both {key} and {{key}} token formats
+                // Support Peglin's token format: {[PARAMETER_NAME]}
+                var peglinToken = $"{{[{kvp.Key}]}}";
+                result = result.Replace(peglinToken, kvp.Value);
+
+                // Also support standard formats as fallback: {key} and {{key}}
                 result = result.Replace($"{{{kvp.Key}}}", kvp.Value);
                 result = result.Replace($"{{{{{kvp.Key}}}}}", kvp.Value);
             }
@@ -246,8 +250,8 @@ namespace peglin_save_explorer.Extractors.Services
                 foreach (var family in familyGroups)
                 {
                     var familyName = family.Key;
-                    var orbsInFamily = family.OrderBy(orb => 
-                        orb.RawData?.TryGetValue("Level", out var level) == true ? 
+                    var orbsInFamily = family.OrderBy(orb =>
+                        orb.RawData?.TryGetValue("Level", out var level) == true ?
                         Convert.ToInt32(level) : 1).ToList();
 
                     var baseOrb = orbsInFamily.First();
@@ -267,7 +271,7 @@ namespace peglin_save_explorer.Extractors.Services
                         AlternateSpriteIds = baseOrb.AlternateSpriteIds,
                         Levels = orbsInFamily.Select(orb => new OrbLevelData
                         {
-                            Level = orb.RawData?.TryGetValue("Level", out var level) == true ? 
+                            Level = orb.RawData?.TryGetValue("Level", out var level) == true ?
                                 Convert.ToInt32(level) : 1,
                             Leaf = orb,
                             LeafId = orb.Id
