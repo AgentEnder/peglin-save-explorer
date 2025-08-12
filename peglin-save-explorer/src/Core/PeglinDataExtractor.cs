@@ -20,7 +20,7 @@ namespace peglin_save_explorer.Core
     /// </summary>
     public class PeglinDataExtractor
     {
-        private static readonly string CacheDirectory = GetCacheDirectory();
+        private static readonly string CacheDirectory = CacheDirectoryHelper.GetCacheDirectory();
         private static readonly string ExtractionMetadataPath = Path.Combine(CacheDirectory, "extraction_metadata.json");
 
         public enum ExtractionType
@@ -51,37 +51,6 @@ namespace peglin_save_explorer.Core
             public Dictionary<string, int> ExtractedCounts { get; set; } = new();
             public bool UsedCache { get; set; }
             public string PeglinPath { get; set; } = "";
-        }
-
-        private static string GetCacheDirectory()
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "PeglinSaveExplorer"
-                );
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "Library", "Application Support", "PeglinSaveExplorer"
-                );
-            }
-            else
-            {
-                // Linux - use XDG_CONFIG_HOME or fallback to ~/.config
-                var xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-                if (string.IsNullOrEmpty(xdgConfigHome))
-                {
-                    xdgConfigHome = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                        ".config"
-                    );
-                }
-                return Path.Combine(xdgConfigHome, "PeglinSaveExplorer");
-            }
         }
 
         /// <summary>
@@ -133,7 +102,7 @@ namespace peglin_save_explorer.Core
                 if (extractionType != ExtractionType.All)
                 {
                     var typeName = extractionType.ToString();
-                    if (!metadata.ExtractionTimes.ContainsKey(typeName) || 
+                    if (!metadata.ExtractionTimes.ContainsKey(typeName) ||
                         !metadata.ExtractedCounts.ContainsKey(typeName))
                     {
                         Logger.Info($"No previous {typeName} extraction found, extraction needed");
@@ -162,8 +131,8 @@ namespace peglin_save_explorer.Core
         /// Performs unified extraction of Peglin data with progress reporting
         /// </summary>
         public static async Task<ExtractionResult> ExtractPeglinDataAsync(
-            string peglinPath, 
-            ExtractionType extractionType = ExtractionType.All, 
+            string peglinPath,
+            ExtractionType extractionType = ExtractionType.All,
             bool force = false,
             IProgress<string>? progress = null)
         {
@@ -190,7 +159,7 @@ namespace peglin_save_explorer.Core
                     result.Success = true;
                     result.UsedCache = true;
                     result.Duration = DateTime.Now - startTime;
-                    
+
                     // Load existing counts
                     if (File.Exists(ExtractionMetadataPath))
                     {
@@ -200,12 +169,12 @@ namespace peglin_save_explorer.Core
                             result.ExtractedCounts = existingMetadata.ExtractedCounts;
                         }
                     }
-                    
+
                     return result;
                 }
 
                 progress?.Report($"🎮 Extracting Peglin data from: {peglinPath}");
-                
+
                 var bundleFiles = Directory.GetFiles(bundleDirectory, "*.bundle", SearchOption.AllDirectories);
                 var assetFiles = Directory.GetFiles(bundleDirectory, "*.assets", SearchOption.AllDirectories);
                 var allFiles = bundleFiles.Concat(assetFiles).ToArray();
@@ -214,96 +183,96 @@ namespace peglin_save_explorer.Core
                 var extractedCounts = new Dictionary<string, int>();
                 var extractionTimes = new Dictionary<string, DateTime>();
 
-                    // Use the new modernized extractor for single-pass extraction
-                    progress?.Report("🚀 Starting unified extraction of all data types...");
-                    
-                    var unifiedExtractor = new ModernUnifiedAssetExtractor(null);
-                    var extractionResult = await Task.Run(() => unifiedExtractor.ExtractAllAssetsFromPeglinInstall(peglinPath, progress));
-                    
-                    // Save all extracted data
-                    progress?.Report("💾 Saving extracted data...");
-                    
-                    // // Group orbs and save grouped cache
-                    // var groupedOrbs = AssetRipperOrbExtractor.GroupOrbs(extractionResult.Orbs);
-                    // Data.EntityCacheManager.SaveGroupedOrbs(groupedOrbs);
-                    
-                    // Extract and save localization strings FIRST (needed for orb description translation)
-                    progress?.Report("🌐 Extracting localization strings...");
-                    await ExtractAndSaveLocalizationStrings(progress);
-                    
-                    // Save entities using unified cache manager (now with localization available)
-                    var sourceBundles = bundleFiles.Select(Path.GetFileName).Where(name => name != null).Cast<string>().ToList();
-                    EntityCacheManager.SaveToCache(extractionResult.Relics, extractionResult.Enemies, extractionResult.Orbs, peglinPath, sourceBundles);
-                    
-                    // Populate caches with extracted data
-                    if (extractionResult.Relics.Count > 0)
-                    {
-                        Data.EntityCacheManager.SetCachedRelics(extractionResult.Relics);
-                        progress?.Report($"✅ Cached {extractionResult.Relics.Count} relics");
-                    }
+                // Use the new modernized extractor for single-pass extraction
+                progress?.Report("🚀 Starting unified extraction of all data types...");
 
-                    if (extractionResult.Enemies.Count > 0)
-                    {
-                        Data.EntityCacheManager.SetCachedEnemies(extractionResult.Enemies);
-                        progress?.Report($"✅ Cached {extractionResult.Enemies.Count} enemies");
-                    }
+                var unifiedExtractor = new ModernUnifiedAssetExtractor(null);
+                var extractionResult = await Task.Run(() => unifiedExtractor.ExtractAllAssetsFromPeglinInstall(peglinPath, progress));
 
-                    if (extractionResult.Orbs.Count > 0)
-                    {
-                        Data.EntityCacheManager.SetCachedOrbs(extractionResult.Orbs);
-                        progress?.Report($"✅ Cached {extractionResult.Orbs.Count} orbs");
-                    }
+                // Save all extracted data
+                progress?.Report("💾 Saving extracted data...");
 
-                    if (extractionResult.Sprites.Count > 0)
-                    {
-                        Data.SpriteCacheManager.SetCachedSprites(extractionResult.Sprites.Values.ToList());
-                        progress?.Report($"✅ Cached {extractionResult.Sprites.Count} sprites");
-                    }
-                    
-                    extractedCounts["Relics"] = extractionResult.Relics.Count;
-                    extractedCounts["Enemies"] = extractionResult.Enemies.Count;
-                    extractedCounts["Orbs"] = extractionResult.Orbs.Count;
-                    
-                    // Also create the structured orbs.json file
-                    var orbsOutputPath = Path.Combine(CacheDirectory, "orbs.json");
-                    CreateStructuredOrbsJsonFromExtractedData(extractionResult.Orbs, orbsOutputPath);
-                    
-                    // Save sprites
-                    SpriteCacheManager.SaveToCache(extractionResult.Sprites, peglinPath, sourceBundles);
-                    
-                    var relicSprites = extractionResult.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Relic);
-                    var enemySprites = extractionResult.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Enemy);
-                    var orbSprites = extractionResult.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Orb);
-                    
-                    extractedCounts["Sprites"] = extractionResult.Sprites.Count;
-                    extractedCounts["RelicSprites"] = relicSprites;
-                    extractedCounts["EnemySprites"] = enemySprites;
-                    extractedCounts["OrbSprites"] = orbSprites;
-                    
-                    // Add localization strings count
-                    var localizationService = LocalizationService.Instance;
-                    if (localizationService.IsLoaded)
-                    {
-                        extractedCounts["LocalizationStrings"] = localizationService.GetTermCount();
-                        extractedCounts["LocalizationLanguages"] = localizationService.GetAvailableLanguages().Count;
-                    }
-                    
-                    // Extract character classes using existing extractor
-                    progress?.Report("👤 Extracting character classes...");
-                    var classExtractor = new AssetRipperClassExtractor();
-                    var classes = await Task.Run(() => classExtractor.ExtractClassInfoFromBundles(bundleDirectory));
-                    extractedCounts["Classes"] = classes.Count;
-                    progress?.Report($"✅ Extracted {classes.Count} character classes");
-                    
-                    // Update extraction times for all types
-                    extractionTimes["Relics"] = DateTime.Now;
-                    extractionTimes["Orbs"] = DateTime.Now;
-                    extractionTimes["Sprites"] = DateTime.Now;
-                    extractionTimes["Classes"] = DateTime.Now;
-                    
-                    Logger.Info($"🎯 Unified extraction complete: {extractionResult.Relics.Count} relics, {extractionResult.Orbs.Count} orbs, {extractionResult.Sprites.Count} sprites, {classes.Count} classes");
-                    progress?.Report("✅ Unified extraction complete!");
-               
+                // // Group orbs and save grouped cache
+                // var groupedOrbs = AssetRipperOrbExtractor.GroupOrbs(extractionResult.Orbs);
+                // Data.EntityCacheManager.SaveGroupedOrbs(groupedOrbs);
+
+                // Extract and save localization strings FIRST (needed for orb description translation)
+                progress?.Report("🌐 Extracting localization strings...");
+                await ExtractAndSaveLocalizationStrings(progress);
+
+                // Save entities using unified cache manager (now with localization available)
+                var sourceBundles = bundleFiles.Select(Path.GetFileName).Where(name => name != null).Cast<string>().ToList();
+                EntityCacheManager.SaveToCache(extractionResult.Relics, extractionResult.Enemies, extractionResult.Orbs, peglinPath, sourceBundles);
+
+                // Populate caches with extracted data
+                if (extractionResult.Relics.Count > 0)
+                {
+                    Data.EntityCacheManager.SetCachedRelics(extractionResult.Relics);
+                    progress?.Report($"✅ Cached {extractionResult.Relics.Count} relics");
+                }
+
+                if (extractionResult.Enemies.Count > 0)
+                {
+                    Data.EntityCacheManager.SetCachedEnemies(extractionResult.Enemies);
+                    progress?.Report($"✅ Cached {extractionResult.Enemies.Count} enemies");
+                }
+
+                if (extractionResult.Orbs.Count > 0)
+                {
+                    Data.EntityCacheManager.SetCachedOrbs(extractionResult.Orbs);
+                    progress?.Report($"✅ Cached {extractionResult.Orbs.Count} orbs");
+                }
+
+                if (extractionResult.Sprites.Count > 0)
+                {
+                    Data.SpriteCacheManager.SetCachedSprites(extractionResult.Sprites.Values.ToList());
+                    progress?.Report($"✅ Cached {extractionResult.Sprites.Count} sprites");
+                }
+
+                extractedCounts["Relics"] = extractionResult.Relics.Count;
+                extractedCounts["Enemies"] = extractionResult.Enemies.Count;
+                extractedCounts["Orbs"] = extractionResult.Orbs.Count;
+
+                // Also create the structured orbs.json file
+                var orbsOutputPath = Path.Combine(CacheDirectory, "orbs.json");
+                CreateStructuredOrbsJsonFromExtractedData(extractionResult.Orbs, orbsOutputPath);
+
+                // Save sprites
+                SpriteCacheManager.SaveToCache(extractionResult.Sprites, peglinPath, sourceBundles);
+
+                var relicSprites = extractionResult.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Relic);
+                var enemySprites = extractionResult.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Enemy);
+                var orbSprites = extractionResult.Sprites.Values.Count(s => s.Type == SpriteCacheManager.SpriteType.Orb);
+
+                extractedCounts["Sprites"] = extractionResult.Sprites.Count;
+                extractedCounts["RelicSprites"] = relicSprites;
+                extractedCounts["EnemySprites"] = enemySprites;
+                extractedCounts["OrbSprites"] = orbSprites;
+
+                // Add localization strings count
+                var localizationService = LocalizationService.Instance;
+                if (localizationService.IsLoaded)
+                {
+                    extractedCounts["LocalizationStrings"] = localizationService.GetTermCount();
+                    extractedCounts["LocalizationLanguages"] = localizationService.GetAvailableLanguages().Count;
+                }
+
+                // Extract character classes using existing extractor
+                progress?.Report("👤 Extracting character classes...");
+                var classExtractor = new AssetRipperClassExtractor();
+                var classes = await Task.Run(() => classExtractor.ExtractClassInfoFromBundles(bundleDirectory));
+                extractedCounts["Classes"] = classes.Count;
+                progress?.Report($"✅ Extracted {classes.Count} character classes");
+
+                // Update extraction times for all types
+                extractionTimes["Relics"] = DateTime.Now;
+                extractionTimes["Orbs"] = DateTime.Now;
+                extractionTimes["Sprites"] = DateTime.Now;
+                extractionTimes["Classes"] = DateTime.Now;
+
+                Logger.Info($"🎯 Unified extraction complete: {extractionResult.Relics.Count} relics, {extractionResult.Orbs.Count} orbs, {extractionResult.Sprites.Count} sprites, {classes.Count} classes");
+                progress?.Report("✅ Unified extraction complete!");
+
 
                 // Save extraction metadata
                 var metadata = new ExtractionMetadata
@@ -343,8 +312,8 @@ namespace peglin_save_explorer.Core
         /// Synchronous version of ExtractPeglinDataAsync with console spinner
         /// </summary>
         public static ExtractionResult ExtractPeglinData(
-            string peglinPath, 
-            ExtractionType extractionType = ExtractionType.All, 
+            string peglinPath,
+            ExtractionType extractionType = ExtractionType.All,
             bool force = false,
             bool showSpinner = true)
         {
@@ -494,10 +463,10 @@ namespace peglin_save_explorer.Core
             {
                 // Clear sprite cache
                 SpriteCacheManager.ClearCache();
-                
+
                 // Clear relic cache
                 RelicMappingCache.ClearCache();
-                
+
                 // Clear extraction metadata
                 if (File.Exists(ExtractionMetadataPath))
                 {
@@ -604,7 +573,7 @@ namespace peglin_save_explorer.Core
                 }
 
                 var hashBuilder = new StringBuilder();
-                
+
                 // Get all bundle files and their modification times
                 var bundleFiles = Directory.GetFiles(bundleDirectory, "*.bundle", SearchOption.AllDirectories)
                     .OrderBy(f => f)
@@ -638,7 +607,7 @@ namespace peglin_save_explorer.Core
                 await Task.Run(() =>
                 {
                     var localizationService = LocalizationService.Instance;
-                    
+
                     // Ensure localization is loaded
                     if (!localizationService.EnsureLoaded())
                     {
@@ -646,27 +615,27 @@ namespace peglin_save_explorer.Core
                         progress?.Report("⚠️  Failed to load localization data");
                         return;
                     }
-                    
+
                     // Get all localization data
                     var allStrings = localizationService.GetAllLocalizationData();
-                    
+
                     if (allStrings == null || allStrings.Count == 0)
                     {
                         Logger.Warning("[PeglinDataExtractor] No localization strings found");
                         progress?.Report("⚠️  No localization strings found");
                         return;
                     }
-                    
+
                     // Save to strings.json
                     var stringsPath = Path.Combine(CacheDirectory, "strings.json");
                     Directory.CreateDirectory(Path.GetDirectoryName(stringsPath) ?? CacheDirectory);
-                    
+
                     var json = JsonConvert.SerializeObject(allStrings, Formatting.Indented);
                     File.WriteAllText(stringsPath, json);
-                    
+
                     var totalStrings = allStrings.Values.SelectMany(lang => lang.Keys).Distinct().Count();
                     var languages = allStrings.Keys.Count;
-                    
+
                     Logger.Info($"🌐 Exported {totalStrings} localization strings in {languages} languages to strings.json");
                     progress?.Report($"✅ Saved {totalStrings} localization strings");
                 });

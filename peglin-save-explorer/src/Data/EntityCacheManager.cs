@@ -16,45 +16,14 @@ namespace peglin_save_explorer.Data
     /// </summary>
     public class EntityCacheManager
     {
-        private static readonly string CacheDirectory = GetCacheDirectory();
-        private static readonly string EntityDataDirectory = Path.Combine(CacheDirectory, "extracted-data", "entities");
+        private static readonly string CacheDirectory = CacheDirectoryHelper.GetCacheDirectory();
+        private static readonly string EntityDataDirectory = CacheDirectoryHelper.GetEntitiesDirectory();
         private static readonly string RelicsFilePath = Path.Combine(EntityDataDirectory, "relics.json");
         private static readonly string EnemiesFilePath = Path.Combine(EntityDataDirectory, "enemies.json");
         private static readonly string OrbsFilePath = Path.Combine(EntityDataDirectory, "orbs.json");
         private static readonly string OrbsGroupedFilePath = Path.Combine(EntityDataDirectory, "orbs_grouped.json");
         private static readonly string OrbFamiliesFilePath = Path.Combine(EntityDataDirectory, "orb_families.json");
         private static readonly string MetadataFilePath = Path.Combine(EntityDataDirectory, "entity_cache_metadata.json");
-
-        private static string GetCacheDirectory()
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "PeglinSaveExplorer"
-                );
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "Library", "Application Support", "PeglinSaveExplorer"
-                );
-            }
-            else
-            {
-                // Linux - use XDG_CONFIG_HOME or fallback to ~/.config
-                var xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-                if (string.IsNullOrEmpty(xdgConfigHome))
-                {
-                    xdgConfigHome = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                        ".config"
-                    );
-                }
-                return Path.Combine(xdgConfigHome, "PeglinSaveExplorer");
-            }
-        }
 
         public class EntityCacheMetadata
         {

@@ -15,42 +15,11 @@ namespace peglin_save_explorer.Data
     /// </summary>
     public class SpriteCacheManager
     {
-        private static readonly string CacheDirectory = GetCacheDirectory();
-        private static readonly string SpritesDirectory = Path.Combine(CacheDirectory, "extracted-data", "sprites");
+        private static readonly string CacheDirectory = CacheDirectoryHelper.GetCacheDirectory();
+        private static readonly string SpritesDirectory = CacheDirectoryHelper.GetSpritesDirectory();
         private static readonly string RelicSpritesDirectory = Path.Combine(SpritesDirectory, "relics");
         private static readonly string EnemySpritesDirectory = Path.Combine(SpritesDirectory, "enemies");
         private static readonly string MetadataFilePath = Path.Combine(SpritesDirectory, "sprite_cache_metadata.json");
-
-        private static string GetCacheDirectory()
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "PeglinSaveExplorer"
-                );
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "Library", "Application Support", "PeglinSaveExplorer"
-                );
-            }
-            else
-            {
-                // Linux - use XDG_CONFIG_HOME or fallback to ~/.config
-                var xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-                if (string.IsNullOrEmpty(xdgConfigHome))
-                {
-                    xdgConfigHome = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                        ".config"
-                    );
-                }
-                return Path.Combine(xdgConfigHome, "PeglinSaveExplorer");
-            }
-        }
 
         public enum SpriteType
         {

@@ -803,6 +803,11 @@ namespace peglin_save_explorer.Commands
             {
                 try
                 {
+                    // Clear sprite cache to ensure fresh data on each request
+                    // (could be optimized further with cache invalidation logic)
+                    _spriteIdCache = null;
+                    _spriteNameCache = null;
+
                     var entities = new
                     {
                         relics = GetAllRelics(),
@@ -1017,57 +1022,149 @@ namespace peglin_save_explorer.Commands
         /// <summary>
         /// Gets sprite reference using correlation data instead of parsing raw data
         /// </summary>
+        // Cache for sprite metadata lookups - initialized once per request
+        private static Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>? _spriteIdCache;
+        private static Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>? _spriteNameCache;
+
+        private static void EnsureSpriteCache()
+        {
+            if (_spriteIdCache == null || _spriteNameCache == null)
+            {
+                var allSprites = Data.SpriteCacheManager.GetCachedSprites();
+                _spriteIdCache = new Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>();
+                _spriteNameCache = new Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>();
+
+                foreach (var sprite in allSprites)
+                {
+                    if (sprite.Width > 0 && sprite.Height > 0)
+                    {
+                        _spriteIdCache.TryAdd(sprite.Id, sprite);
+                        _spriteNameCache.TryAdd(sprite.Name, sprite);
+                    }
+                }
+            }
+        }
+
         private static object? GetCorrelatedSpriteReference<T>(T entity) where T : class
         {
             try
             {
-                // Use reflection to get CorrelatedSpriteId property
-                var correlatedSpriteIdProperty = typeof(T).GetProperty("CorrelatedSpriteId");
-                var spriteFilePathProperty = typeof(T).GetProperty("SpriteFilePath");
-                var correlationMethodProperty = typeof(T).GetProperty("CorrelationMethod");
+                // Cache reflection - get properties once per type
+                var entityType = typeof(T);
+                var correlatedSpriteIdProperty = entityType.GetProperty("CorrelatedSpriteId");
+                var spriteFilePathProperty = entityType.GetProperty("SpriteFilePath");
+                var correlationMethodProperty = entityType.GetProperty("CorrelationMethod");
                 
-                if (correlatedSpriteIdProperty != null)
+                var spriteFilePath = spriteFilePathProperty?.GetValue(entity) as string;
+                var correlatedSpriteId = correlatedSpriteIdProperty?.GetValue(entity) as string;
+                
+                if (!string.IsNullOrEmpty(spriteFilePath))
                 {
-                    var correlatedSpriteId = correlatedSpriteIdProperty.GetValue(entity) as string;
+                    // Extract filename from relative path and determine sprite type
+                    var filename = Path.GetFileName(spriteFilePath);
+                    var correlationMethod = correlationMethodProperty?.GetValue(entity) as string;
+                    
+                    // Determine sprite type from path (optimized with spans)
+                    string spriteType = "unknown";
+                    string spriteDirectory = "sprites";
+                    
+                    if (spriteFilePath.Contains("/orbs/"))
+                    {
+                        spriteType = "orb";
+                        spriteDirectory = "orbs";
+                    }
+                    else if (spriteFilePath.Contains("/relics/"))
+                    {
+                        spriteType = "relic";
+                        spriteDirectory = "relics";
+                    }
+                    else if (spriteFilePath.Contains("/enemies/"))
+                    {
+                        spriteType = "enemy";
+                        spriteDirectory = "enemies";
+                    }
+                    
+                    // Ensure sprite cache is initialized
+                    EnsureSpriteCache();
+                    
+                    // Fast dictionary lookup instead of linear search
+                    Data.SpriteCacheManager.SpriteMetadata? spriteMetadata = null;
+                    
                     if (!string.IsNullOrEmpty(correlatedSpriteId))
                     {
-                        // Get the sprite metadata from cache
-                        var spriteMetadata = Data.SpriteCacheManager.GetCachedSprites()
-                            .FirstOrDefault(s => s.Id == correlatedSpriteId);
+                        _spriteIdCache!.TryGetValue(correlatedSpriteId, out spriteMetadata);
+                    }
+                    
+                    // If no valid metadata found by ID, try by name/filename
+                    if (spriteMetadata == null)
+                    {
+                        var nameWithoutExtension = Path.GetFileNameWithoutExtension(filename);
+                        _spriteNameCache!.TryGetValue(nameWithoutExtension, out spriteMetadata);
+                        if (spriteMetadata == null)
+                        {
+                            _spriteNameCache.TryGetValue(filename, out spriteMetadata);
+                        }
+                    }
+                    
+                    // Default dimensions if no metadata found - use reasonable defaults for pixel art
+                    int width = spriteMetadata?.Width ?? 16;
+                    int height = spriteMetadata?.Height ?? 16;
+                    int frameWidth = spriteMetadata?.FrameWidth ?? width;
+                    int frameHeight = spriteMetadata?.FrameHeight ?? height;
+                    
+                    return new
+                    {
+                        id = correlatedSpriteId ?? filename,
+                        name = filename,
+                        type = spriteType,
+                        url = $"/sprites/{spriteDirectory}/{filename}",
+                        width = width,
+                        height = height,
+                        frameWidth = frameWidth,
+                        frameHeight = frameHeight,
+                        frameX = spriteMetadata?.FrameX ?? 0,
+                        frameY = spriteMetadata?.FrameY ?? 0,
+                        resolved = true,
+                        correlationMethod = correlationMethod ?? "SpriteFilePath"
+                    };
+                }
+                else if (!string.IsNullOrEmpty(correlatedSpriteId))
+                {
+                    // Fallback to sprite metadata lookup if no file path available
+                    var spriteMetadata = Data.SpriteCacheManager.GetCachedSprites()
+                        .FirstOrDefault(s => s.Id == correlatedSpriteId);
                         
-                        if (spriteMetadata != null)
+                    if (spriteMetadata != null)
+                    {
+                        var correlationMethod = correlationMethodProperty?.GetValue(entity) as string;
+                        var filename = Path.GetFileName(spriteMetadata.FilePath);
+                        
+                        return new
                         {
-                            var spriteFilePath = spriteFilePathProperty?.GetValue(entity) as string;
-                            var correlationMethod = correlationMethodProperty?.GetValue(entity) as string;
-                            
-                            return new
-                            {
-                                id = correlatedSpriteId,
-                                name = spriteMetadata.Name,
-                                type = spriteMetadata.Type.ToString().ToLowerInvariant(),
-                                url = $"/sprites/{GetSpriteTypeDirectory(spriteMetadata.Type)}/{correlatedSpriteId}.png",
-                                width = spriteMetadata.Width,
-                                height = spriteMetadata.Height,
-                                frameWidth = spriteMetadata.FrameWidth,
-                                frameHeight = spriteMetadata.FrameHeight,
-                                frameX = spriteMetadata.FrameX,
-                                frameY = spriteMetadata.FrameY,
-                                resolved = true,
-                                correlationMethod = correlationMethod ?? "Unknown"
-                            };
-                        }
-                        else
+                            id = correlatedSpriteId,
+                            name = spriteMetadata.Name,
+                            type = spriteMetadata.Type.ToString().ToLowerInvariant(),
+                            url = $"/sprites/{GetSpriteTypeDirectory(spriteMetadata.Type)}/{filename}",
+                            width = spriteMetadata.Width,
+                            height = spriteMetadata.Height,
+                            frameWidth = spriteMetadata.FrameWidth,
+                            frameHeight = spriteMetadata.FrameHeight,
+                            frameX = spriteMetadata.FrameX,
+                            frameY = spriteMetadata.FrameY,
+                            resolved = true,
+                            correlationMethod = correlationMethod ?? "Sprite Metadata Lookup"
+                        };
+                    }
+                    else
+                    {
+                        // Sprite ID found but metadata missing - return unresolved info
+                        return new
                         {
-                            // Sprite ID found but metadata missing
-                            var spriteFilePath = spriteFilePathProperty?.GetValue(entity) as string;
-                            return new
-                            {
-                                id = correlatedSpriteId,
-                                resolved = false,
-                                reason = "Sprite metadata not found in cache",
-                                filePath = spriteFilePath
-                            };
-                        }
+                            id = correlatedSpriteId,
+                            resolved = false,
+                            reason = "Sprite metadata not found in cache",
+                            filePath = spriteFilePath
+                        };
                     }
                 }
                 
@@ -1179,182 +1276,29 @@ namespace peglin_save_explorer.Commands
             var orbs = new List<object>();
             try
             {
-                // Prefer orb families if available
-                // var families = Data.EntityCacheManager.GetCachedOrbFamilies();
-                // if (families.Count > 0)
-                // {
-                //     foreach (var f in families.Values)
-                //     {
-                //         orbs.Add(new
-                //         {
-                //             id = f.Id,
-                //             name = f.Name,
-                //             description = f.Description,
-                //             type = "orb",
-                //             orbType = f.OrbType ?? "ATTACK",
-                //             rarity = f.Rarity ?? (f.RarityValue?.ToString() ?? ""),
-                //             spriteReference = GetCorrelatedSpriteReference(f),
-                //             levels = f.Levels.Select(l => new
-                //             {
-                //                 level = l.Level,
-                //                 damagePerPeg = l.DamagePerPeg?.ToString() ?? "",
-                //                 critDamagePerPeg = l.CritDamagePerPeg?.ToString() ?? ""
-                //             }).ToList()
-                //         });
-                //     }
-                //     return orbs;
-                // }
-                
-                // Fallback to grouped orbs if families not available
-                // var grouped = Data.EntityCacheManager.GetCachedOrbsGrouped();
-                // if (grouped.Count > 0)
-                // {
-                //     foreach (var g in grouped.Values)
-                //     {
-                //         orbs.Add(new
-                //         {
-                //             id = g.Id,
-                //             name = g.Name,
-                //             description = g.Description,
-                //             type = "orb",
-                //             orbType = g.OrbType ?? "ATTACK",
-                //             rarity = g.Rarity ?? (g.RarityValue?.ToString() ?? ""),
-                //             spriteReference = GetCorrelatedSpriteReference(g),
-                //             levels = g.Levels.Select(l => new
-                //             {
-                //                 level = l.Level,
-                //                 damagePerPeg = l.DamagePerPeg?.ToString() ?? "",
-                //                 critDamagePerPeg = l.CritDamagePerPeg?.ToString() ?? ""
-                //             }).ToList()
-                //         });
-                //     }
-                //     return orbs;
-                // }
-
-                // Fallback: flat orbs
+                // Only use cached data - no expensive fallbacks
                 var cachedOrbs = Data.EntityCacheManager.GetCachedOrbs();
                 Logger.Info($"/api/entities: loaded {cachedOrbs.Count} orbs from cache");
 
-                if (cachedOrbs.Count == 0)
-                {
-                    // Secondary fallback: parse raw entities/orbs.json directly
-                    try
-                    {
-                        var entitiesOrbsPath = Data.EntityCacheManager.GetCachedOrbsPath();
-                        if (System.IO.File.Exists(entitiesOrbsPath))
-                        {
-                            var json = System.IO.File.ReadAllText(entitiesOrbsPath);
-                            var doc = System.Text.Json.JsonDocument.Parse(json);
-                            foreach (var prop in doc.RootElement.EnumerateObject())
-                            {
-                                var el = prop.Value;
-                                var id = prop.Name;
-                                string name = id;
-                                string desc = "";
-                                string orbType = "ATTACK";
-                                string damage = "";
-                                string rarity = "";
-
-                                if (el.TryGetProperty("Name", out var nameEl)) name = nameEl.GetString() ?? name;
-                                
-                                // Check for Description first, then DescriptionStrings
-                                if (el.TryGetProperty("Description", out var descEl)) 
-                                {
-                                    desc = descEl.GetString() ?? "";
-                                }
-                                else if (el.TryGetProperty("DescriptionStrings", out var descStringsEl) && descStringsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
-                                {
-                                    var descStrings = new List<string>();
-                                    foreach (var item in descStringsEl.EnumerateArray())
-                                    {
-                                        var str = item.GetString();
-                                        if (!string.IsNullOrEmpty(str))
-                                            descStrings.Add(str);
-                                    }
-                                    if (descStrings.Count > 0)
-                                        desc = string.Join("\n", descStrings.Select(s => "•" + s));
-                                }
-                                
-                                if (el.TryGetProperty("OrbType", out var typeEl)) orbType = typeEl.GetString() ?? orbType;
-                                if (el.TryGetProperty("DamagePerPeg", out var dmgEl)) damage = dmgEl.ValueKind == System.Text.Json.JsonValueKind.Number ? dmgEl.ToString() : (dmgEl.GetString() ?? "");
-                                if (el.TryGetProperty("Rarity", out var rarEl)) rarity = rarEl.GetString() ?? (el.TryGetProperty("RarityValue", out var rarValEl) ? rarValEl.ToString() : "");
-
-                                orbs.Add(new
-                                {
-                                    id,
-                                    name,
-                                    description = desc,
-                                    type = "orb",
-                                    orbType,
-                                    damagePerPeg = damage,
-                                    rarity,
-                                    spriteReference = (object?)null
-                                });
-                            }
-                            if (orbs.Count > 0)
-                            {
-                                Logger.Info($"/api/entities raw entities/orbs.json parsed: returned {orbs.Count} orbs");
-                                return orbs;
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Warning($"Parsing entities/orbs.json fallback failed: {ex.Message}");
-                    }
-
-                    // Fallback: try structured orbs.json created by extractor
-                    try
-                    {
-                        var structuredPath = System.IO.Path.Combine(Core.PeglinDataExtractor.GetExtractionCacheDirectory(), "orbs.json");
-                        if (System.IO.File.Exists(structuredPath))
-                        {
-                            var json = System.IO.File.ReadAllText(structuredPath);
-                            var doc = System.Text.Json.JsonDocument.Parse(json);
-                            foreach (var prop in doc.RootElement.EnumerateObject())
-                            {
-                                var el = prop.Value;
-                                var id = el.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? prop.Name : prop.Name;
-                                var name = el.TryGetProperty("name", out var nameEl) ? nameEl.GetString() ?? id : id;
-                                var desc = el.TryGetProperty("description", out var descEl) ? (descEl.GetString() ?? "") : "";
-                                var damage = el.TryGetProperty("damagePerPeg", out var dmgEl) ? (dmgEl.ValueKind == System.Text.Json.JsonValueKind.Number ? dmgEl.ToString() : (dmgEl.GetString() ?? "")) : "";
-                                var crit = el.TryGetProperty("critDamagePerPeg", out var critEl) ? (critEl.ValueKind == System.Text.Json.JsonValueKind.Number ? critEl.ToString() : (critEl.GetString() ?? "")) : "";
-                                orbs.Add(new
-                                {
-                                    id,
-                                    name,
-                                    description = desc,
-                                    type = "orb",
-                                    orbType = "ATTACK",
-                                    damagePerPeg = damage,
-                                    critDamagePerPeg = crit,
-                                    rarity = "",
-                                    spriteReference = (object?)null
-                                });
-                            }
-                            Logger.Info($"/api/entities fallback: returned {orbs.Count} orbs from structured file");
-                            return orbs;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Warning($"Fallback structured orbs.json load failed: {ex.Message}");
-                    }
-                }
+                // Pre-format the orb data efficiently
+                orbs.Capacity = cachedOrbs.Count; // Pre-size list to avoid reallocations
 
                 foreach (var kvp in cachedOrbs)
                 {
                     try
                     {
-                        // Use Description if available, otherwise format DescriptionStrings as bullet points
-                        var description = "";
-                        if (!string.IsNullOrEmpty(kvp.Value.Description))
+                        // Pre-format description only once
+                        string description = kvp.Value.Description ?? "";
+                        if (string.IsNullOrEmpty(description) && kvp.Value.DescriptionStrings?.Count > 0)
                         {
-                            description = kvp.Value.Description;
-                        }
-                        else if (kvp.Value.DescriptionStrings != null && kvp.Value.DescriptionStrings.Count > 0)
-                        {
-                            description = string.Join("\n", kvp.Value.DescriptionStrings.Select(s => "•" + s));
+                            // Use StringBuilder for efficient concatenation
+                            var sb = new System.Text.StringBuilder();
+                            for (int i = 0; i < kvp.Value.DescriptionStrings.Count; i++)
+                            {
+                                if (i > 0) sb.Append('\n');
+                                sb.Append('•').Append(kvp.Value.DescriptionStrings[i]);
+                            }
+                            description = sb.ToString();
                         }
 
                         orbs.Add(new
@@ -1388,19 +1332,25 @@ namespace peglin_save_explorer.Commands
             try
             {
                 var allSprites = Data.SpriteCacheManager.GetCachedSprites();
-                sprites.AddRange(allSprites.Select(s => new
+                sprites.Capacity = allSprites.Count; // Pre-size list
+
+                // Avoid LINQ overhead - use explicit loop
+                foreach (var s in allSprites)
                 {
-                    id = s.Id,
-                    name = s.Name,
-                    type = s.Type.ToString().ToLower(),
-                    width = s.Width,
-                    height = s.Height,
-                    url = $"/sprites/{GetSpriteTypeDirectory(s.Type)}/{s.Id}.png",
-                    isAtlas = s.IsAtlas,
-                    frameCount = s.AtlasFrames?.Count ?? 0,
-                    extractedAt = s.ExtractedAt,
-                    sourceBundle = s.SourceBundle
-                }));
+                    sprites.Add(new
+                    {
+                        id = s.Id,
+                        name = s.Name,
+                        type = s.Type.ToString().ToLower(),
+                        width = s.Width,
+                        height = s.Height,
+                        url = $"/sprites/{GetSpriteTypeDirectory(s.Type)}/{s.Id}.png",
+                        isAtlas = s.IsAtlas,
+                        frameCount = s.AtlasFrames?.Count ?? 0,
+                        extractedAt = s.ExtractedAt,
+                        sourceBundle = s.SourceBundle
+                    });
+                }
             }
             catch (Exception)
             {

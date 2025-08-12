@@ -17,38 +17,7 @@ namespace peglin_save_explorer.Data
         private List<RelicMapping> _cachedMappings = new();
         private Dictionary<int, string> _idToNameMap = new();
         private Dictionary<string, string> _unknownRelicPatternMap = new();
-        private static readonly string CacheDirectory = GetCacheDirectory();
-
-        private static string GetCacheDirectory()
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "PeglinSaveExplorer"
-                );
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "Library", "Application Support", "PeglinSaveExplorer"
-                );
-            }
-            else
-            {
-                // Linux - use XDG_CONFIG_HOME or fallback to ~/.config
-                var xdgConfigHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-                if (string.IsNullOrEmpty(xdgConfigHome))
-                {
-                    xdgConfigHome = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                        ".config"
-                    );
-                }
-                return Path.Combine(xdgConfigHome, "PeglinSaveExplorer");
-            }
-        }
+        private static readonly string CacheDirectory = CacheDirectoryHelper.GetCacheDirectory();
 
         private static readonly string CacheFilePath = Path.Combine(CacheDirectory, "relic_mappings.json");
         private static readonly string MetadataFilePath = Path.Combine(CacheDirectory, "cache_metadata.json");

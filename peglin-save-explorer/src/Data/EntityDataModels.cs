@@ -19,13 +19,13 @@ namespace peglin_save_explorer.Data
         public string? Rarity { get; set; }  // Human-readable rarity name
         public string? OrbType { get; set; } // e.g., "ATTACK", "UTILITY", "SPECIAL"
         public Dictionary<string, object> RawData { get; set; } = new();
-        
+
         // Extended fields for level detection
         public string? BaseId { get; set; } // Base ID without level suffix
         public int? Level { get; set; } // Detected level (1, 2, 3, etc.)
         public string? DisplayName { get; set; } // Localized display name
         public string? LocalizedDescription { get; set; } // Localized description
-        
+
         // Sprite correlation fields
         public string? CorrelatedSpriteId { get; set; }
         public string? SpriteFilePath { get; set; }
@@ -47,7 +47,7 @@ namespace peglin_save_explorer.Data
         public int RarityValue { get; set; }
         public string Rarity { get; set; } = "";  // Human-readable rarity name
         public Dictionary<string, object> RawData { get; set; } = new();
-        
+
         // Sprite correlation fields
         public string? CorrelatedSpriteId { get; set; }
         public string? SpriteFilePath { get; set; }
@@ -76,7 +76,7 @@ namespace peglin_save_explorer.Data
         public int? PointsOnKill { get; set; }
         public float? LootDropRate { get; set; }
         public Dictionary<string, object> RawData { get; set; } = new();
-        
+
         // Sprite correlation fields
         public string? CorrelatedSpriteId { get; set; }
         public string? SpriteFilePath { get; set; }
