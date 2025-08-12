@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Box, BoxProps } from "@mui/material";
 import { Sprite } from "../store/useSpriteStore";
 
-interface SpriteRendererProps extends Omit<BoxProps, 'component'> {
+interface SpriteRendererProps extends Omit<BoxProps, "component"> {
   sprite: Sprite;
   size?: number | string;
   fallbackSrc?: string;
@@ -10,7 +10,7 @@ interface SpriteRendererProps extends Omit<BoxProps, 'component'> {
 
 /**
  * SpriteRenderer component that properly displays sprites with frame clipping
- * when frame dimensions are available (for individual frames within larger textures).
+ * using canvas for precise pixel control.
  */
 const SpriteRenderer: React.FC<SpriteRendererProps> = ({
   sprite,
@@ -19,107 +19,166 @@ const SpriteRenderer: React.FC<SpriteRendererProps> = ({
   sx,
   ...boxProps
 }) => {
-  const hasFrameData = sprite.frameWidth !== undefined && 
-                      sprite.frameHeight !== undefined &&
-                      sprite.frameX !== undefined &&
-                      sprite.frameY !== undefined &&
-                      sprite.frameWidth > 0 &&
-                      sprite.frameHeight > 0;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
 
-  if (!hasFrameData) {
-    // If no frame data, display the full sprite
-    return (
-      <Box
-        component="img"
-        src={sprite.url}
-        alt={sprite.name}
-        sx={{
-          width: size,
-          height: size,
-          objectFit: "contain",
-          display: "inline-block",
-          verticalAlign: "middle",
-          ...sx,
-        }}
-        {...boxProps}
-      />
-    );
-  }
+  const hasFrameData =
+    sprite.frameWidth !== undefined &&
+    sprite.frameHeight !== undefined &&
+    sprite.frameX !== undefined &&
+    sprite.frameY !== undefined &&
+    sprite.frameWidth > 0 &&
+    sprite.frameHeight > 0 &&
+    // Check if frame data is different from full sprite OR if we have explicit frame dimensions
+    (sprite.frameWidth !== sprite.width ||
+      sprite.frameHeight !== sprite.height ||
+      sprite.frameX !== 0 ||
+      sprite.frameY !== 0 ||
+      // Also treat as frame data if the sprite has frameCount > 1 or calculated frames > 1
+      (sprite.width &&
+        sprite.height &&
+        Math.floor(sprite.width / sprite.frameWidth) *
+          Math.floor(sprite.height / sprite.frameHeight) >
+          1));
 
-  // Calculate scale to fit the frame within the desired size
-  // Use safe values to prevent NaN calculations
-  const frameWidth = sprite.frameWidth && sprite.frameWidth > 0 ? sprite.frameWidth : 16;
-  const frameHeight = sprite.frameHeight && sprite.frameHeight > 0 ? sprite.frameHeight : 16;
-  const frameX = sprite.frameX || 0;
-  const frameY = sprite.frameY || 0;
-  
+  // Calculate display dimensions
+  const frameWidth =
+    hasFrameData && sprite.frameWidth ? sprite.frameWidth : sprite.width || 16;
+  const frameHeight =
+    hasFrameData && sprite.frameHeight
+      ? sprite.frameHeight
+      : sprite.height || 16;
+
   const aspectRatio = frameWidth / frameHeight;
-  let displayWidth: number | string;
-  let displayHeight: number | string;
-  
-  if (typeof size === 'number') {
+  let displayWidth: number;
+  let displayHeight: number;
+
+  if (typeof size === "number") {
     if (aspectRatio > 1) {
-      // Wide frame - fit to width
       displayWidth = size;
       displayHeight = size / aspectRatio;
     } else {
-      // Tall frame - fit to height
       displayHeight = size;
       displayWidth = size * aspectRatio;
     }
   } else {
-    displayWidth = size;
-    displayHeight = size;
+    displayWidth = parseFloat(size);
+    displayHeight = parseFloat(size);
   }
 
-  // Calculate the scale factor to make the frame fit the desired size
-  const scaleX = (typeof displayWidth === 'number' ? displayWidth : parseFloat(displayWidth)) / frameWidth;
-  const scaleY = (typeof displayHeight === 'number' ? displayHeight : parseFloat(displayHeight)) / frameHeight;
-  
-  // Use the smaller scale to maintain aspect ratio
-  const scale = Math.min(scaleX, scaleY);
-  
-  // Calculate the scaled full texture size
-  // Use safe sprite dimensions to prevent NaN
-  const safeWidth = sprite.width && sprite.width > 0 ? sprite.width : frameWidth;
-  const safeHeight = sprite.height && sprite.height > 0 ? sprite.height : frameHeight;
-  const scaledTextureWidth = safeWidth * scale;
-  const scaledTextureHeight = safeHeight * scale;
-  
-  // Calculate the position offset to show the correct frame
-  const offsetX = -frameX * scale;
-  const offsetY = -frameY * scale;
+  const drawSprite = React.useCallback(() => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+
+    if (!canvas || !img || !img.complete) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Set canvas size
+    canvas.width = displayWidth;
+    canvas.height = displayHeight;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+    // Set pixel-perfect rendering
+    ctx.imageSmoothingEnabled = false;
+
+    if (hasFrameData) {
+      // Draw specific frame region
+      const frameX = sprite.frameX || 0;
+      const frameY = sprite.frameY || 0;
+      const sourceWidth = sprite.frameWidth || frameWidth;
+      const sourceHeight = sprite.frameHeight || frameHeight;
+
+      console.log(
+        `Drawing frame: frameX=${frameX}, frameY=${frameY}, sourceWidth=${sourceWidth}, sourceHeight=${sourceHeight} to ${displayWidth}x${displayHeight}`
+      );
+
+      // Draw the frame region to fill the entire canvas
+      ctx.drawImage(
+        img,
+        frameX,
+        frameY,
+        sourceWidth,
+        sourceHeight, // Source rectangle (frame in sprite sheet)
+        0,
+        0,
+        displayWidth,
+        displayHeight // Destination rectangle (entire canvas)
+      );
+    } else {
+      console.log(`Drawing full image to ${displayWidth}x${displayHeight}`);
+      // Draw entire image scaled to fit canvas
+      ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+    }
+  }, [
+    sprite.frameX,
+    sprite.frameY,
+    sprite.frameWidth,
+    sprite.frameHeight,
+    displayWidth,
+    displayHeight,
+    hasFrameData,
+    frameWidth,
+    frameHeight,
+  ]);
+
+  useEffect(() => {
+    const img = new Image();
+
+    const handleLoad = () => {
+      imgRef.current = img;
+      drawSprite();
+    };
+
+    const handleError = () => {
+      if (fallbackSrc) {
+        img.src = fallbackSrc;
+      }
+    };
+
+    img.onload = handleLoad;
+    img.onerror = handleError;
+    img.src = sprite.url;
+
+    // Cleanup function
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+      imgRef.current = null;
+    };
+  }, [sprite.url, fallbackSrc, drawSprite]);
+
+  // Redraw when frame data changes (but image is already loaded)
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete) {
+      drawSprite();
+    }
+  }, [
+    sprite.frameX,
+    sprite.frameY,
+    sprite.frameWidth,
+    sprite.frameHeight,
+    drawSprite,
+  ]);
 
   return (
     <Box
       sx={{
-        width: displayWidth,
-        height: displayHeight,
-        overflow: "hidden",
         display: "inline-block",
         verticalAlign: "middle",
-        position: "relative",
         ...sx,
       }}
       {...boxProps}
     >
-      <Box
-        component="img"
-        src={sprite.url}
-        alt={sprite.name}
-        onError={(e) => {
-          if (fallbackSrc) {
-            (e.target as HTMLImageElement).src = fallbackSrc;
-          }
-        }}
-        sx={{
-          width: scaledTextureWidth,
-          height: scaledTextureHeight,
-          position: "absolute",
-          left: offsetX,
-          top: offsetY,
-          objectFit: "none",
-          imageRendering: "pixelated", // For crisp pixel art
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: displayWidth,
+          height: displayHeight,
+          imageRendering: "pixelated",
         }}
       />
     </Box>

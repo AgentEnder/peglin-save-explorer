@@ -47,7 +47,7 @@ namespace peglin_save_explorer.Data
             // Call the main implementation with orb families
             SaveToCacheInternal(relics, enemies, orbs, peglinPath, sourceBundles);
         }
-        
+
         private static void SaveToCacheInternal(
             Dictionary<string, RelicData>? relics,
             Dictionary<string, EnemyData>? enemies,
@@ -84,28 +84,28 @@ namespace peglin_save_explorer.Data
                 if (orbs != null && orbs.Count > 0)
                 {
                     // Filter out orbs without descriptions - these are likely not actual gameplay orbs
-                    var filteredOrbs = orbs.Where(kvp => 
-                        !string.IsNullOrEmpty(kvp.Value.Description) || 
+                    var filteredOrbs = orbs.Where(kvp =>
+                        !string.IsNullOrEmpty(kvp.Value.Description) ||
                         (kvp.Value.DescriptionStrings != null && kvp.Value.DescriptionStrings.Count > 0))
                         .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                    
+
                     var removedCount = orbs.Count - filteredOrbs.Count;
                     if (removedCount > 0)
                     {
-                        Logger.Info($"🧹 Filtered out {removedCount} orbs without descriptions (likely UI elements or non-gameplay objects)");
-                        var removedItems = orbs.Where(kvp => 
-                            string.IsNullOrEmpty(kvp.Value.Description) && 
+                        Logger.Debug($"🧹 Filtered out {removedCount} orbs without descriptions (likely UI elements or non-gameplay objects)");
+                        var removedItems = orbs.Where(kvp =>
+                            string.IsNullOrEmpty(kvp.Value.Description) &&
                             (kvp.Value.DescriptionStrings == null || kvp.Value.DescriptionStrings.Count == 0))
                             .Select(kvp => kvp.Key).ToList();
                         Logger.Debug($"🧹 Removed orbs: {string.Join(", ", removedItems)}");
                     }
-                    
+
                     var orbJson = JsonConvert.SerializeObject(filteredOrbs, Formatting.Indented);
                     File.WriteAllText(OrbsFilePath, orbJson);
                     _cachedOrbs = filteredOrbs; // keep memory cache in sync with filtered data
                     Logger.Debug($"Saved {filteredOrbs.Count} orbs to cache: {OrbsFilePath}");
                 }
-                
+
                 // // Save orb families
                 // if (orbFamilies != null && orbFamilies.Count > 0)
                 // {
@@ -314,7 +314,7 @@ namespace peglin_save_explorer.Data
                 Logger.Error($"Error saving grouped orbs: {ex.Message}");
             }
         }
-        
+
         /// <summary>
         /// Gets cached orb families
         // /// </summary>
@@ -327,13 +327,13 @@ namespace peglin_save_explorer.Data
         //             Logger.Debug($"Returning {_cachedOrbFamilies.Count} orb families from memory cache");
         //             return _cachedOrbFamilies;
         //         }
-                
+
         //         if (!File.Exists(OrbFamiliesFilePath))
         //         {
         //             Logger.Debug("No orb families cache file found");
         //             return new Dictionary<string, OrbFamily>();
         //         }
-                
+
         //         var json = File.ReadAllText(OrbFamiliesFilePath);
         //         Logger.Debug($"Loaded orb families JSON, length: {json.Length}");
         //         // _cachedOrbFamilies = JsonConvert.DeserializeObject<Dictionary<string, OrbFamily>>(json)
@@ -347,7 +347,7 @@ namespace peglin_save_explorer.Data
         //         return new Dictionary<string, OrbFamily>();
         //     }
         // }
-        
+
         /// <summary>
         /// Saves orb families to cache file only
         /// </summary>
@@ -374,7 +374,7 @@ namespace peglin_save_explorer.Data
             try
             {
                 var bundlePath = Path.Combine(peglinPath, "Data", "StreamingAssets", "aa");
-                
+
                 if (!Directory.Exists(bundlePath))
                     return "no-bundles-found";
 

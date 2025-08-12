@@ -19,10 +19,22 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Search as SearchIcon, HelpOutline } from "@mui/icons-material";
-import { useEntities, useSpriteLoading, useSpriteError, useSpriteActions, Entity, Sprite } from "../store/useSpriteStore";
+import {
+  useEntities,
+  useSpriteLoading,
+  useSpriteError,
+  useSpriteActions,
+  Entity,
+  Sprite,
+} from "../store/useSpriteStore";
 import SpriteText from "./SpriteText";
 import AnimatedSpriteViewer from "./AnimatedSpriteViewer";
-import { getRarityName, getRarityColor, getRarityTooltip, isUnavailableRarity } from "../utils/rarityHelper";
+import {
+  getRarityName,
+  getRarityColor,
+  getRarityTooltip,
+  isUnavailableRarity,
+} from "../utils/rarityHelper";
 
 // Types imported from sprite store
 
@@ -32,11 +44,12 @@ const EntitySpriteBrowser: React.FC = () => {
   const loading = useSpriteLoading();
   const error = useSpriteError();
   const { initialize, getEntitySprite } = useSpriteActions();
-  
+
   const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState(0);
   const [showOnlyWithSprites, setShowOnlyWithSprites] = useState(false);
+  const [skipEmptyFrames, setSkipEmptyFrames] = useState(true);
 
   // Initialize sprite store on component mount
   useEffect(() => {
@@ -69,7 +82,9 @@ const EntitySpriteBrowser: React.FC = () => {
       entities = entities.filter(
         (entity) =>
           entity.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          entity.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          entity.description
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
           entity.orbType?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
@@ -105,7 +120,6 @@ const EntitySpriteBrowser: React.FC = () => {
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setSelectedTab(newValue);
   };
-
 
   if (loading) {
     return (
@@ -198,6 +212,24 @@ const EntitySpriteBrowser: React.FC = () => {
               label="Show only entities with sprites"
             />
           </Grid>
+          <Grid item xs={12} md={6}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={skipEmptyFrames}
+                  onChange={(e) => setSkipEmptyFrames(e.target.checked)}
+                />
+              }
+              label={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  Skip empty frames
+                  <Tooltip title="Automatically detect and skip sprite frames that contain only transparent pixels">
+                    <HelpOutline sx={{ fontSize: 16 }} />
+                  </Tooltip>
+                </Box>
+              }
+            />
+          </Grid>
         </Grid>
       </Paper>
 
@@ -228,13 +260,20 @@ const EntitySpriteBrowser: React.FC = () => {
                     sx={{ ml: 1 }}
                   />
                   {selectedEntity.rarity && (
-                    <Tooltip title={getRarityTooltip(selectedEntity.rarity) || ""} arrow>
+                    <Tooltip
+                      title={getRarityTooltip(selectedEntity.rarity) || ""}
+                      arrow
+                    >
                       <Chip
                         label={getRarityName(selectedEntity.rarity)}
                         size="small"
                         color={getRarityColor(selectedEntity.rarity) as any}
                         sx={{ ml: 1 }}
-                        icon={isUnavailableRarity(selectedEntity.rarity) ? <HelpOutline fontSize="small" /> : undefined}
+                        icon={
+                          isUnavailableRarity(selectedEntity.rarity) ? (
+                            <HelpOutline fontSize="small" />
+                          ) : undefined
+                        }
                       />
                     </Tooltip>
                   )}
@@ -250,42 +289,102 @@ const EntitySpriteBrowser: React.FC = () => {
                 )}
                 {selectedEntity.effect && (
                   <Typography variant="body2" color="text.secondary">
-                    <strong>Effect:</strong> <SpriteText>{selectedEntity.effect}</SpriteText>
+                    <strong>Effect:</strong>{" "}
+                    <SpriteText>{selectedEntity.effect}</SpriteText>
                   </Typography>
                 )}
                 {selectedEntity.type === "orb" && selectedEntity.orbType && (
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    gutterBottom
+                  >
                     <strong>Orb Type:</strong> {selectedEntity.orbType}
                   </Typography>
                 )}
-                {selectedEntity.type === "orb" && selectedEntity.levels && selectedEntity.levels.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Orb Levels
-                    </Typography>
-                    <Grid container spacing={1}>
-                      {selectedEntity.levels.map((level) => (
-                        <Grid item xs={12} sm={6} md={4} key={level.level}>
-                          <Paper sx={{ p: 2 }} variant="outlined">
-                            <Typography variant="subtitle2" color="primary" gutterBottom>
-                              Level {level.level}
+                {/* Show damage summary for orbs */}
+                {selectedEntity.type === "orb" &&
+                  selectedEntity.levels &&
+                  selectedEntity.levels.length > 0 && (
+                    <Box sx={{ mt: 1, mb: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        <strong>Damage Range:</strong>{" "}
+                        {(() => {
+                          const firstLevel = selectedEntity.levels[0];
+                          const lastLevel =
+                            selectedEntity.levels[
+                              selectedEntity.levels.length - 1
+                            ];
+                          if (
+                            firstLevel?.damagePerPeg &&
+                            lastLevel?.damagePerPeg
+                          ) {
+                            return firstLevel.level === lastLevel.level
+                              ? `${firstLevel.damagePerPeg} damage/peg`
+                              : `${firstLevel.damagePerPeg} - ${lastLevel.damagePerPeg} damage/peg`;
+                          }
+                          return "N/A";
+                        })()}
+                      </Typography>
+                      {(() => {
+                        const firstLevel = selectedEntity.levels[0];
+                        const lastLevel =
+                          selectedEntity.levels[
+                            selectedEntity.levels.length - 1
+                          ];
+                        if (
+                          firstLevel?.critDamagePerPeg &&
+                          lastLevel?.critDamagePerPeg
+                        ) {
+                          return (
+                            <Typography variant="body2" color="text.secondary">
+                              <strong>Crit Range:</strong>{" "}
+                              {firstLevel.level === lastLevel.level
+                                ? `${firstLevel.critDamagePerPeg} crit/peg`
+                                : `${firstLevel.critDamagePerPeg} - ${lastLevel.critDamagePerPeg} crit/peg`}
                             </Typography>
-                            {level.damagePerPeg && (
-                              <Typography variant="body2">
-                                <strong>Damage/Peg:</strong> {level.damagePerPeg}
+                          );
+                        }
+                        return null;
+                      })()}
+                    </Box>
+                  )}
+                {selectedEntity.type === "orb" &&
+                  selectedEntity.levels &&
+                  selectedEntity.levels.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="h6" gutterBottom>
+                        Orb Levels
+                      </Typography>
+                      <Grid container spacing={1}>
+                        {selectedEntity.levels.map((level) => (
+                          <Grid item xs={12} sm={6} md={4} key={level.level}>
+                            <Paper sx={{ p: 2 }} variant="outlined">
+                              <Typography
+                                variant="subtitle2"
+                                color="primary"
+                                gutterBottom
+                              >
+                                Level {level.level}
                               </Typography>
-                            )}
-                            {level.critDamagePerPeg && (
-                              <Typography variant="body2">
-                                <strong>Crit Damage/Peg:</strong> {level.critDamagePerPeg}
-                              </Typography>
-                            )}
-                          </Paper>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  </Box>
-                )}
+                              {level.damagePerPeg && (
+                                <Typography variant="body2">
+                                  <strong>Damage/Peg:</strong>{" "}
+                                  {level.damagePerPeg}
+                                </Typography>
+                              )}
+                              {level.critDamagePerPeg && (
+                                <Typography variant="body2">
+                                  <strong>Crit Damage/Peg:</strong>{" "}
+                                  {level.critDamagePerPeg}
+                                </Typography>
+                              )}
+                            </Paper>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
               </Grid>
               <Grid item xs={12} md={4}>
                 <Typography variant="h6" gutterBottom>
@@ -301,18 +400,17 @@ const EntitySpriteBrowser: React.FC = () => {
                     );
                   }
                   return (
-                    <Grid container spacing={1}>
-                      <Grid item>
-                        <AnimatedSpriteViewer
-                          sprite={sprite}
-                          size={64}
-                          showControls={true}
-                          showFrameInfo={true}
-                          autoPlay={false}
-                          frameRate={2}
-                        />
-                      </Grid>
-                    </Grid>
+                    <Box sx={{ display: "flex", justifyContent: "center" }}>
+                      <AnimatedSpriteViewer
+                        sprite={sprite}
+                        size={128}
+                        showControls={true}
+                        showFrameInfo={true}
+                        autoPlay={true}
+                        frameRate={10}
+                        skipEmptyFrames={skipEmptyFrames}
+                      />
+                    </Box>
                   );
                 })()}
               </Grid>
@@ -329,21 +427,51 @@ const EntitySpriteBrowser: React.FC = () => {
               onClick={() => setSelectedEntity(entity)}
             >
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {entity.name}
-                  <Chip
-                    label={entity.type}
-                    size="small"
-                    color={
-                      entity.type === "relic"
-                        ? "primary"
-                        : entity.type === "enemy"
-                        ? "error"
-                        : "secondary"
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 2,
+                    mb: 1,
+                  }}
+                >
+                  {(() => {
+                    const sprite = getSprite(entity);
+                    if (sprite) {
+                      return (
+                        <Box sx={{ flexShrink: 0 }}>
+                          <AnimatedSpriteViewer
+                            sprite={sprite}
+                            size={48}
+                            showControls={false}
+                            showFrameInfo={false}
+                            autoPlay={true}
+                            frameRate={3}
+                            skipEmptyFrames={skipEmptyFrames}
+                          />
+                        </Box>
+                      );
                     }
-                    sx={{ ml: 1 }}
-                  />
-                </Typography>
+                    return null;
+                  })()}
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Typography variant="h6" gutterBottom>
+                      {entity.name}
+                      <Chip
+                        label={entity.type}
+                        size="small"
+                        color={
+                          entity.type === "relic"
+                            ? "primary"
+                            : entity.type === "enemy"
+                            ? "error"
+                            : "secondary"
+                        }
+                        sx={{ ml: 1 }}
+                      />
+                    </Typography>
+                  </Box>
+                </Box>
                 {entity.description && (
                   <Typography
                     variant="body2"
@@ -354,6 +482,7 @@ const EntitySpriteBrowser: React.FC = () => {
                       display: "-webkit-box",
                       WebkitLineClamp: 2,
                       WebkitBoxOrient: "vertical",
+                      mb: 1,
                     }}
                   >
                     <SpriteText>{entity.description}</SpriteText>
@@ -361,15 +490,50 @@ const EntitySpriteBrowser: React.FC = () => {
                 )}
                 {/* Show orb-specific info in card preview */}
                 {entity.type === "orb" && entity.orbType && (
-                  <Typography variant="caption" color="text.secondary" display="block">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                  >
                     Type: {entity.orbType}
                   </Typography>
                 )}
-                {entity.type === "orb" && entity.levels && entity.levels.length > 0 && (
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Levels: {entity.levels.map(l => l.level).join(", ")}
-                  </Typography>
-                )}
+                {entity.type === "orb" &&
+                  entity.levels &&
+                  entity.levels.length > 0 && (
+                    <>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                      >
+                        Levels: {entity.levels.map((l) => l.level).join(", ")}
+                      </Typography>
+                      {/* Show damage info for first level */}
+                      {entity.levels[0] && (
+                        <Box sx={{ mt: 0.5 }}>
+                          {entity.levels[0].damagePerPeg && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              display="block"
+                            >
+                              Damage/Peg: {entity.levels[0].damagePerPeg}
+                            </Typography>
+                          )}
+                          {entity.levels[0].critDamagePerPeg && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              display="block"
+                            >
+                              Crit: {entity.levels[0].critDamagePerPeg}
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+                    </>
+                  )}
                 <Box sx={{ mt: 1 }}>
                   {(() => {
                     const sprite = getSprite(entity);

@@ -636,7 +636,7 @@ namespace peglin_save_explorer.Core
                     var totalStrings = allStrings.Values.SelectMany(lang => lang.Keys).Distinct().Count();
                     var languages = allStrings.Keys.Count;
 
-                    Logger.Info($"🌐 Exported {totalStrings} localization strings in {languages} languages to strings.json");
+                    Logger.Debug($"🌐 Exported {totalStrings} localization strings in {languages} languages to strings.json");
                     progress?.Report($"✅ Saved {totalStrings} localization strings");
                 });
             }

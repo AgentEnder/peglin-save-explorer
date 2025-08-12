@@ -174,7 +174,7 @@ namespace peglin_save_explorer.Extractors.Services
                     componentDataObj is Dictionary<string, object> componentData &&
                     componentData.ContainsKey("OrbComponent"))
                 {
-                    Console.WriteLine($"✅ GameObject {name} has OrbComponent data - confirmed orb");
+                    Logger.Debug($"✅ GameObject {name} has OrbComponent data - confirmed orb");
                     return true;
                 }
 
