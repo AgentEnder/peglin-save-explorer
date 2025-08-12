@@ -49,12 +49,16 @@ const AnimatedSpriteViewer: React.FC<AnimatedSpriteViewerProps> = ({
     
     if (!hasFrameCount) {
       // Static sprite or single frame
+      // Use reasonable defaults if dimensions are invalid
+      const safeWidth = sprite.width && sprite.width > 0 ? sprite.width : 16;
+      const safeHeight = sprite.height && sprite.height > 0 ? sprite.height : 16;
+      
       return {
         isAnimated: false,
         totalFrames: 1,
-        frameWidth: sprite.width,
-        frameHeight: sprite.height,
-        frames: [{ x: 0, y: 0, width: sprite.width, height: sprite.height }]
+        frameWidth: safeWidth,
+        frameHeight: safeHeight,
+        frames: [{ x: 0, y: 0, width: safeWidth, height: safeHeight }]
       };
     }
 
@@ -90,8 +94,11 @@ const AnimatedSpriteViewer: React.FC<AnimatedSpriteViewerProps> = ({
     }
     
     // Calculate individual frame dimensions
-    const frameWidth = Math.floor(sprite.width / framesX);
-    const frameHeight = Math.floor(sprite.height / framesY);
+    // Use safe values to prevent division by zero or invalid calculations
+    const safeWidth = sprite.width && sprite.width > 0 ? sprite.width : 16 * framesX;
+    const safeHeight = sprite.height && sprite.height > 0 ? sprite.height : 16 * framesY;
+    const frameWidth = Math.floor(safeWidth / framesX);
+    const frameHeight = Math.floor(safeHeight / framesY);
     
     // Generate frame positions (reading left-to-right, top-to-bottom)
     const frames = [];

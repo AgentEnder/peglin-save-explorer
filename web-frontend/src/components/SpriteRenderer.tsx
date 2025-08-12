@@ -22,7 +22,9 @@ const SpriteRenderer: React.FC<SpriteRendererProps> = ({
   const hasFrameData = sprite.frameWidth !== undefined && 
                       sprite.frameHeight !== undefined &&
                       sprite.frameX !== undefined &&
-                      sprite.frameY !== undefined;
+                      sprite.frameY !== undefined &&
+                      sprite.frameWidth > 0 &&
+                      sprite.frameHeight > 0;
 
   if (!hasFrameData) {
     // If no frame data, display the full sprite
@@ -45,10 +47,11 @@ const SpriteRenderer: React.FC<SpriteRendererProps> = ({
   }
 
   // Calculate scale to fit the frame within the desired size
-  const frameWidth = sprite.frameWidth!;
-  const frameHeight = sprite.frameHeight!;
-  const frameX = sprite.frameX!;
-  const frameY = sprite.frameY!;
+  // Use safe values to prevent NaN calculations
+  const frameWidth = sprite.frameWidth && sprite.frameWidth > 0 ? sprite.frameWidth : 16;
+  const frameHeight = sprite.frameHeight && sprite.frameHeight > 0 ? sprite.frameHeight : 16;
+  const frameX = sprite.frameX || 0;
+  const frameY = sprite.frameY || 0;
   
   const aspectRatio = frameWidth / frameHeight;
   let displayWidth: number | string;
@@ -77,8 +80,11 @@ const SpriteRenderer: React.FC<SpriteRendererProps> = ({
   const scale = Math.min(scaleX, scaleY);
   
   // Calculate the scaled full texture size
-  const scaledTextureWidth = sprite.width * scale;
-  const scaledTextureHeight = sprite.height * scale;
+  // Use safe sprite dimensions to prevent NaN
+  const safeWidth = sprite.width && sprite.width > 0 ? sprite.width : frameWidth;
+  const safeHeight = sprite.height && sprite.height > 0 ? sprite.height : frameHeight;
+  const scaledTextureWidth = safeWidth * scale;
+  const scaledTextureHeight = safeHeight * scale;
   
   // Calculate the position offset to show the correct frame
   const offsetX = -frameX * scale;
