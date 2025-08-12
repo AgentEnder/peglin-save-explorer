@@ -26,7 +26,7 @@ namespace peglin_save_explorer.Extractors
             public string ClassDescriptionLocKey { get; set; } = "";
             public string ClassUnlockMethodLocKey { get; set; } = "";
             public Dictionary<string, object> RawData { get; set; } = new();
-            
+
             // Resolved localization strings
             public string DisplayName { get; set; } = "";
             public string Description { get; set; } = "";
@@ -43,15 +43,15 @@ namespace peglin_save_explorer.Extractors
         {
             // Try to extract actual localization from Unity assets first
             bool foundRealLocalization = TryResolveLocalizationFromAssets(classInfo);
-            
+
             if (!foundRealLocalization)
             {
                 // Fallback to hardcoded values based on our analysis of the Peglin dump
                 classInfo.DisplayName = GetKnownDisplayName(classInfo.ClassName, classInfo.ClassNameLocKey);
-                classInfo.Description = GetKnownDescription(classInfo.ClassName, classInfo.ClassDescriptionLocKey);  
+                classInfo.Description = GetKnownDescription(classInfo.ClassName, classInfo.ClassDescriptionLocKey);
                 classInfo.UnlockMethod = GetKnownUnlockMethod(classInfo.ClassName, classInfo.ClassUnlockMethodLocKey);
             }
-            
+
             Logger.Verbose($"[AssetRipper] Resolved localization for {classInfo.ClassName}: '{classInfo.DisplayName}' - {classInfo.Description}");
         }
 
@@ -60,13 +60,13 @@ namespace peglin_save_explorer.Extractors
             try
             {
                 var localizationService = LocalizationService.Instance;
-                
+
                 if (!localizationService.EnsureLoaded())
                 {
                     Logger.Verbose("[AssetRipper] Localization service failed to load, using fallback values");
                     return false;
                 }
-                
+
                 // Try to resolve class name
                 if (!string.IsNullOrEmpty(classInfo.ClassNameLocKey))
                 {
@@ -77,7 +77,7 @@ namespace peglin_save_explorer.Extractors
                         Logger.Verbose($"[AssetRipper] Resolved display name for {classInfo.ClassName}: '{displayName}' from '{classInfo.ClassNameLocKey}'");
                     }
                 }
-                
+
                 // Try to resolve class description
                 if (!string.IsNullOrEmpty(classInfo.ClassDescriptionLocKey))
                 {
@@ -88,7 +88,7 @@ namespace peglin_save_explorer.Extractors
                         Logger.Verbose($"[AssetRipper] Resolved description for {classInfo.ClassName}: '{description}' from '{classInfo.ClassDescriptionLocKey}'");
                     }
                 }
-                
+
                 // Try to resolve unlock method
                 if (!string.IsNullOrEmpty(classInfo.ClassUnlockMethodLocKey))
                 {
@@ -99,10 +99,10 @@ namespace peglin_save_explorer.Extractors
                         Logger.Verbose($"[AssetRipper] Resolved unlock method for {classInfo.ClassName}: '{unlockMethod}' from '{classInfo.ClassUnlockMethodLocKey}'");
                     }
                 }
-                
+
                 // Return true if we resolved at least one field
-                return !string.IsNullOrEmpty(classInfo.DisplayName) || 
-                       !string.IsNullOrEmpty(classInfo.Description) || 
+                return !string.IsNullOrEmpty(classInfo.DisplayName) ||
+                       !string.IsNullOrEmpty(classInfo.Description) ||
                        !string.IsNullOrEmpty(classInfo.UnlockMethod);
             }
             catch (Exception ex)
@@ -120,7 +120,7 @@ namespace peglin_save_explorer.Extractors
             return (className, locKey) switch
             {
                 ("Spinventor", "Classes/spinventor_class_title") => "Spinventor",
-                ("Balladin", "Classes/warrior_class_title") => "Balladin", 
+                ("Balladin", "Classes/warrior_class_title") => "Balladin",
                 ("Roundrel", "Classes/rogue_class_title") => "Roundrel",
                 ("Peglin", "Classes/peglin_class_title") => "Peglin",
                 ("characterClass", "Classes/peglin_class_title") => "Peglin", // Sometimes extracted as characterClass
@@ -159,7 +159,7 @@ namespace peglin_save_explorer.Extractors
         public Dictionary<string, ClassInfoData> ExtractClassInfoFromBundles(string bundleDirectory)
         {
             var allClassInfo = new Dictionary<string, ClassInfoData>();
-            
+
             if (!Directory.Exists(bundleDirectory))
             {
                 Logger.Verbose($"[AssetRipper] Bundle directory does not exist: {bundleDirectory}");
@@ -170,14 +170,14 @@ namespace peglin_save_explorer.Extractors
             {
                 var bundleFiles = Directory.GetFiles(bundleDirectory, "*.bundle", SearchOption.AllDirectories);
                 Logger.Verbose($"[AssetRipper] Found {bundleFiles.Length} bundle files in {bundleDirectory}");
-                
+
                 foreach (var bundleFile in bundleFiles)
                 {
                     try
                     {
                         // Clear cache for each bundle to avoid conflicts
                         _classCache.Clear();
-                        
+
                         var classInfoFromBundle = ExtractClassInfo(bundleFile);
                         foreach (var kvp in classInfoFromBundle)
                         {
@@ -217,14 +217,14 @@ namespace peglin_save_explorer.Extractors
             try
             {
                 Logger.Verbose($"[AssetRipper] Loading ClassInfo from bundle: {bundlePath}");
-                
+
                 // Create a simple assembly manager (we won't need full script compilation)
                 var assemblyManager = new BaseManager(s => { });
                 var assetFactory = new GameAssetFactory(assemblyManager);
-                
+
                 // Load the bundle
                 var gameBundle = GameBundle.FromPaths(new[] { bundlePath }, assetFactory);
-                
+
                 Logger.Verbose($"[AssetRipper] Loaded {gameBundle.FetchAssetCollections().Count()} collections");
 
                 var achievementIndexMap = GetFallbackAchievementMap();
@@ -262,7 +262,7 @@ namespace peglin_save_explorer.Extractors
 
                 // Convert to dictionary for easier processing
                 var data = ConvertStructureToDict(structure);
-                
+
                 // Check if this looks like ClassInfo data
                 if (IsClassInfoData(data))
                 {
@@ -311,14 +311,14 @@ namespace peglin_save_explorer.Extractors
                 {
                     return value.AsString;
                 }
-                
+
                 // Try numeric values
                 if (value.PValue != 0)
                 {
                     // Could be int, float, or bool
                     return value.AsInt32;
                 }
-                
+
                 // Handle complex types
                 if (value.CValue != null)
                 {
@@ -340,7 +340,7 @@ namespace peglin_save_explorer.Extractors
             {
                 // If conversion fails, return a placeholder
             }
-            
+
             // Default to the field name if we can't extract the value
             return field?.Name ?? "unknown";
         }
@@ -348,19 +348,19 @@ namespace peglin_save_explorer.Extractors
         private object ConvertValue(object value)
         {
             if (value == null) return "";
-            
+
             // Handle primitive types
             if (value.GetType().IsPrimitive || value is string)
             {
                 return value;
             }
-            
+
             // Handle arrays
             if (value.GetType().IsArray)
             {
                 return value.ToString() ?? "";
             }
-            
+
             // Default to string representation
             return value.ToString() ?? "";
         }
@@ -368,7 +368,7 @@ namespace peglin_save_explorer.Extractors
         private bool IsClassInfoData(Dictionary<string, object> data)
         {
             // Look for fields that are characteristic of ClassInfo
-            return data.ContainsKey("characterClass") || 
+            return data.ContainsKey("characterClass") ||
                    data.ContainsKey("startsUnlocked") ||
                    data.ContainsKey("unlockAchievementId") ||
                    data.ContainsKey("classNameLocKey");
@@ -399,7 +399,7 @@ namespace peglin_save_explorer.Extractors
                 {
                     var achievementId = unlockAchievementId.ToString() ?? "";
                     classInfo.UnlockAchievementId = achievementId;
-                    
+
                     // Try direct numeric index first
                     if (int.TryParse(achievementId, out int directIndex))
                     {
@@ -414,17 +414,17 @@ namespace peglin_save_explorer.Extractors
                 // Extract localization keys
                 if (data.TryGetValue("classNameLocKey", out var nameLocKey))
                     classInfo.ClassNameLocKey = nameLocKey.ToString() ?? "";
-                
+
                 if (data.TryGetValue("classDescriptionLocKey", out var descLocKey))
                     classInfo.ClassDescriptionLocKey = descLocKey.ToString() ?? "";
-                
+
                 if (data.TryGetValue("classUnlockMethodLocKey", out var unlockLocKey))
                     classInfo.ClassUnlockMethodLocKey = unlockLocKey.ToString() ?? "";
 
                 classInfo.RawData = data;
 
                 // Validate that we have essential data
-                if (string.IsNullOrEmpty(classInfo.ClassName) || 
+                if (string.IsNullOrEmpty(classInfo.ClassName) ||
                     (string.IsNullOrEmpty(classInfo.UnlockAchievementId) && !classInfo.StartsUnlocked))
                 {
                     return null;
@@ -537,7 +537,7 @@ namespace peglin_save_explorer.Extractors
                                 {
                                     var achievementId = obj.ToString() ?? "";
                                     classInfoData.UnlockAchievementId = achievementId;
-                                    
+
                                     // Try direct numeric index first
                                     if (int.TryParse(achievementId, out int directIndex))
                                     {
@@ -572,7 +572,7 @@ namespace peglin_save_explorer.Extractors
                 classInfoData.RawData = rawData;
 
                 // Validate that we have the essential data
-                if (string.IsNullOrEmpty(classInfoData.ClassName) || 
+                if (string.IsNullOrEmpty(classInfoData.ClassName) ||
                     (string.IsNullOrEmpty(classInfoData.UnlockAchievementId) && !classInfoData.StartsUnlocked))
                 {
                     Logger.Verbose($"Incomplete ClassInfo data: {JsonConvert.SerializeObject(classInfoData, Formatting.Indented)}");
@@ -594,7 +594,7 @@ namespace peglin_save_explorer.Extractors
             return enumValue switch
             {
                 "0" or "Peglin" => "Peglin",
-                "1" or "Balladin" => "Balladin", 
+                "1" or "Balladin" => "Balladin",
                 "2" or "Roundrel" => "Roundrel",
                 "3" or "Spinventor" => "Spinventor",
                 _ => enumValue
@@ -616,19 +616,19 @@ namespace peglin_save_explorer.Extractors
                 {
                     // Use reflection to walk through the object's properties and fields
                     var type = obj.GetType();
-                    
+
                     // Walk through properties
                     foreach (var prop in type.GetProperties())
                     {
                         try
                         {
                             if (prop.GetIndexParameters().Length > 0) continue; // Skip indexed properties
-                            
+
                             var value = prop.GetValue(obj);
                             if (value != null)
                             {
                                 var newPath = string.IsNullOrEmpty(path) ? prop.Name : $"{path}.{prop.Name}";
-                                
+
                                 if (IsSimpleType(prop.PropertyType))
                                 {
                                     visitor(value, newPath);
@@ -654,7 +654,7 @@ namespace peglin_save_explorer.Extractors
                             if (value != null)
                             {
                                 var newPath = string.IsNullOrEmpty(path) ? field.Name : $"{path}.{field.Name}";
-                                
+
                                 if (IsSimpleType(field.FieldType))
                                 {
                                     visitor(value, newPath);
@@ -679,9 +679,9 @@ namespace peglin_save_explorer.Extractors
 
             private bool IsSimpleType(Type type)
             {
-                return type.IsPrimitive || 
-                       type == typeof(string) || 
-                       type == typeof(decimal) || 
+                return type.IsPrimitive ||
+                       type == typeof(string) ||
+                       type == typeof(decimal) ||
                        type == typeof(DateTime) ||
                        type.IsEnum;
             }
