@@ -107,6 +107,23 @@ const AnimatedSpriteViewer: React.FC<AnimatedSpriteViewerProps> = ({
 
   // Calculate frame information
   const frameInfo = useMemo(() => {
+    // First, check if this is explicitly marked as NOT an atlas (single image)
+    // If isAtlas is false or frameCount is 1, treat as single image
+    if (!sprite.isAtlas || sprite.frameCount === 1) {
+      const safeWidth = sprite.width && sprite.width > 0 ? sprite.width : 16;
+      const safeHeight =
+        sprite.height && sprite.height > 0 ? sprite.height : 16;
+
+      return {
+        isAnimated: false,
+        totalFrames: 1,
+        frameWidth: safeWidth,
+        frameHeight: safeHeight,
+        frames: [{ x: 0, y: 0, width: safeWidth, height: safeHeight }],
+        validFrames: [0], // Always include the single frame
+      };
+    }
+
     // Check if this sprite has frame dimensions (indicating it's from a sprite sheet)
     const hasFrameDimensions =
       sprite.frameWidth &&
@@ -114,10 +131,13 @@ const AnimatedSpriteViewer: React.FC<AnimatedSpriteViewerProps> = ({
       sprite.frameWidth > 0 &&
       sprite.frameHeight > 0;
 
-    // If we have frame dimensions, calculate the frame count if not provided
+    // Use the explicit frameCount from the sprite data as the authoritative source
     let calculatedFrameCount = sprite.frameCount || 1;
 
+    // Only calculate frame count from dimensions if frameCount is not explicitly provided
+    // and we have valid frame dimensions
     if (
+      calculatedFrameCount <= 1 &&
       hasFrameDimensions &&
       sprite.width &&
       sprite.height &&
@@ -127,16 +147,10 @@ const AnimatedSpriteViewer: React.FC<AnimatedSpriteViewerProps> = ({
       // Calculate how many frames fit in the total texture
       const framesX = Math.floor(sprite.width / sprite.frameWidth);
       const framesY = Math.floor(sprite.height / sprite.frameHeight);
-
-      // Use explicit frameCount if provided, otherwise calculate from grid
-      if (sprite.frameCount !== undefined && sprite.frameCount > 0) {
-        calculatedFrameCount = sprite.frameCount;
-      } else {
-        calculatedFrameCount = Math.max(framesX * framesY, 1); // Ensure at least 1 frame
-      }
+      calculatedFrameCount = Math.max(framesX * framesY, 1); // Ensure at least 1 frame
     }
 
-    // Check if this sprite has multiple frames (either explicit count or calculated)
+    // Check if this sprite has multiple frames
     const hasMultipleFrames = calculatedFrameCount > 1;
 
     if (!hasMultipleFrames) {

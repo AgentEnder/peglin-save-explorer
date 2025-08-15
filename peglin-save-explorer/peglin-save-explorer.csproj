@@ -6,6 +6,7 @@
     <RootNamespace>peglin_save_explorer</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     
     <!-- Assembly and product information -->
     <AssemblyTitle>Peglin Save Explorer</AssemblyTitle>

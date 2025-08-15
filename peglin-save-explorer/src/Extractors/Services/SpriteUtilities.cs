@@ -2,7 +2,9 @@ using System;
 using System.IO;
 using AssetRipper.Import.AssetCreation;
 using AssetRipper.SourceGenerated.Classes.ClassID_28;
+using AssetRipper.SourceGenerated.Classes.ClassID_213;
 using AssetRipper.Export.Modules.Textures;
+using AssetRipper.TextureDecoder.Rgb.Formats;
 using peglin_save_explorer.Data;
 using peglin_save_explorer.Utils;
 using peglin_save_explorer.Core;
@@ -127,6 +129,109 @@ namespace peglin_save_explorer.Extractors.Services
                     // Save as PNG using AssetRipper's built-in PNG export
                     using var fileStream = File.Create(fullPath);
                     bitmap.SaveAsPng(fileStream);
+
+                    Logger.Debug($"🎉 Successfully saved PNG: {Path.GetFileName(fullPath)} (format: {texture.Format_C28E})");
+                    return true;
+                }
+                else
+                {
+                    Logger.Warning($"❌ Failed to convert texture '{displayName}' to bitmap - format '{texture.Format_C28E}' may not be supported");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"❌ Error converting texture '{displayName}' to PNG: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Converts a specific rect region of a Texture2D to PNG format and saves it to disk
+        /// </summary>
+        public static bool ConvertSpriteRectToPng(ITexture2D texture, ISprite sprite, string relativePath, string displayName)
+        {
+            try
+            {
+                var cacheDir = PeglinDataExtractor.GetExtractionCacheDirectory();
+                var fullPath = Path.Combine(cacheDir, relativePath);
+                var directory = Path.GetDirectoryName(fullPath);
+
+                Logger.Debug($"💾 Saving sprite rect '{displayName}' to: {fullPath}");
+
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // Use AssetRipper's TextureConverter to convert to DirectBitmap
+                if (TextureConverter.TryConvertToBitmap(texture, out DirectBitmap bitmap))
+                {
+                    var spriteRect = sprite.Rect;
+                    var rectX = (int)spriteRect.X;
+                    var rectY = (int)spriteRect.Y;
+                    var rectWidth = (int)spriteRect.Width;
+                    var rectHeight = (int)spriteRect.Height;
+
+                    Logger.Debug($"✅ Converted texture '{displayName}' to bitmap ({texture.Width_C28}x{texture.Height_C28}), extracting rect ({rectX},{rectY},{rectWidth},{rectHeight})");
+
+                    // Check if rect covers entire texture (no cropping needed)
+                    if (rectX == 0 && rectY == 0 && rectWidth == texture.Width_C28 && rectHeight == texture.Height_C28)
+                    {
+                        Logger.Debug($"Sprite rect covers entire texture, saving full image");
+                        using var fileStream = File.Create(fullPath);
+                        bitmap.SaveAsPng(fileStream);
+                    }
+                    else
+                    {
+                        // Crop the bitmap to the sprite rect
+                        Logger.Debug($"Cropping texture to sprite rect: ({rectX},{rectY}) {rectWidth}x{rectHeight}");
+
+                        // Validate rect bounds
+                        if (rectX < 0 || rectY < 0 || rectX + rectWidth > texture.Width_C28 || rectY + rectHeight > texture.Height_C28)
+                        {
+                            Logger.Warning($"❌ Invalid sprite rect for '{displayName}': ({rectX},{rectY},{rectWidth},{rectHeight}) exceeds texture bounds ({texture.Width_C28}x{texture.Height_C28})");
+                            return false;
+                        }
+
+                        // Create a new bitmap with just the sprite rect using ColorRGBA format
+                        var croppedBitmap = new DirectBitmap<ColorRGBA<byte>, byte>(rectWidth, rectHeight);
+
+                        // Copy pixels from source to cropped bitmap
+                        unsafe
+                        {
+                            var srcPixels = bitmap.Bits;
+                            var dstPixels = croppedBitmap.Bits;
+
+                            int srcBytesPerPixel = bitmap.PixelSize;
+                            int dstBytesPerPixel = croppedBitmap.PixelSize;
+
+                            for (int y = 0; y < rectHeight; y++)
+                            {
+                                for (int x = 0; x < rectWidth; x++)
+                                {
+                                    var srcIndex = ((rectY + y) * texture.Width_C28 + (rectX + x)) * srcBytesPerPixel;
+                                    var dstIndex = (y * rectWidth + x) * dstBytesPerPixel;
+
+                                    // Copy pixel data (ensuring bounds check)
+                                    if (srcIndex + srcBytesPerPixel <= srcPixels.Length &&
+                                        dstIndex + dstBytesPerPixel <= dstPixels.Length)
+                                    {
+                                        for (int i = 0; i < Math.Min(srcBytesPerPixel, dstBytesPerPixel); i++)
+                                        {
+                                            dstPixels[dstIndex + i] = srcPixels[srcIndex + i];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Save the cropped bitmap
+                        using var fileStream = File.Create(fullPath);
+                        croppedBitmap.SaveAsPng(fileStream);
+
+                        Logger.Debug($"📏 Successfully cropped and saved sprite rect: {rectWidth}x{rectHeight} from {texture.Width_C28}x{texture.Height_C28}");
+                    }
 
                     Logger.Debug($"🎉 Successfully saved PNG: {Path.GetFileName(fullPath)} (format: {texture.Format_C28E})");
                     return true;

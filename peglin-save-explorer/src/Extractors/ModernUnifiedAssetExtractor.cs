@@ -86,6 +86,9 @@ namespace peglin_save_explorer.Extractors
                 // Consolidate orbs into families
                 _localizationProcessingService.ConsolidateOrbsIntoFamilies(result.Orbs, result.OrbFamilies);
 
+                // Deduplicate enemies before sprite correlation
+                DeduplicateEnemies(result, progress);
+
                 ReportResults(result, progress);
                 return result;
             }
@@ -266,7 +269,7 @@ namespace peglin_save_explorer.Extractors
 
             // Process GameObjects for orb extraction
             var gameObjects = collection.OfType<IGameObject>().ToList();
-            Logger.Info($"Processing collection {collection.Name}: {gameObjects.Count} GameObjects, {componentMap.Count} MonoBehaviours");
+            Logger.Verbose($"Processing collection {collection.Name}: {gameObjects.Count} GameObjects, {componentMap.Count} MonoBehaviours");
 
             foreach (var gameObject in gameObjects)
             {
@@ -602,7 +605,7 @@ namespace peglin_save_explorer.Extractors
                                 orbData.CorrelationMethod = "PachinkoBall GameObject PathID";
                                 orbData.CorrelationConfidence = 1.0f;
 
-                                Logger.Info($"Correlated orb {orbData.Id} with sprite {spriteMetadata.Id}");
+                                Logger.Debug($"Correlated orb {orbData.Id} with sprite {spriteMetadata.Id}");
                             }
                             else
                             {
@@ -885,6 +888,9 @@ namespace peglin_save_explorer.Extractors
             CorrelateEntityTypeWithSprites(orbSpriteRefs, result.Orbs, result.OrbSpriteCorrelations,
                 result.Sprites, gameBundle, SpriteCacheManager.SpriteType.Orb, "orb");
 
+            // Fallback correlation for enemies without direct sprite references
+            CorrelateEnemiesWithSpriteFallback(result, progress);
+
             var totalCorrelations = result.RelicSpriteCorrelations.Count + result.EnemySpriteCorrelations.Count + result.OrbSpriteCorrelations.Count;
             progress?.Report($"🔗 Successfully correlated {totalCorrelations} entities with sprites");
         }
@@ -936,6 +942,391 @@ namespace peglin_save_explorer.Extractors
                     Logger.Debug($"⚠️ Error correlating {entityTypeName} {entityId} with sprite: {ex.Message}");
                 }
             }
+        }
+
+        /// <summary>
+        /// Deduplicates enemy entries that represent the same entity but were extracted from different sources
+        /// </summary>
+        private void DeduplicateEnemies(UnifiedExtractionResult result, IProgress<string>? progress)
+        {
+            try
+            {
+                var duplicateGroups = new Dictionary<string, List<EnemyData>>();
+                
+                // Group enemies by their localization key (most reliable identifier)
+                foreach (var enemy in result.Enemies.Values)
+                {
+                    if (!string.IsNullOrEmpty(enemy.LocKey))
+                    {
+                        // Normalize locKey for comparison (remove _name suffix, etc.)
+                        var normalizedKey = NormalizeLocKey(enemy.LocKey);
+                        
+                        if (!duplicateGroups.ContainsKey(normalizedKey))
+                        {
+                            duplicateGroups[normalizedKey] = new List<EnemyData>();
+                        }
+                        duplicateGroups[normalizedKey].Add(enemy);
+                    }
+                }
+
+                var removedCount = 0;
+                var mergedCount = 0;
+
+                // Process groups with multiple entries (duplicates)
+                foreach (var group in duplicateGroups.Where(g => g.Value.Count > 1))
+                {
+                    var enemies = group.Value;
+                    var bestEnemy = SelectBestEnemyFromDuplicates(enemies);
+                    var mergedEnemy = MergeEnemyData(enemies, bestEnemy);
+
+                    // Remove all original entries
+                    foreach (var enemy in enemies)
+                    {
+                        result.Enemies.Remove(enemy.Id);
+                        removedCount++;
+                    }
+
+                    // Add the merged entry
+                    result.Enemies[mergedEnemy.Id] = mergedEnemy;
+                    mergedCount++;
+
+                    Logger.Debug($"📋 Merged {enemies.Count} duplicate enemies into {mergedEnemy.Id} ({mergedEnemy.Name})");
+                }
+
+                if (mergedCount > 0)
+                {
+                    Logger.Info($"🔗 Deduplicated enemies: removed {removedCount} duplicates, merged into {mergedCount} consolidated entries");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Error in enemy deduplication: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Normalizes a localization key for duplicate detection
+        /// </summary>
+        private string NormalizeLocKey(string locKey)
+        {
+            return locKey
+                .Replace("_name", "")
+                .Replace("_desc", "")
+                .ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Selects the best enemy entry from a group of duplicates
+        /// Prioritizes: 1) Better ID (not "monobehaviour"), 2) More complete data
+        /// </summary>
+        private EnemyData SelectBestEnemyFromDuplicates(List<EnemyData> enemies)
+        {
+            // Score each enemy based on data quality
+            var scored = enemies.Select(e => new
+            {
+                Enemy = e,
+                Score = CalculateEnemyDataScore(e)
+            }).OrderByDescending(x => x.Score).ToList();
+
+            return scored.First().Enemy;
+        }
+
+        /// <summary>
+        /// Calculates a data quality score for an enemy
+        /// </summary>
+        private int CalculateEnemyDataScore(EnemyData enemy)
+        {
+            var score = 0;
+
+            // Prefer specific IDs over generic ones
+            if (enemy.Id != "monobehaviour" && enemy.Id != "enemy" && enemy.Id != "unknown")
+                score += 10;
+
+            // Prefer entries with health data
+            if (enemy.Health.HasValue && enemy.Health > 0)
+                score += 5;
+
+            // Prefer entries with attack damage
+            if (enemy.AttackDamage.HasValue && enemy.AttackDamage > 0)
+                score += 3;
+
+            // Prefer entries with proper type information
+            if (!string.IsNullOrEmpty(enemy.Type) && !enemy.Type.StartsWith("Type_"))
+                score += 2;
+
+            // Prefer entries with description
+            if (!string.IsNullOrEmpty(enemy.Description))
+                score += 2;
+
+            // Prefer entries with sprite correlation
+            if (!string.IsNullOrEmpty(enemy.CorrelatedSpriteId))
+                score += 1;
+
+            return score;
+        }
+
+        /// <summary>
+        /// Merges multiple enemy entries into a single consolidated entry
+        /// Takes the best values from each source
+        /// </summary>
+        private EnemyData MergeEnemyData(List<EnemyData> enemies, EnemyData baseEnemy)
+        {
+            var merged = new EnemyData
+            {
+                Id = baseEnemy.Id,
+                Name = baseEnemy.Name,
+                LocKey = baseEnemy.LocKey,
+                RawData = baseEnemy.RawData
+            };
+
+            // Merge best values from all sources
+            foreach (var enemy in enemies)
+            {
+                // Use the best available name
+                if (string.IsNullOrEmpty(merged.Name) || 
+                    (!string.IsNullOrEmpty(enemy.Name) && enemy.Name.Length > merged.Name.Length))
+                {
+                    merged.Name = enemy.Name;
+                }
+
+                // Use the best available description
+                if (string.IsNullOrEmpty(merged.Description) && !string.IsNullOrEmpty(enemy.Description))
+                {
+                    merged.Description = enemy.Description;
+                }
+
+                // Use health values if not already set or if the new one is better
+                if (!merged.Health.HasValue && enemy.Health.HasValue)
+                {
+                    merged.Health = enemy.Health;
+                }
+                if (!merged.MaxHealth.HasValue && enemy.MaxHealth.HasValue)
+                {
+                    merged.MaxHealth = enemy.MaxHealth;
+                }
+                if (!merged.MaxHealthCruciball.HasValue && enemy.MaxHealthCruciball.HasValue)
+                {
+                    merged.MaxHealthCruciball = enemy.MaxHealthCruciball;
+                }
+
+                // Use attack damage values if not already set
+                if (!merged.AttackDamage.HasValue && enemy.AttackDamage.HasValue)
+                {
+                    merged.AttackDamage = enemy.AttackDamage;
+                }
+                if (!merged.MeleeAttackDamage.HasValue && enemy.MeleeAttackDamage.HasValue)
+                {
+                    merged.MeleeAttackDamage = enemy.MeleeAttackDamage;
+                }
+                if (!merged.RangedAttackDamage.HasValue && enemy.RangedAttackDamage.HasValue)
+                {
+                    merged.RangedAttackDamage = enemy.RangedAttackDamage;
+                }
+
+                // Use better type information
+                if (string.IsNullOrEmpty(merged.Type) || 
+                    (!string.IsNullOrEmpty(enemy.Type) && !enemy.Type.StartsWith("Type_") && merged.Type.StartsWith("Type_")))
+                {
+                    merged.Type = enemy.Type;
+                }
+
+                // Use location if available
+                if (string.IsNullOrEmpty(merged.Location) && !string.IsNullOrEmpty(enemy.Location))
+                {
+                    merged.Location = enemy.Location;
+                }
+
+                // Use sprite correlation (prefer higher confidence)
+                if (string.IsNullOrEmpty(merged.CorrelatedSpriteId) || 
+                    (!string.IsNullOrEmpty(enemy.CorrelatedSpriteId) && enemy.CorrelationConfidence > merged.CorrelationConfidence))
+                {
+                    merged.CorrelatedSpriteId = enemy.CorrelatedSpriteId;
+                    merged.SpriteFilePath = enemy.SpriteFilePath;
+                    merged.CorrelationMethod = enemy.CorrelationMethod;
+                    merged.CorrelationConfidence = enemy.CorrelationConfidence;
+                }
+            }
+
+            return merged;
+        }
+
+        /// <summary>
+        /// Fallback correlation for enemies that don't have direct sprite references
+        /// Uses naming patterns and available sprite files to match enemies with sprites
+        /// </summary>
+        private void CorrelateEnemiesWithSpriteFallback(UnifiedExtractionResult result, IProgress<string>? progress)
+        {
+            try
+            {
+                var spritesDirectory = Path.Combine(CacheDirectoryHelper.GetSpritesDirectory(), "enemies");
+                if (!Directory.Exists(spritesDirectory))
+                {
+                    Logger.Debug("No enemy sprites directory found for fallback correlation");
+                    return;
+                }
+
+                var availableSprites = Directory.GetFiles(spritesDirectory, "*.png")
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .ToList();
+
+                var correlatedCount = 0;
+                foreach (var enemy in result.Enemies.Values)
+                {
+                    // Skip if already correlated
+                    if (!string.IsNullOrEmpty(enemy.CorrelatedSpriteId))
+                        continue;
+
+                    string? matchedSprite = null;
+                    var matchMethod = "";
+
+                    // Try to match based on locKey
+                    if (!string.IsNullOrEmpty(enemy.LocKey))
+                    {
+                        matchedSprite = TryMatchSpriteByLocKey(enemy.LocKey, availableSprites);
+                        if (matchedSprite != null)
+                        {
+                            matchMethod = "LocKey Pattern Match";
+                        }
+                    }
+
+                    // Try to match based on name
+                    if (matchedSprite == null && !string.IsNullOrEmpty(enemy.Name))
+                    {
+                        matchedSprite = TryMatchSpriteByName(enemy.Name, availableSprites);
+                        if (matchedSprite != null)
+                        {
+                            matchMethod = "Name Pattern Match";
+                        }
+                    }
+
+                    // Try to match based on ID
+                    if (matchedSprite == null)
+                    {
+                        matchedSprite = TryMatchSpriteById(enemy.Id, availableSprites);
+                        if (matchedSprite != null)
+                        {
+                            matchMethod = "ID Pattern Match";
+                        }
+                    }
+
+                    if (matchedSprite != null)
+                    {
+                        var spriteFilePath = $"enemies/{matchedSprite}.png";
+                        var spriteMetadata = new SpriteCacheManager.SpriteMetadata
+                        {
+                            Id = matchedSprite,
+                            Name = matchedSprite,
+                            FilePath = spriteFilePath,
+                            Type = SpriteCacheManager.SpriteType.Enemy,
+                            Width = 32, // Default size for enemy sprites
+                            Height = 32
+                        };
+
+                        result.Sprites[matchedSprite] = spriteMetadata;
+                        result.EnemySpriteCorrelations[enemy.Id] = matchedSprite;
+
+                        // Update enemy with sprite info
+                        enemy.CorrelatedSpriteId = matchedSprite;
+                        enemy.SpriteFilePath = spriteFilePath;
+                        enemy.CorrelationMethod = matchMethod;
+                        enemy.CorrelationConfidence = 0.8f; // Lower confidence for fallback matches
+
+                        correlatedCount++;
+                        Logger.Debug($"👹 Fallback correlated enemy {enemy.Name} ({enemy.Id}) with sprite {matchedSprite} via {matchMethod}");
+                    }
+                }
+
+                if (correlatedCount > 0)
+                {
+                    Logger.Info($"🔗 Fallback correlation added {correlatedCount} enemy sprite matches");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Error in fallback enemy sprite correlation: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Try to match a sprite based on the enemy's localization key
+        /// </summary>
+        private string? TryMatchSpriteByLocKey(string locKey, List<string> availableSprites)
+        {
+            // Remove common suffixes from locKey
+            var cleanKey = locKey.Replace("_name", "").Replace("_desc", "");
+            
+            // Direct match
+            var directMatch = availableSprites.FirstOrDefault(s => 
+                s.Equals(cleanKey, StringComparison.OrdinalIgnoreCase));
+            if (directMatch != null) return directMatch;
+
+            // Pattern-based matching for specific cases
+            if (cleanKey.Contains("goblin_sapper"))
+            {
+                return availableSprites.FirstOrDefault(s => s.Equals("sapper_32x32", StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Try removing "goblin_" prefix
+            if (cleanKey.StartsWith("goblin_"))
+            {
+                var withoutGoblin = cleanKey.Substring(7);
+                var match = availableSprites.FirstOrDefault(s => 
+                    s.StartsWith(withoutGoblin, StringComparison.OrdinalIgnoreCase));
+                if (match != null) return match;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Try to match a sprite based on the enemy's display name
+        /// </summary>
+        private string? TryMatchSpriteByName(string name, List<string> availableSprites)
+        {
+            var cleanName = name.ToLowerInvariant()
+                .Replace(" ", "_")
+                .Replace("-", "_");
+
+            // Try with _32x32 suffix (common pattern)
+            var withSuffix = $"{cleanName}_32x32";
+            var match = availableSprites.FirstOrDefault(s => 
+                s.Equals(withSuffix, StringComparison.OrdinalIgnoreCase));
+            if (match != null) return match;
+
+            // Try exact match
+            match = availableSprites.FirstOrDefault(s => 
+                s.Equals(cleanName, StringComparison.OrdinalIgnoreCase));
+            if (match != null) return match;
+
+            // Try partial match
+            match = availableSprites.FirstOrDefault(s => 
+                s.Contains(cleanName, StringComparison.OrdinalIgnoreCase));
+            if (match != null) return match;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Try to match a sprite based on the enemy's ID
+        /// </summary>
+        private string? TryMatchSpriteById(string id, List<string> availableSprites)
+        {
+            // Skip generic IDs
+            if (id == "monobehaviour" || id == "enemy" || id == "unknown")
+                return null;
+
+            // Try with _32x32 suffix
+            var withSuffix = $"{id}_32x32";
+            var match = availableSprites.FirstOrDefault(s => 
+                s.Equals(withSuffix, StringComparison.OrdinalIgnoreCase));
+            if (match != null) return match;
+
+            // Try exact match
+            match = availableSprites.FirstOrDefault(s => 
+                s.Equals(id, StringComparison.OrdinalIgnoreCase));
+            if (match != null) return match;
+
+            return null;
         }
 
         /// <summary>
@@ -1063,10 +1454,12 @@ namespace peglin_save_explorer.Extractors
                             {
                                 if (sprite.RD.Texture.TryGetAsset(sprite.Collection, out ITexture2D? texture))
                                 {
-                                    width = texture.Width_C28;
-                                    height = texture.Height_C28;
+                                    // Use sprite rect dimensions instead of full texture dimensions
+                                    var spriteRect = sprite.Rect;
+                                    width = (int)spriteRect.Width;
+                                    height = (int)spriteRect.Height;
                                     textureToConvert = texture;
-                                    Logger.Debug($"Extracted sprite dimensions: {width}x{height}");
+                                    Logger.Debug($"Extracted sprite rect dimensions: {width}x{height} from texture {texture.Width_C28}x{texture.Height_C28}");
                                 }
                             }
                             else if (resolvedAsset is ITexture2D directTexture)
@@ -1080,7 +1473,18 @@ namespace peglin_save_explorer.Extractors
                             // Create the PNG file if we have a texture
                             if (textureToConvert != null)
                             {
-                                var success = SpriteUtilities.ConvertTextureToPngImproved(textureToConvert, filePath, spriteName);
+                                bool success;
+                                if (resolvedAsset is ISprite spriteForConversion)
+                                {
+                                    // Use rect-based sprite cropping for sprites
+                                    success = SpriteUtilities.ConvertSpriteRectToPng(textureToConvert, spriteForConversion, filePath, spriteName);
+                                }
+                                else
+                                {
+                                    // Use full texture conversion for direct textures
+                                    success = SpriteUtilities.ConvertTextureToPngImproved(textureToConvert, filePath, spriteName);
+                                }
+
                                 if (!success)
                                 {
                                     Logger.Debug($"⚠️ Failed to convert sprite {spriteName} to PNG");
@@ -1199,12 +1603,6 @@ namespace peglin_save_explorer.Extractors
                 AtlasFrames = new List<SpriteCacheManager.SpriteFrame>()
             };
 
-            // Skip atlas detection for certain sprite names that are likely single sprites
-            if (IsSingleSpriteByName(spriteName))
-            {
-                Logger.Debug($"Skipping atlas detection for {spriteName} - detected as single sprite by name");
-                return frameInfo;
-            }
 
             // Skip atlas detection for very large sprites (likely backgrounds or single large sprites)
             if (width > 512 || height > 512)
@@ -1398,30 +1796,6 @@ namespace peglin_save_explorer.Extractors
             });
 
             return frameSizes;
-        }
-        /// <summary>
-        /// Determines if a sprite should be treated as a single sprite based on its name
-        /// </summary>
-        private static bool IsSingleSpriteByName(string spriteName)
-        {
-            if (string.IsNullOrEmpty(spriteName))
-                return false;
-
-            var lowerName = spriteName.ToLowerInvariant();
-
-            // Common keywords that indicate single sprites (not atlases)
-            var singleSpriteKeywords = new[]
-            {
-                "boulder", "rock", "stone", "background", "bg", "title", "logo",
-                "portrait", "avatar", "icon", "ui_", "button", "panel", "menu",
-                "inventory", "health", "mana", "coin", "gem", "crystal", "key",
-                "shield", "armor", "weapon", "sword", "bow", "staff", "ring",
-                "potion", "scroll", "book", "chest", "door", "wall", "floor",
-                "ceiling", "platform", "ladder", "bridge", "tree", "grass",
-                "water", "cloud", "sun", "moon", "star", "mountain", "hill"
-            };
-
-            return singleSpriteKeywords.Any(keyword => lowerName.Contains(keyword));
         }
 
         /// <summary>

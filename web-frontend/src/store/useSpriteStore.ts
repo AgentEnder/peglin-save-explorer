@@ -22,8 +22,11 @@ export interface Sprite {
 
 export interface OrbLevel {
   level: number;
+  runNameEquivalent?: string;
   damagePerPeg?: string;
   critDamagePerPeg?: string;
+  description?: string;
+  entityId?: string;
 }
 
 export interface Entity {
@@ -34,10 +37,17 @@ export interface Entity {
   rarity?: string;
   effect?: string;
   spriteReference?: Sprite;
-  
+
   // Orb-specific properties for orb families
   orbType?: string;
   levels?: OrbLevel[];
+  damagePerPeg?: string | number;
+  critDamagePerPeg?: string | number;
+
+  // Enemy-specific properties
+  maxHealth?: number;
+  location?: string;
+  enemyType?: string;
 }
 
 interface EntitiesData {
@@ -68,52 +78,59 @@ interface SpriteState {
 
   // Text processing
   substituteSprites: (text: string) => React.ReactElement;
-  createInlineSpriteElement: (sprite: Sprite, key: string) => React.ReactElement;
+  createInlineSpriteElement: (
+    sprite: Sprite,
+    key: string
+  ) => React.ReactElement;
 }
 
 // Transform sprite names from TMP format to actual sprite names
 function transformSpriteNameForLookup(spriteName: string): string {
   // Convert to lowercase for initial lookup
   const lowerName = spriteName.toLowerCase();
-  
+
   // Handle common sprite name transformations
   const transformations: Record<string, string> = {
     // Status effects (from StatusEffectType enum)
-    'strength': 'balance_status',
-    'finesse': 'dexspherity_status', 
-    'spindividualism': 'spindividualism_status',
-    'ballwark': 'ballwark_status',
-    'muscircle': 'muscircle_status',
-    'refreshing': 'refreshing_status',
-    'multiball': 'multiball_status',
-    'piercing': 'piercing_status',
-    'poison': 'poison_status',
-    'burn': 'burn_status',
-    'electrify': 'electrify_status',
-    
+    strength: "balance_status",
+    finesse: "dexspherity_status",
+    spindividualism: "spindividualism_status",
+    ballwark: "ballwark_status",
+    muscircle: "muscircle_status",
+    refreshing: "refreshing_status",
+    multiball: "multiball_status",
+    piercing: "piercing_status",
+    poison: "poison_status",
+    burn: "burn_status",
+    electrify: "electrify_status",
+
     // Common game elements
-    'bomb': 'bomb_regular',
-    'bomb_regular': 'bomb_regular',
-    'gold': 'coin_only',
-    'coin_only': 'coin_only',
-    'peg': 'peg',
-    'refresh_peg': 'refresh_peg',
-    'crit_peg': 'crit_peg',
-    'peg_shielded': 'peg_shielded',
-    
+    bomb: "bomb_normal",
+    bomb_regular: "bomb_normal",
+    gold: "coin",
+    coin_only: "coin",
+    peg: "greypeg_tooltip",
+    refresh_peg: "refresh_peg",
+    crit_peg: "crit_peg",
+    peg_shield: "shield_peg_9",
+    peg_shielded: "shield_peg_9",
+    temp_crit: "persistentcritpeg",
+    rigged_bomb: "sapper_redbomb",
+    peg_cleared: "greypeg_dark",
+
     // Alternate naming patterns
-    'coin': 'coin_only',
-    'damage': 'damage_status',
-    'health': 'health_status',
-    'shield': 'ballwark_status',
-    'critical': 'crit_peg',
+    coin: "coin",
+    damage: "damage_status",
+    health: "health_status",
+    shield: "ballwark_status",
+    critical: "crit_peg",
   };
-  
+
   // Check for direct transformation
   if (transformations[lowerName]) {
     return transformations[lowerName];
   }
-  
+
   // If no transformation found, try the name as-is (lowercased)
   return lowerName;
 }
@@ -277,16 +294,19 @@ export const useSpriteStore = create<SpriteState>()(
 
       // First, strip Unity style tags like <style=balance>text</style>
       const processedText = text
-        .replace(/<style=[^>]*>/g, '') // Remove opening style tags
-        .replace(/<\/style>/g, '');    // Remove closing style tags
+        .replace(/<style=[^>]*>/g, "") // Remove opening style tags
+        .replace(/<\/style>/g, ""); // Remove closing style tags
 
       // Parse sprite tags like <sprite name="BOMB">
-      const spriteRegex = /<sprite\s+name="([^"]+)"\s*>/g;
+      const spriteRegex = /<sprite\s+name="?([^"]+)"?\s*>/g;
       const parts = [];
       let lastIndex = 0;
       let match: RegExpExecArray | null;
 
-      while ((match = spriteRegex.exec(processedText) as RegExpExecArray | null) !== null) {
+      while (
+        (match = spriteRegex.exec(processedText) as RegExpExecArray | null) !==
+        null
+      ) {
         // Add text before the sprite tag
         if (match.index > lastIndex) {
           parts.push(processedText.substring(lastIndex, match.index));
@@ -294,18 +314,31 @@ export const useSpriteStore = create<SpriteState>()(
 
         // Transform sprite name and find sprite
         const spriteName = match[1];
-        
+
         // Simple transformation: convert to lowercase and handle common patterns
         const transformedName = transformSpriteNameForLookup(spriteName);
-        console.log(`🔍 Sprite transformation: "${spriteName}" -> "${transformedName}"`);
+        console.log(
+          `🔍 Sprite transformation: "${spriteName}" -> "${transformedName}"`
+        );
         const sprite = getSpriteByName(transformedName);
-        console.log(`🎯 Sprite lookup result:`, sprite ? `found ${sprite.name}` : 'not found');
+        console.log(
+          `🎯 Sprite lookup result:`,
+          sprite ? `found ${sprite.name}` : "not found"
+        );
 
         if (sprite) {
-          parts.push(get().createInlineSpriteElement(sprite, `sprite-${match.index}`));
+          parts.push(
+            get().createInlineSpriteElement(sprite, `sprite-${match.index}`)
+          );
         } else {
-          console.log(`❌ Sprite not found for "${spriteName}" (transformed: "${transformedName}")`);
-          console.log('Available sprites:', Array.from(spritesByName.keys()).slice(0, 10), '...');
+          console.log(
+            `❌ Sprite not found for "${spriteName}" (transformed: "${transformedName}")`
+          );
+          console.log(
+            "Available sprites:",
+            Array.from(spritesByName.keys()).slice(0, 10),
+            "..."
+          );
           // Keep original text if sprite not found
           parts.push(match[0]);
         }
@@ -327,10 +360,11 @@ export const useSpriteStore = create<SpriteState>()(
 
     // Create an inline sprite element with proper frame clipping
     createInlineSpriteElement: (sprite: Sprite, key: string) => {
-      const hasFrameData = sprite.frameWidth !== undefined && 
-                          sprite.frameHeight !== undefined &&
-                          sprite.frameX !== undefined &&
-                          sprite.frameY !== undefined;
+      const hasFrameData =
+        sprite.frameWidth !== undefined &&
+        sprite.frameHeight !== undefined &&
+        sprite.frameX !== undefined &&
+        sprite.frameY !== undefined;
 
       if (!hasFrameData) {
         // If no frame data, display the full sprite
@@ -353,17 +387,19 @@ export const useSpriteStore = create<SpriteState>()(
 
       // Calculate scale to fit the frame within the desired size
       // Use safe values to prevent NaN calculations
-      const frameWidth = sprite.frameWidth && sprite.frameWidth > 0 ? sprite.frameWidth : 16;
-      const frameHeight = sprite.frameHeight && sprite.frameHeight > 0 ? sprite.frameHeight : 16;
+      const frameWidth =
+        sprite.frameWidth && sprite.frameWidth > 0 ? sprite.frameWidth : 16;
+      const frameHeight =
+        sprite.frameHeight && sprite.frameHeight > 0 ? sprite.frameHeight : 16;
       const frameX = sprite.frameX || 0;
       const frameY = sprite.frameY || 0;
-      
+
       const numericSize = 16; // Fixed size for inline sprites
       const aspectRatio = frameWidth / frameHeight;
-      
+
       let displayWidth: number;
       let displayHeight: number;
-      
+
       if (aspectRatio > 1) {
         // Wide frame - fit to width
         displayWidth = numericSize;
@@ -377,17 +413,19 @@ export const useSpriteStore = create<SpriteState>()(
       // Calculate the scale factor to make the frame fit the desired size
       const scaleX = displayWidth / frameWidth;
       const scaleY = displayHeight / frameHeight;
-      
+
       // Use the smaller scale to maintain aspect ratio
       const scale = Math.min(scaleX, scaleY);
-      
+
       // Calculate the scaled full texture size
       // Use safe sprite dimensions to prevent NaN
-      const safeWidth = sprite.width && sprite.width > 0 ? sprite.width : frameWidth;
-      const safeHeight = sprite.height && sprite.height > 0 ? sprite.height : frameHeight;
+      const safeWidth =
+        sprite.width && sprite.width > 0 ? sprite.width : frameWidth;
+      const safeHeight =
+        sprite.height && sprite.height > 0 ? sprite.height : frameHeight;
       const scaledTextureWidth = safeWidth * scale;
       const scaledTextureHeight = safeHeight * scale;
-      
+
       // Calculate the position offset to show the correct frame
       const offsetX = -frameX * scale;
       const offsetY = -frameY * scale;

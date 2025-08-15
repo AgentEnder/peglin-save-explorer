@@ -523,15 +523,38 @@ namespace peglin_save_explorer.Core
                     }
                 }
 
-                // Parse enemy data dictionary
-                var enemyData = runObj["enemyData"] as JObject;
-                if (enemyData != null)
+                // Parse enemy data array (not dictionary)
+                var enemyPlayData = runObj["enemyPlayData"] as JArray;
+                if (enemyPlayData != null && enemyPlayData.Count > 0)
                 {
-                    foreach (var kvp in enemyData)
+                    foreach (var enemyToken in enemyPlayData)
+                    {
+                        if (enemyToken is JObject enemy)
+                        {
+                            var name = enemy["name"]?.ToString() ?? "Unknown";
+                            var enemyData = new EnemyPlayData
+                            {
+                                Name = name,
+                                AmountFought = enemy["amountFought"]?.Value<int>() ?? 0,
+                                MeleeDamageReceived = enemy["meleeDamageReceived"]?.Value<int>() ?? 0,
+                                RangedDamageReceived = enemy["rangedDamageReceived"]?.Value<int>() ?? 0,
+                                DefeatedBy = enemy["defeatedBy"]?.Value<bool>() ?? false
+                            };
+
+                            run.EnemyData[name] = enemyData;
+                        }
+                    }
+                }
+
+                // Also check for legacy "enemyData" format for backwards compatibility
+                var legacyEnemyData = runObj["enemyData"] as JObject;
+                if (legacyEnemyData != null)
+                {
+                    foreach (var kvp in legacyEnemyData)
                     {
                         if (kvp.Value is JObject enemy)
                         {
-                            var enemyPlayData = new EnemyPlayData
+                            var enemyData = new EnemyPlayData
                             {
                                 Name = enemy["name"]?.ToString() ?? kvp.Key,
                                 AmountFought = enemy["amountFought"]?.Value<int>() ?? 0,
@@ -540,7 +563,7 @@ namespace peglin_save_explorer.Core
                                 DefeatedBy = enemy["defeatedBy"]?.Value<bool>() ?? false
                             };
 
-                            run.EnemyData[kvp.Key] = enemyPlayData;
+                            run.EnemyData[kvp.Key] = enemyData;
                         }
                     }
                 }
@@ -1824,6 +1847,14 @@ namespace peglin_save_explorer.Core
         public double AverageDamageWithOrb => TotalRunsWithOrb > 0 ? (double)TotalDamageWithOrb / TotalRunsWithOrb : 0;
     }
 
+    public class RoomInfo
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+    }
+
     public class RunRecord
     {
         public string Id { get; set; } = string.Empty;
@@ -1884,8 +1915,43 @@ namespace peglin_save_explorer.Core
         // Computed properties (fallback if RelicNames not populated)
         public List<string> BossNames => GameDataMappings.GetBossNames(VisitedBosses);
         public Dictionary<string, int> RoomTypeStatistics => GameDataMappings.GetRoomTypeStatistics(VisitedRooms);
+        public List<RoomInfo> VisitedRoomsInfo => VisitedRooms.Select(roomId => new RoomInfo
+        {
+            Id = roomId,
+            Name = GameDataMappings.GetRoomName(roomId),
+            Symbol = GetRoomSymbol(roomId),
+            Color = GetRoomColor(roomId)
+        }).ToList();
         public List<string> ActiveStatusEffects => GameDataMappings.GetActiveStatusEffects(StatusEffects);
         public List<string> ActiveSlimePegs => GameDataMappings.GetActiveSlimePegs(SlimePegs);
+
+        private static string GetRoomSymbol(int roomId) => roomId switch
+        {
+            0 => "⭕", // NONE - Circle with slash for none/empty
+            1 => "⚔",  // BATTLE - Crossed swords for battle
+            2 => "👹", // MINI_BOSS - Ogre face for mini boss
+            3 => "💰", // TREASURE - Money bag for treasure
+            4 => "🏪", // STORE - Store/shop for store
+            5 => "📜", // SCENARIO - Scroll for scenario/event
+            6 => "❓", // UNKNOWN - Question mark for unknown
+            7 => "🐉", // BOSS - Dragon for boss
+            8 => "🎯", // PEG_MINIGAME - Target for peg minigame
+            _ => $"#{roomId}"
+        };
+
+        private static string GetRoomColor(int roomId) => roomId switch
+        {
+            0 => "default",   // NONE
+            1 => "error",     // BATTLE - Red for combat
+            2 => "warning",   // MINI_BOSS - Orange for mini boss
+            3 => "success",   // TREASURE - Green for treasure
+            4 => "info",      // STORE - Blue for store
+            5 => "secondary", // SCENARIO - Purple for events
+            6 => "default",   // UNKNOWN
+            7 => "error",     // BOSS - Dark red for boss
+            8 => "primary",   // PEG_MINIGAME - Primary color for minigames
+            _ => "default"
+        };
     }
 
     public class RunHistoryExport

@@ -107,34 +107,44 @@ namespace peglin_save_explorer.Extractors.Services
                 // If we have numeric data or no string value, use typed accessors
                 if (hasNumericData || string.IsNullOrEmpty(value.AsString))
                 {
-                    // For fields that should be integers (like Level, Count, etc.), prioritize integer accessors
+                    // For fields that should be integers (like Level, Count, Types, etc.), prioritize integer accessors
                     var fieldName = GetFieldName(field) ?? "";
                     bool shouldBeInteger = fieldName.Equals("Level", StringComparison.OrdinalIgnoreCase) ||
                                          fieldName.Equals("Count", StringComparison.OrdinalIgnoreCase) ||
                                          fieldName.EndsWith("Level", StringComparison.OrdinalIgnoreCase) ||
-                                         fieldName.EndsWith("Count", StringComparison.OrdinalIgnoreCase);
+                                         fieldName.EndsWith("Count", StringComparison.OrdinalIgnoreCase) ||
+                                         fieldName.EndsWith("Type", StringComparison.OrdinalIgnoreCase) ||
+                                         fieldName.EndsWith("Types", StringComparison.OrdinalIgnoreCase);
 
                     if (shouldBeInteger)
                     {
-                        // Prioritize integer values for integer fields
-                        if (value.AsInt32 != 0) return value.AsInt32;
-                        if (value.AsInt64 != 0) return value.AsInt64;
-                        if (value.AsSingle != 0) return (int)Math.Round(value.AsSingle); // Convert float to int
-                        if (value.AsDouble != 0) return (int)Math.Round(value.AsDouble); // Convert double to int
-
-                        // If all are zero, return 0 as integer for integer fields
-                        return 0;
+                        return _GetIntValue(value);
                     }
                     else
                     {
+                        // Check if the float value seems unreasonable (very small scientific notation)
+                        // These are often incorrectly interpreted integer values
+                        var floatValue = value.AsSingle;
+                        var intValue = value.AsInt32;
+                        
+                        // If we have a reasonable integer value but the float is extremely small,
+                        // it's likely the data should be interpreted as an integer
+                        if (intValue != 0 && Math.Abs(floatValue) < 1E-35)
+                        {
+                            return _GetIntValue(value);
+                        }
+                        
                         // For other fields (like damage), prioritize float values
-                        if (value.AsSingle != 0) return value.AsSingle;
-                        if (value.AsDouble != 0) return value.AsDouble;
-                        if (value.AsInt32 != 0) return value.AsInt32;
-                        if (value.AsInt64 != 0) return value.AsInt64;
+                        var returnedFloatValue = _GetFloatValue(value);
+                        floatValue = returnedFloatValue is float f ? f : Convert.ToSingle(returnedFloatValue);
+
+                        if ((double)floatValue > 0 && Math.Abs((double)floatValue) > 1E-35)
+                        {
+                            return floatValue;
+                        }
 
                         // If all typed values are 0 but we detected numeric data, return the most appropriate type
-                        return value.AsSingle; // Default to float for damage values
+                        return _GetIntValue(value);
                     }
                 }
 
@@ -146,6 +156,27 @@ namespace peglin_save_explorer.Extractors.Services
                 Logger.Debug($"⚠️ Error converting serializable value: {ex.Message}");
                 return value.ToString() ?? "";
             }
+        }
+
+        private object _GetIntValue(SerializableValue value)
+        {
+            if (value.AsInt32 != 0) return value.AsInt32;
+            if (value.AsInt64 != 0) return value.AsInt64;
+
+            return 0;
+        }
+
+        private object _GetFloatValue(SerializableValue value)
+        {
+            // Only return float values if they're reasonable (not tiny scientific notation)
+            if (value.AsSingle != 0 && Math.Abs(value.AsSingle) > 1E-35) return value.AsSingle;
+            if (value.AsDouble != 0 && Math.Abs(value.AsDouble) > 1E-300) return value.AsDouble;
+            
+            // Don't convert integers to float here - that should be handled explicitly
+            // if (value.AsInt32 != 0) return value.AsInt32;
+            // if (value.AsInt64 != 0) return value.AsInt64;
+
+            return 0f;
         }
 
         /// <summary>

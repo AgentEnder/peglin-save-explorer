@@ -77,6 +77,10 @@ namespace peglin_save_explorer.Data
         public float? LootDropRate { get; set; }
         public Dictionary<string, object> RawData { get; set; } = new();
 
+        // Lore and development notes
+        public string? Lore { get; set; } // Background lore/story about the enemy
+        public string? DevNotes { get; set; } // Development insights and design notes
+
         // Sprite correlation fields
         public string? CorrelatedSpriteId { get; set; }
         public string? SpriteFilePath { get; set; }

@@ -12,6 +12,7 @@ using peglin_save_explorer.Utils;
 using peglin_save_explorer.Services;
 using peglin_save_explorer.Data;
 using System.Diagnostics;
+using System.Linq;
 
 namespace peglin_save_explorer.Commands
 {
@@ -48,16 +49,16 @@ namespace peglin_save_explorer.Commands
         {
             // Check if port is already in use
             await CheckAndHandlePortConflict(port);
-            
+
             var builder = WebApplication.CreateBuilder();
 
             // Detect if we're in development mode based on build configuration
-            #if DEBUG
+#if DEBUG
             var isDevelopment = true;
-            #else
+#else
             var isDevelopment = false;
-            #endif
-            
+#endif
+
             if (isDevelopment)
             {
                 Console.WriteLine("Development mode detected - enhanced error reporting enabled");
@@ -89,7 +90,7 @@ namespace peglin_save_explorer.Commands
 
             // Initialize all data and services before setting up middlewares
             var (configManager, analysisService, currentData, spriteCacheDirectory) = await InitializeDataAndServices(saveFile);
-            
+
             // Configure static file serving for sprite cache
             if (Directory.Exists(spriteCacheDirectory))
             {
@@ -99,7 +100,7 @@ namespace peglin_save_explorer.Commands
                 contentTypeProvider.Mappings[".jpeg"] = "image/jpeg";
                 contentTypeProvider.Mappings[".gif"] = "image/gif";
                 contentTypeProvider.Mappings[".webp"] = "image/webp";
-                
+
                 app.UseStaticFiles(new StaticFileOptions
                 {
                     FileProvider = new PhysicalFileProvider(spriteCacheDirectory),
@@ -188,9 +189,9 @@ namespace peglin_save_explorer.Commands
 
 
             // API Routes with enhanced error handling
-            app.MapGet("/api/health", () => 
+            app.MapGet("/api/health", () =>
             {
-                try 
+                try
                 {
                     return CreateApiResponse(new { status = "healthy", timestamp = DateTime.UtcNow });
                 }
@@ -201,9 +202,9 @@ namespace peglin_save_explorer.Commands
                 }
             });
 
-            app.MapGet("/api/runs", () => 
+            app.MapGet("/api/runs", () =>
             {
-                try 
+                try
                 {
                     return CreateApiResponse(currentData);
                 }
@@ -297,7 +298,7 @@ namespace peglin_save_explorer.Commands
                 {
                     var form = await context.Request.ReadFormAsync();
                     var uploadedFile = form.Files["saveFile"];
-                    
+
                     if (uploadedFile == null || uploadedFile.Length == 0)
                     {
                         return Results.BadRequest(CreateApiResponse<object>(null, "No file uploaded"));
@@ -350,11 +351,11 @@ namespace peglin_save_explorer.Commands
 
                     // Update the save file with the new cruciball level
                     bool success = SaveDataLoader.UpdateCruciballLevel(requestBody.CharacterClass, requestBody.CruciballLevel);
-                    
+
                     if (success)
                     {
                         Logger.Info($"Updated {requestBody.CharacterClass} cruciball level to {requestBody.CruciballLevel}");
-                        
+
                         return Results.Ok(CreateApiResponse(new
                         {
                             message = $"Cruciball level for {requestBody.CharacterClass} updated to {requestBody.CruciballLevel}",
@@ -434,7 +435,7 @@ namespace peglin_save_explorer.Commands
                 {
                     var classService = new ClassManagementService();
                     bool success = classService.UnlockClass(className);
-                    
+
                     if (success)
                     {
                         return Results.Ok(CreateApiResponse(new
@@ -462,7 +463,7 @@ namespace peglin_save_explorer.Commands
                 {
                     var classService = new ClassManagementService();
                     bool success = classService.LockClass(className);
-                    
+
                     if (success)
                     {
                         return Results.Ok(CreateApiResponse(new
@@ -501,7 +502,7 @@ namespace peglin_save_explorer.Commands
 
                     var classService = new ClassManagementService();
                     bool success = classService.SetCruciballLevel(className, requestBody.Level);
-                    
+
                     if (success)
                     {
                         return Results.Ok(CreateApiResponse(new
@@ -559,7 +560,7 @@ namespace peglin_save_explorer.Commands
             }
 
             Console.WriteLine($"Starting web server on http://localhost:{port}");
-            
+
             // Open the web browser after server startup
             var serverUrl = $"http://localhost:{port}";
             _ = Task.Run(async () =>
@@ -777,7 +778,7 @@ namespace peglin_save_explorer.Commands
                 {
                     var allSprites = Data.SpriteCacheManager.GetCachedSprites();
                     var cacheDir = Data.SpriteCacheManager.GetSpriteCacheDirectory();
-                    
+
                     return CreateApiResponse(new
                     {
                         cacheDirectory = cacheDir,
@@ -813,7 +814,7 @@ namespace peglin_save_explorer.Commands
                         relics = GetAllRelics(),
                         sprites = GetAllSprites(),
                         enemies = GetAllEnemies(),
-                        orbs = GetAllOrbs()
+                        orbs = GetAllOrbsGrouped()
                     };
 
                     return CreateApiResponse(entities);
@@ -912,10 +913,10 @@ namespace peglin_save_explorer.Commands
             try
             {
                 Console.WriteLine("Starting Vite dev server...");
-                
+
                 var frontendPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "web-frontend");
                 var absoluteFrontendPath = Path.GetFullPath(frontendPath);
-                
+
                 if (!Directory.Exists(absoluteFrontendPath))
                 {
                     Console.WriteLine($"Warning: Frontend directory not found at {absoluteFrontendPath}");
@@ -933,23 +934,23 @@ namespace peglin_save_explorer.Commands
                     CreateNoWindow = true
                 };
 
-                _viteProcess = new Process { StartInfo = startInfo,  };
-                
-                // _viteProcess.OutputDataReceived += (sender, e) =>
-                // {
-                //     if (!string.IsNullOrEmpty(e.Data))
-                //     {
-                //         Console.WriteLine($"[Vite] {e.Data}");
-                //     }
-                // };
-                
-                // _viteProcess.ErrorDataReceived += (sender, e) =>
-                // {
-                //     if (!string.IsNullOrEmpty(e.Data))
-                //     {
-                //         Console.WriteLine($"[Vite Error] {e.Data}");
-                //     }
-                // };
+                _viteProcess = new Process { StartInfo = startInfo, };
+
+                _viteProcess.OutputDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Console.WriteLine($"[Vite] {e.Data}");
+                    }
+                };
+
+                _viteProcess.ErrorDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Console.WriteLine($"[Vite Error] {e.Data}");
+                    }
+                };
 
                 _viteProcess.Start();
                 _viteProcess.BeginOutputReadLine();
@@ -957,7 +958,7 @@ namespace peglin_save_explorer.Commands
 
                 // Wait a moment for the server to start
                 await Task.Delay(3000);
-                
+
                 if (await IsViteDevServerRunning())
                 {
                     Console.WriteLine("Vite dev server started successfully at http://localhost:3000");
@@ -1054,20 +1055,20 @@ namespace peglin_save_explorer.Commands
                 var correlatedSpriteIdProperty = entityType.GetProperty("CorrelatedSpriteId");
                 var spriteFilePathProperty = entityType.GetProperty("SpriteFilePath");
                 var correlationMethodProperty = entityType.GetProperty("CorrelationMethod");
-                
+
                 var spriteFilePath = spriteFilePathProperty?.GetValue(entity) as string;
                 var correlatedSpriteId = correlatedSpriteIdProperty?.GetValue(entity) as string;
-                
+
                 if (!string.IsNullOrEmpty(spriteFilePath))
                 {
                     // Extract filename from relative path and determine sprite type
                     var filename = Path.GetFileName(spriteFilePath);
                     var correlationMethod = correlationMethodProperty?.GetValue(entity) as string;
-                    
+
                     // Determine sprite type from path (optimized with spans)
                     string spriteType = "unknown";
                     string spriteDirectory = "sprites";
-                    
+
                     if (spriteFilePath.Contains("/orbs/"))
                     {
                         spriteType = "orb";
@@ -1083,18 +1084,18 @@ namespace peglin_save_explorer.Commands
                         spriteType = "enemy";
                         spriteDirectory = "enemies";
                     }
-                    
+
                     // Ensure sprite cache is initialized
                     EnsureSpriteCache();
-                    
+
                     // Fast dictionary lookup instead of linear search
                     Data.SpriteCacheManager.SpriteMetadata? spriteMetadata = null;
-                    
+
                     if (!string.IsNullOrEmpty(correlatedSpriteId))
                     {
                         _spriteIdCache!.TryGetValue(correlatedSpriteId, out spriteMetadata);
                     }
-                    
+
                     // If no valid metadata found by ID, try by name/filename
                     if (spriteMetadata == null)
                     {
@@ -1105,13 +1106,13 @@ namespace peglin_save_explorer.Commands
                             _spriteNameCache.TryGetValue(filename, out spriteMetadata);
                         }
                     }
-                    
+
                     // Default dimensions if no metadata found - use reasonable defaults for pixel art
                     int width = spriteMetadata?.Width ?? 16;
                     int height = spriteMetadata?.Height ?? 16;
                     int frameWidth = spriteMetadata?.FrameWidth ?? width;
                     int frameHeight = spriteMetadata?.FrameHeight ?? height;
-                    
+
                     return new
                     {
                         id = correlatedSpriteId ?? filename,
@@ -1133,12 +1134,12 @@ namespace peglin_save_explorer.Commands
                     // Fallback to sprite metadata lookup if no file path available
                     var spriteMetadata = Data.SpriteCacheManager.GetCachedSprites()
                         .FirstOrDefault(s => s.Id == correlatedSpriteId);
-                        
+
                     if (spriteMetadata != null)
                     {
                         var correlationMethod = correlationMethodProperty?.GetValue(entity) as string;
                         var filename = Path.GetFileName(spriteMetadata.FilePath);
-                        
+
                         return new
                         {
                             id = correlatedSpriteId,
@@ -1167,7 +1168,7 @@ namespace peglin_save_explorer.Commands
                         };
                     }
                 }
-                
+
                 // Fall back to old method if no correlation data
                 var rawDataProperty = typeof(T).GetProperty("RawData");
                 if (rawDataProperty != null)
@@ -1309,6 +1310,7 @@ namespace peglin_save_explorer.Commands
                             type = "orb",
                             orbType = kvp.Value.OrbType ?? "ATTACK",
                             damagePerPeg = kvp.Value.DamagePerPeg?.ToString() ?? "",
+                            critDamagePerPeg = kvp.Value.CritDamagePerPeg?.ToString() ?? "",
                             rarity = kvp.Value.Rarity ?? kvp.Value.RarityValue?.ToString() ?? "",
                             spriteReference = GetCorrelatedSpriteReference(kvp.Value)
                         });
@@ -1324,6 +1326,177 @@ namespace peglin_save_explorer.Commands
                 Logger.Error($"Error loading orbs for API: {ex.Message}");
             }
             return orbs;
+        }
+
+        private static List<object> GetAllOrbsGrouped()
+        {
+            var orbFamilies = new List<object>();
+            try
+            {
+                // Get all cached orbs
+                var cachedOrbs = Data.EntityCacheManager.GetCachedOrbs();
+                Logger.Info($"/api/entities: grouping {cachedOrbs.Count} orbs into families");
+
+                // Group orbs by base name (strip level suffixes like "_lvl1", "_lvl2", etc.)
+                var groupedOrbs = cachedOrbs
+                    .GroupBy(kvp => StripLevelFromOrbName(kvp.Value.Name ?? kvp.Key))
+                    .ToList();
+
+                Logger.Info($"/api/entities: created {groupedOrbs.Count} orb families");
+
+                foreach (var group in groupedOrbs)
+                {
+                    try
+                    {
+                        var orbsInFamily = group.OrderBy(kvp => ExtractLevelFromOrbName(kvp.Key)).ToList();
+                        var primaryOrb = orbsInFamily.First().Value; // Use first orb as primary for shared data
+
+                        // Create levels array with damage/crit data and descriptions
+                        var levels = orbsInFamily.Select(kvp =>
+                        {
+                            var orb = kvp.Value;
+                            var levelNumber = ExtractLevelFromOrbName(kvp.Key);
+
+                            // Format description for this specific level
+                            string levelDescription = orb.Description ?? "";
+                            if (string.IsNullOrEmpty(levelDescription) && orb.DescriptionStrings?.Count > 0)
+                            {
+                                var sb = new System.Text.StringBuilder();
+                                for (int i = 0; i < orb.DescriptionStrings.Count; i++)
+                                {
+                                    if (i > 0) sb.Append('\n');
+                                    sb.Append('•').Append(orb.DescriptionStrings[i]);
+                                }
+                                levelDescription = sb.ToString();
+                            }
+
+                            return new
+                            {
+                                level = levelNumber,
+                                damagePerPeg = orb.DamagePerPeg?.ToString(),
+                                critDamagePerPeg = orb.CritDamagePerPeg?.ToString(),
+                                description = levelDescription,
+                                // Add the original entity ID and run name equivalent for mapping
+                                entityId = kvp.Key,
+                                runNameEquivalent = ConvertToRunName(kvp.Key, group.Key)
+                            };
+                        }).Where(level => level.damagePerPeg != null || level.critDamagePerPeg != null || !string.IsNullOrEmpty(level.description)).ToList();
+
+                        // Format description from primary orb (used as fallback for family-level description)
+                        string familyDescription = primaryOrb.Description ?? "";
+                        if (string.IsNullOrEmpty(familyDescription) && primaryOrb.DescriptionStrings?.Count > 0)
+                        {
+                            var sb = new System.Text.StringBuilder();
+                            for (int i = 0; i < primaryOrb.DescriptionStrings.Count; i++)
+                            {
+                                if (i > 0) sb.Append('\n');
+                                sb.Append('•').Append(primaryOrb.DescriptionStrings[i]);
+                            }
+                            familyDescription = sb.ToString();
+                        }
+
+                        // If we have multiple levels with different descriptions, use a generic family description
+                        var uniqueDescriptions = levels.Select(l => l.description).Where(d => !string.IsNullOrEmpty(d)).Distinct().Count();
+                        if (uniqueDescriptions > 1)
+                        {
+                            familyDescription = $"Orb with {levels.Count} levels. See individual levels for specific effects.";
+                        }
+
+                        // Create family entry with mapping data for run correlation
+                        orbFamilies.Add(new
+                        {
+                            id = group.Key.ToLowerInvariant().Replace(" ", "_").Replace("-", "_"),
+                            name = group.Key,
+                            description = familyDescription,
+                            type = "orb",
+                            orbType = primaryOrb.OrbType ?? "ATTACK",
+                            rarity = primaryOrb.Rarity ?? primaryOrb.RarityValue?.ToString() ?? "",
+                            levels = levels,
+                            spriteReference = GetCorrelatedSpriteReference(primaryOrb),
+                            // Add mapping data for run correlation - preserve original level-specific IDs
+                            levelMappings = orbsInFamily.ToDictionary(
+                                kvp => ExtractLevelFromOrbName(kvp.Key),
+                                kvp => new { 
+                                    originalId = kvp.Key,
+                                    runNameEquivalent = ConvertToRunName(kvp.Key, group.Key)
+                                })
+                        });
+                    }
+                    catch (Exception itemEx)
+                    {
+                        Logger.Warning($"Skipping orb family {group.Key} due to error: {itemEx.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error loading orb families for API: {ex.Message}");
+            }
+            return orbFamilies;
+        }
+
+        /// <summary>
+        /// Strips level indicators from orb names to group them into families
+        /// </summary>
+        private static string StripLevelFromOrbName(string orbName)
+        {
+            if (string.IsNullOrEmpty(orbName)) return orbName;
+
+            // Remove common level indicators
+            var patterns = new[]
+            {
+                @"\s*lvl\s*\d+", @"\s*level\s*\d+", @"\s*-\s*lvl\s*\d+", @"\s*_lvl\s*\d+",
+                @"\s*lv\s*\d+", @"\s*l\s*\d+", @"\s*\d+$"
+            };
+
+            var result = orbName;
+            foreach (var pattern in patterns)
+            {
+                result = System.Text.RegularExpressions.Regex.Replace(result, pattern, "",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Extracts level number from orb name or ID
+        /// </summary>
+        private static int ExtractLevelFromOrbName(string orbNameOrId)
+        {
+            if (string.IsNullOrEmpty(orbNameOrId)) return 1;
+
+            // Look for level patterns
+            var patterns = new[]
+            {
+                @"lvl(\d+)", @"level(\d+)", @"lv(\d+)", @"l(\d+)", @"_(\d+)$", @"-(\d+)$", @"\s(\d+)$"
+            };
+
+            foreach (var pattern in patterns)
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(orbNameOrId, pattern,
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int level))
+                {
+                    return Math.Max(1, level); // Ensure level is at least 1
+                }
+            }
+
+            return 1; // Default to level 1
+        }
+
+        /// <summary>
+        /// Converts entity orb ID to expected run data format for matching
+        /// </summary>
+        private static string ConvertToRunName(string entityId, string familyName)
+        {
+            // Entity IDs are like "stoneorb_lvl1", "go_for_the_icircle_lvl2", etc.
+            // Run names are like "StoneOrb-Lvl1", "GoForTheIcircle-Lvl2", etc.
+            // For matching purposes, we just need to convert underscores to hyphens
+            // The frontend will handle case-insensitive matching
+            
+            // Simply replace underscores with hyphens for matching
+            return entityId.Replace("_", "-");
         }
 
         private static List<object> GetAllSprites()
@@ -1371,7 +1544,7 @@ namespace peglin_save_explorer.Commands
                 }
 
                 Console.WriteLine($"⚠️  Port {port} is already in use.");
-                
+
                 // Try to identify the process using the port
                 var processInfo = GetProcessUsingPort(port);
                 if (processInfo.HasValue)
@@ -1379,25 +1552,25 @@ namespace peglin_save_explorer.Commands
                     var (processName, processId) = processInfo.Value;
                     var currentProcessName = Process.GetCurrentProcess().ProcessName;
                     var currentProcessId = Environment.ProcessId;
-                    
-                    if (processName.Equals(currentProcessName, StringComparison.OrdinalIgnoreCase) && 
+
+                    if (processName.Equals(currentProcessName, StringComparison.OrdinalIgnoreCase) &&
                         processId != currentProcessId)
                     {
                         Console.WriteLine($"The port is being used by another instance of {currentProcessName} (PID: {processId}).");
                         Console.Write($"Would you like to kill the existing process and continue? (y/N): ");
-                        
+
                         var response = Console.ReadLine()?.Trim().ToLower();
                         if (response == "y" || response == "yes")
                         {
                             try
                             {
                                 var process = Process.GetProcessById(processId);
-                                
+
                                 // Try graceful shutdown first (SIGINT/Ctrl+C)
                                 if (TryGracefulShutdown(process))
                                 {
                                     Console.WriteLine($"✅ Successfully sent termination signal to process {processId}");
-                                    
+
                                     // Wait for graceful shutdown
                                     if (!process.WaitForExit(8000)) // Wait up to 8 seconds for graceful shutdown
                                     {
@@ -1413,12 +1586,12 @@ namespace peglin_save_explorer.Commands
                                     process.Kill();
                                     process.WaitForExit(5000);
                                 }
-                                
+
                                 Console.WriteLine($"✅ Process {processId} terminated");
-                                
+
                                 // Wait a moment for the port to be released
                                 await Task.Delay(1000);
-                                
+
                                 if (IsPortInUse(port))
                                 {
                                     Console.WriteLine($"❌ Port {port} is still in use after terminating the process.");
@@ -1587,7 +1760,7 @@ namespace peglin_save_explorer.Commands
                     process.CloseMainWindow();
                     return true;
                 }
-                
+
                 // Fallback: Windows doesn't have a direct equivalent to SIGINT for arbitrary processes
                 // We'll return false to indicate graceful shutdown isn't available
                 return false;
@@ -1610,7 +1783,7 @@ namespace peglin_save_explorer.Commands
                     UseShellExecute = false,
                     CreateNoWindow = true
                 });
-                
+
                 killProcess?.WaitForExit();
                 return killProcess?.ExitCode == 0;
             }
@@ -1689,7 +1862,7 @@ namespace peglin_save_explorer.Commands
                 {
                     Console.WriteLine("📥 Extracting Peglin data (this may take a moment)...");
                     var extractionResult = Core.PeglinDataExtractor.ExtractPeglinData(peglinPath, Core.PeglinDataExtractor.ExtractionType.All);
-                    
+
                     if (extractionResult.Success)
                     {
                         if (extractionResult.UsedCache)
@@ -1732,7 +1905,7 @@ namespace peglin_save_explorer.Commands
                     Console.WriteLine($"Loading data from default save file: {defaultPath}");
                 }
             }
-            
+
             if (effectiveFile != null && effectiveFile.Exists)
             {
                 currentData = analysisService.LoadCompleteRunData(effectiveFile);

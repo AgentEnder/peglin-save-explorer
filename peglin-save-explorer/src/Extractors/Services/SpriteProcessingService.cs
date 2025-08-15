@@ -119,22 +119,28 @@ namespace peglin_save_explorer.Extractors.Services
 
                 Logger.Debug($"🎨 Processing sprite: {displayName} (Type: {spriteType})");
 
-                var success = ConvertTextureToPngImproved(texture, relativePath, displayName);
+                // Use rect-based sprite cropping if we have sprite rect information
+                var success = SpriteUtilities.ConvertSpriteRectToPng(texture, sprite, relativePath, displayName);
                 if (!success)
                 {
-                    Logger.Debug($"⚠️ Failed to convert sprite {displayName} to PNG");
+                    Logger.Debug($"⚠️ Failed to convert sprite {displayName} to PNG with rect cropping");
                     return null;
                 }
 
-                // Detect frame information for sprite sheets
-                var frameInfo = DetectSpriteFrames(displayName, texture.Width_C28, texture.Height_C28);
+                // Get the actual sprite dimensions from the rect
+                var spriteRect = sprite.Rect;
+                var spriteWidth = (int)spriteRect.Width;
+                var spriteHeight = (int)spriteRect.Height;
+
+                // For sprites from SpriteRenderer components, use sprite-specific metadata if available
+                var frameInfo = DetectSpriteFramesFromUnitySprite(sprite, displayName, spriteWidth, spriteHeight);
 
                 return new SpriteCacheManager.SpriteMetadata
                 {
                     Id = GenerateSpriteId(sprite.GetBestName()),
                     Name = displayName,
-                    Width = texture.Width_C28,
-                    Height = texture.Height_C28,
+                    Width = spriteWidth,
+                    Height = spriteHeight,
                     Type = spriteType,
                     FilePath = relativePath,
                     SourceBundle = sprite.Collection.Name,
@@ -234,6 +240,92 @@ namespace peglin_save_explorer.Extractors.Services
         }
 
         /// <summary>
+        /// Detects frame information using Unity sprite metadata for more accurate detection
+        /// </summary>
+        private static SpriteFrameInfo DetectSpriteFramesFromUnitySprite(ISprite sprite, string spriteName, int textureWidth, int textureHeight)
+        {
+            // Default single frame
+            var frameInfo = new SpriteFrameInfo
+            {
+                FrameX = 0,
+                FrameY = 0,
+                FrameWidth = textureWidth,
+                FrameHeight = textureHeight,
+                FrameCount = 1,
+                IsAtlas = false,
+                AtlasFrames = new List<SpriteCacheManager.SpriteFrame>()
+            };
+
+            try
+            {
+                // Check if this sprite has specific rect data (indicates it's part of an atlas)
+                // Unity sprites that are part of an atlas will have a specific rect within the texture
+                var spriteRect = sprite.Rect;
+                var spriteWidth = (int)spriteRect.Width;
+                var spriteHeight = (int)spriteRect.Height;
+                var spriteX = (int)spriteRect.X;
+                var spriteY = (int)spriteRect.Y;
+
+                // If the sprite rect covers the entire texture, it's likely a single sprite
+                bool coversEntireTexture = spriteX == 0 && spriteY == 0 &&
+                                         spriteWidth == textureWidth && spriteHeight == textureHeight;
+
+                if (coversEntireTexture)
+                {
+                    Logger.Debug($"Sprite {spriteName} covers entire texture ({textureWidth}x{textureHeight}) - treating as single sprite");
+                    return frameInfo; // Return single frame info
+                }
+                else
+                {
+                    // This sprite references a specific region of a larger texture
+                    // Check if this looks like a single sprite from an atlas vs. multiple animation frames
+
+                    // For orbs and entities, even if they're in an atlas, they're typically single sprites
+                    // Only treat as multi-frame if there's strong evidence of animation frames
+                    bool looksLikeSingleSpriteInAtlas = spriteWidth <= 64 && spriteHeight <= 64 &&
+                                                       (spriteName.Contains("orb", StringComparison.OrdinalIgnoreCase) ||
+                                                        spriteName.Contains("relic", StringComparison.OrdinalIgnoreCase) ||
+                                                        spriteName.Contains("enemy", StringComparison.OrdinalIgnoreCase));
+
+                    if (looksLikeSingleSpriteInAtlas)
+                    {
+                        Logger.Debug($"Sprite {spriteName} appears to be single sprite in atlas: rect=({spriteX},{spriteY},{spriteWidth},{spriteHeight}) - treating as single sprite");
+
+                        // Use the sprite's specific rect but treat as single sprite
+                        frameInfo.FrameX = spriteX;
+                        frameInfo.FrameY = spriteY;
+                        frameInfo.FrameWidth = spriteWidth;
+                        frameInfo.FrameHeight = spriteHeight;
+                        frameInfo.IsAtlas = true; // Mark as atlas since it's using specific coordinates
+                        frameInfo.FrameCount = 1; // But it's still just one frame
+
+                        return frameInfo;
+                    }
+                    else
+                    {
+                        // This might be a multi-frame sprite sheet, use the sprite's rect as frame info
+                        Logger.Debug($"Sprite {spriteName} may be multi-frame: rect=({spriteX},{spriteY},{spriteWidth},{spriteHeight}) in texture ({textureWidth}x{textureHeight})");
+
+                        frameInfo.FrameX = spriteX;
+                        frameInfo.FrameY = spriteY;
+                        frameInfo.FrameWidth = spriteWidth;
+                        frameInfo.FrameHeight = spriteHeight;
+                        frameInfo.IsAtlas = true;
+
+                        return frameInfo;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Failed to read Unity sprite metadata for {spriteName}, falling back to general detection: {ex.Message}");
+            }
+
+            // Fallback to general sprite sheet detection
+            return DetectSpriteFrames(spriteName, textureWidth, textureHeight);
+        }
+
+        /// <summary>
         /// Detects frame information for sprite sheets
         /// </summary>
         private static SpriteFrameInfo DetectSpriteFrames(string spriteName, int width, int height)
@@ -250,13 +342,6 @@ namespace peglin_save_explorer.Extractors.Services
                 AtlasFrames = new List<SpriteCacheManager.SpriteFrame>()
             };
 
-            // Skip atlas detection for certain sprite names that are likely single sprites
-            if (IsSingleSpriteByName(spriteName))
-            {
-                Logger.Debug($"Skipping atlas detection for {spriteName} - detected as single sprite by name");
-                return frameInfo;
-            }
-
             // Skip atlas detection for very large sprites (likely backgrounds or single large sprites)
             if (width > 512 || height > 512)
             {
@@ -264,50 +349,72 @@ namespace peglin_save_explorer.Extractors.Services
                 return frameInfo;
             }
 
-            // Common frame sizes to try
-            var possibleFrameSizes = new[] { 16, 24, 32, 48, 64, 80, 96, 128, 160 };
+            // Skip atlas detection for very small sprites (likely UI elements or single icons)
+            if (width < 32 || height < 32)
+            {
+                Logger.Debug($"Skipping atlas detection for {spriteName} - too small ({width}x{height})");
+                return frameInfo;
+            }
+
+            // Common frame sizes to try - but be much more conservative
+            var possibleFrameSizes = new[] { 16, 24, 32, 48, 64, 80, 96, 128 };
 
             int frameWidth = 0;
             int frameHeight = 0;
             int rows = 1;
             int cols = 1;
 
-            // First, try horizontal strips (common for animation)
-            if (height <= 160)
+            // Only attempt atlas detection if sprite dimensions suggest multiple frames
+            // Look for clear horizontal or vertical strips with obvious repeating patterns
+
+            // Try horizontal strips (width >> height, common for animation)
+            if (height <= 128 && width > height * 2) // Clear horizontal bias
             {
                 foreach (var frameSize in possibleFrameSizes)
                 {
-                    if (height == frameSize && width % frameSize == 0 && (width / frameSize) >= 2)
+                    if (height == frameSize && width % frameSize == 0)
                     {
-                        frameWidth = frameSize;
-                        frameHeight = frameSize;
-                        cols = width / frameSize;
-                        rows = 1;
-                        break;
+                        var potentialFrames = width / frameSize;
+                        // Require strong evidence: at least 3 frames, reasonable frame count
+                        if (potentialFrames >= 3 && potentialFrames <= 16)
+                        {
+                            frameWidth = frameSize;
+                            frameHeight = frameSize;
+                            cols = potentialFrames;
+                            rows = 1;
+                            Logger.Debug($"Detected horizontal strip for {spriteName}: {cols} frames of {frameSize}x{frameSize}");
+                            break;
+                        }
                     }
                 }
             }
 
-            // If not a horizontal strip, try vertical strips
-            if (frameWidth == 0 && width <= 160)
+            // Try vertical strips (height >> width, less common but possible)
+            if (frameWidth == 0 && width <= 128 && height > width * 2) // Clear vertical bias
             {
                 foreach (var frameSize in possibleFrameSizes)
                 {
-                    if (width == frameSize && height % frameSize == 0 && (height / frameSize) >= 2)
+                    if (width == frameSize && height % frameSize == 0)
                     {
-                        frameWidth = frameSize;
-                        frameHeight = frameSize;
-                        cols = 1;
-                        rows = height / frameSize;
-                        break;
+                        var potentialFrames = height / frameSize;
+                        // Require strong evidence: at least 3 frames, reasonable frame count
+                        if (potentialFrames >= 3 && potentialFrames <= 16)
+                        {
+                            frameWidth = frameSize;
+                            frameHeight = frameSize;
+                            cols = 1;
+                            rows = potentialFrames;
+                            Logger.Debug($"Detected vertical strip for {spriteName}: {rows} frames of {frameSize}x{frameSize}");
+                            break;
+                        }
                     }
                 }
             }
 
-            // If not a strip, try to find a good grid layout
-            if (frameWidth == 0)
+            // Try grid layouts only for clearly grid-like dimensions
+            if (frameWidth == 0 && width <= 512 && height <= 512)
             {
-                // First try standard frame sizes - but be more conservative
+                // Only try standard frame sizes with strong grid evidence
                 foreach (var frameSize in possibleFrameSizes)
                 {
                     if (width % frameSize == 0 && height % frameSize == 0)
@@ -316,43 +423,18 @@ namespace peglin_save_explorer.Extractors.Services
                         var potentialRows = height / frameSize;
                         var totalFrames = potentialCols * potentialRows;
 
-                        // More conservative: require at least 4 frames and reasonable grid sizes
-                        // Also avoid large single dimensions that could be single sprites
-                        if (totalFrames >= 4 && totalFrames <= 50 &&
-                            potentialCols >= 2 && potentialRows >= 2 &&
-                            potentialCols <= 8 && potentialRows <= 8)
+                        // Very conservative: require strong evidence of intentional grid
+                        // Must be perfect square frames, reasonable grid size, and clear intent
+                        if (totalFrames >= 4 && totalFrames <= 25 && // 2x2 to 5x5 max
+                            potentialCols >= 2 && potentialRows >= 2 && // No single strips here
+                            potentialCols <= 5 && potentialRows <= 5 && // Reasonable grid
+                            frameSize >= 32) // No tiny frames
                         {
                             frameWidth = frameSize;
                             frameHeight = frameSize;
                             cols = potentialCols;
                             rows = potentialRows;
-                            break;
-                        }
-                    }
-                }
-
-                // If standard sizes don't work, try to find common divisors for irregular dimensions
-                // But be even more conservative here
-                if (frameWidth == 0)
-                {
-                    var commonDivisors = FindReasonableFrameSizes(width, height);
-                    foreach (var frameSize in commonDivisors)
-                    {
-                        var fw = frameSize.Item1;
-                        var fh = frameSize.Item2;
-                        var potentialCols = width / fw;
-                        var potentialRows = height / fh;
-                        var totalFrames = potentialCols * potentialRows;
-
-                        // Very conservative: require clear grid pattern evidence
-                        if (totalFrames >= 4 && totalFrames <= 50 && fw >= 24 && fh >= 24 &&
-                            potentialCols >= 2 && potentialRows >= 2 &&
-                            potentialCols <= 6 && potentialRows <= 6)
-                        {
-                            frameWidth = fw;
-                            frameHeight = fh;
-                            cols = potentialCols;
-                            rows = potentialRows;
+                            Logger.Debug($"Detected grid layout for {spriteName}: {cols}x{rows} frames of {frameSize}x{frameSize}");
                             break;
                         }
                     }
@@ -402,78 +484,6 @@ namespace peglin_save_explorer.Extractors.Services
             }
 
             return frameInfo;
-        }
-
-        /// <summary>
-        /// Finds reasonable frame sizes for irregular sprite sheet dimensions
-        /// </summary>
-        private static List<(int width, int height)> FindReasonableFrameSizes(int totalWidth, int totalHeight)
-        {
-            var frameSizes = new List<(int, int)>();
-
-            // Find factors of width and height
-            var widthFactors = GetFactors(totalWidth);
-            var heightFactors = GetFactors(totalHeight);
-
-            // Try combinations of factors to find reasonable frame sizes
-            foreach (var wFactor in widthFactors)
-            {
-                foreach (var hFactor in heightFactors)
-                {
-                    var frameWidth = totalWidth / wFactor;
-                    var frameHeight = totalHeight / hFactor;
-
-                    // More conservative size requirements
-                    if (frameWidth < 16 || frameHeight < 16 || frameWidth > 128 || frameHeight > 128)
-                        continue;
-
-                    // More conservative frame count requirements
-                    var totalFrames = wFactor * hFactor;
-                    if (totalFrames < 4 || totalFrames > 50)
-                        continue;
-
-                    // Require both dimensions to create a reasonable grid (not 1xN or Nx1)
-                    if (wFactor < 2 || hFactor < 2)
-                        continue;
-
-                    frameSizes.Add((frameWidth, frameHeight));
-                }
-            }
-
-            // Sort by preference: prefer square-ish frames and reasonable frame counts
-            frameSizes.Sort((a, b) =>
-            {
-                var aRatio = Math.Max(a.Item1, a.Item2) / (float)Math.Min(a.Item1, a.Item2);
-                var bRatio = Math.Max(b.Item1, b.Item2) / (float)Math.Min(b.Item1, b.Item2);
-                return aRatio.CompareTo(bRatio); // Prefer more square frames
-            });
-
-            return frameSizes;
-        }
-
-        /// <summary>
-        /// Determines if a sprite should be treated as a single sprite based on its name
-        /// </summary>
-        private static bool IsSingleSpriteByName(string spriteName)
-        {
-            if (string.IsNullOrEmpty(spriteName))
-                return false;
-
-            var lowerName = spriteName.ToLowerInvariant();
-
-            // Common keywords that indicate single sprites (not atlases)
-            var singleSpriteKeywords = new[]
-            {
-                "boulder", "rock", "stone", "background", "bg", "title", "logo",
-                "portrait", "avatar", "icon", "ui_", "button", "panel", "menu",
-                "inventory", "health", "mana", "coin", "gem", "crystal", "key",
-                "shield", "armor", "weapon", "sword", "bow", "staff", "ring",
-                "potion", "scroll", "book", "chest", "door", "wall", "floor",
-                "ceiling", "platform", "ladder", "bridge", "tree", "grass",
-                "water", "cloud", "sun", "moon", "star", "mountain", "hill"
-            };
-
-            return singleSpriteKeywords.Any(keyword => lowerName.Contains(keyword));
         }
 
         /// <summary>

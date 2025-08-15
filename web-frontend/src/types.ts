@@ -11,6 +11,26 @@ export interface OrbPlayData {
   levelInstances?: number[]; // Array of 3 level instances
 }
 
+export interface EnemyPlayData {
+  name: string;
+  amountFought: number;
+  meleeDamageReceived: number;
+  rangedDamageReceived: number;
+  defeatedBy: boolean;
+  // Legacy fields that might be used by the frontend
+  encounterCount?: number;
+  damageDealt?: number;
+  damageReceived?: number;
+  killCount?: number;
+}
+
+export interface RoomInfo {
+  id: number;
+  name: string;
+  symbol: string;
+  color: string;
+}
+
 export interface RunRecord {
   id: string;
   timestamp: string;
@@ -45,10 +65,15 @@ export interface RunRecord {
   // Orb statistics
   orbStats: Record<string, OrbPlayData>;
 
+  // Enemy statistics
+  enemyData: Record<string, EnemyPlayData>;
+
   // Enriched data
   relicNames: string[];
   bossNames: string[];
   roomTypeStatistics: Record<string, number>;
+  visitedRooms: number[]; // Keep for backwards compatibility
+  visitedRoomsInfo: RoomInfo[]; // New mapped room data
   activeStatusEffects: string[];
   activeSlimePegs: string[];
 }

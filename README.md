@@ -1,85 +1,160 @@
 # Peglin Save Explorer
 
-A CLI tool for exploring and analyzing Peglin save files. This tool loads Peglin's game DLLs to properly deserialize save data using OdinSerializer.
+A comprehensive CLI tool and web interface for exploring and analyzing Peglin save files, with built-in game data extraction capabilities.
 
-## Prerequisites
+## Installation
 
-- .NET 8.0 SDK
-- Peglin installed via Steam (the tool will automatically find the game installation)
+### Option 1: Download Pre-built Binaries (Recommended)
 
-## Features
+Download the latest release for your platform from the [Releases page](https://github.com/AgentEnder/peglin-save-explorer/releases):
 
-- Extract player statistics (total runs, wins, damage dealt, coins earned)
-- Analyze orb usage and performance metrics
-- View detailed combat and economy statistics
-- Interactive Terminal.Gui interface for browsing save data
-- Search functionality to find specific data within saves
-- Support for multiple output formats
+- **Windows**: `peglin-save-explorer-win-x64.zip`
+- **Linux**: `peglin-save-explorer-linux-x64.tar.gz`
+- **macOS Intel**: `peglin-save-explorer-osx-x64.tar.gz`
+- **macOS Apple Silicon**: `peglin-save-explorer-osx-arm64.tar.gz`
 
-## Usage
+#### Quick Setup:
+1. Extract the archive to your preferred location
+2. Run the executable:
+   - **Windows**: `peglin-save-explorer.exe`
+   - **Linux/macOS**: `./peglin-save-explorer`
+3. (Optional) Add to PATH for global access:
+   - **Windows**: Run `scripts\install-to-path.bat` as Administrator
+   - **Linux/macOS**: Run `./scripts/install-to-path.sh`
 
-### Build the project
+### Option 2: Build from Source
+
+#### Prerequisites
+- .NET 9.0 SDK
+- Node.js 20+ (for web interface)
+- Peglin installed via Steam (for game data extraction)
+
+#### Build Steps:
 ```bash
+# Clone the repository
+git clone --recursive https://github.com/AgentEnder/peglin-save-explorer.git
+cd peglin-save-explorer
+
+# Build all platforms
+npm install
+npm run build
+
+# Or build for development/current platform only
 cd peglin-save-explorer
 dotnet build
 ```
 
-### Available Commands
+## Features
 
-1. **Summary** - Show player statistics summary
-   ```bash
-   dotnet run -- summary -f "C:\Users\{username}\AppData\LocalLow\Red Nexus Games Inc\Peglin\Save_0.data"
-   ```
+- 🎮 **Save File Analysis**: Detailed statistics and orb performance metrics
+- 🌐 **Web Interface**: Interactive browser-based exploration of save data
+- 📊 **Game Data Extraction**: Extract sprites, relics, and game assets
+- 🔍 **Search Functionality**: Find specific data within saves
+- 💾 **Multiple Output Formats**: JSON, plain text, and formatted views
+- 🖥️ **Cross-Platform**: Works on Windows, Linux, and macOS
 
-2. **Orbs** - Analyze orb usage and performance
-   ```bash
-   dotnet run -- orbs -f "path/to/save.data"
-   ```
+## Usage
 
-3. **Stats** - Show detailed player statistics
-   ```bash
-   dotnet run -- stats -f "path/to/save.data"
-   ```
+### Quick Start with Web Interface
+```bash
+# Start web interface and open browser
+peglin-save-explorer web --open
 
-4. **Search** - Search for specific data in save file
-   ```bash
-   dotnet run -- search -f "path/to/save.data" -q "search term"
-   ```
-
-5. **Interactive** - Start Terminal.Gui interactive mode
-   ```bash
-   dotnet run -- interactive -f "path/to/save.data"
-   ```
-   Use the menu or keyboard shortcuts (F1-F3) to navigate between views.
-
-6. **Dump** - Dump raw save file structure (for debugging)
-   ```bash
-   dotnet run -- dump -f "path/to/save.data"
-   ```
-
-### Save File Location
-
-Peglin save files are typically located at:
-```
-%USERPROFILE%\AppData\LocalLow\Red Nexus Games Inc\Peglin\Save_0.data
+# Or use the helper script (from extracted archive)
+./scripts/open-web.sh    # Linux/macOS
+scripts\open-web.bat     # Windows
 ```
 
-## How It Works
+### Command Line Interface
 
-The tool uses the official OdinSerializer library (integrated as a git submodule) and loads Peglin's Assembly-CSharp.dll from your game installation to properly deserialize save data. This ensures accurate parsing of all game data structures.
+```bash
+# Show help and available commands
+peglin-save-explorer --help
 
-The tool will automatically search for Peglin in common Steam installation locations:
-- `G:\SteamLibrary\steamapps\common\Peglin`
-- `C:\Program Files (x86)\Steam\steamapps\common\Peglin`
-- `C:\Program Files\Steam\steamapps\common\Peglin`
+# Analyze a save file (auto-detects default location)
+peglin-save-explorer analyze
+
+# Specify a custom save file
+peglin-save-explorer analyze --save-file "path/to/save.data"
+
+# Extract game data (sprites, relics, etc.)
+peglin-save-explorer extract
+
+# View specific run details
+peglin-save-explorer view-run --run-id <id>
+
+# Start web interface
+peglin-save-explorer web --port 5000 --open
+```
+
+#### Available Commands:
+
+- **analyze** - Comprehensive save file analysis
+- **extract** - Extract game assets and data
+- **view-run** - View detailed run information
+- **web** - Start interactive web interface
+- **extract-sprites** - Extract sprite assets
+- **extract-relics** - Extract relic data
+- **analyze-assembly** - Analyze game assembly structure
+
+### Default File Locations
+
+The tool automatically detects these locations:
+
+**Save Files:**
+- Windows: `%USERPROFILE%\AppData\LocalLow\Red Nexus Games Inc\Peglin\Save_0.data`
+- Linux: `~/.config/unity3d/Red Nexus Games Inc/Peglin/Save_0.data`
+- macOS: `~/Library/Application Support/Red Nexus Games Inc/Peglin/Save_0.data`
+
+**Peglin Installation:**
+- Steam (Windows): `C:\Program Files (x86)\Steam\steamapps\common\Peglin`
+- Steam (Linux): `~/.steam/steam/steamapps/common/Peglin`
+- Steam (macOS): `~/Library/Application Support/Steam/steamapps/common/Peglin`
+
+## Web Interface
+
+The web interface provides an intuitive way to explore save data:
+
+- **Run History**: Browse all your runs with filtering and sorting
+- **Detailed Statistics**: View comprehensive stats and charts
+- **Orb Performance**: Analyze individual orb effectiveness
+- **Relic Browser**: Explore all relics and their effects
+- **Asset Viewer**: Browse extracted game sprites and assets
+
+Access at `http://localhost:5000` when running the web command.
 
 ## Technical Details
 
-- Uses OdinSerializer for binary deserialization
-- Loads game types from Peglin's Assembly-CSharp.dll at runtime
-- Handles missing Unity dependencies gracefully
-- Terminal.Gui v2 for the interactive interface
+- **Serialization**: Uses OdinSerializer for accurate save file parsing
+- **Runtime Loading**: Dynamically loads Peglin's assemblies for proper deserialization
+- **Asset Extraction**: Utilizes AssetRipper for Unity asset extraction
+- **Web Stack**: React frontend with ASP.NET Core backend
+- **Cross-Platform**: .NET 9.0 single-file deployments
 
-## Distribution Note
+## Building from Source
 
-When distributing this tool, do not include Peglin's DLL files as they are proprietary. The tool will load them from the user's Peglin installation at runtime.
+### Requirements
+- .NET 9.0 SDK
+- Node.js 20+
+- Git (with submodules support)
+
+### Build Process
+```bash
+# Clone with submodules
+git clone --recursive https://github.com/AgentEnder/peglin-save-explorer.git
+cd peglin-save-explorer
+
+# Build for all platforms
+npm install
+npm run build
+
+# The dist/ folder will contain platform-specific archives
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## License
+
+This tool is for personal use only. It loads Peglin's proprietary DLL files from the user's installation at runtime. Do not distribute Peglin's game files with this tool.

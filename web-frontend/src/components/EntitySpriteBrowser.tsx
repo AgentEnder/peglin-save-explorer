@@ -17,8 +17,14 @@ import {
   FormControlLabel,
   Switch,
   Tooltip,
+  IconButton,
 } from "@mui/material";
-import { Search as SearchIcon, HelpOutline } from "@mui/icons-material";
+import {
+  Search as SearchIcon,
+  HelpOutline,
+  ArrowBackIos,
+  ArrowForwardIos,
+} from "@mui/icons-material";
 import {
   useEntities,
   useSpriteLoading,
@@ -35,6 +41,153 @@ import {
   getRarityTooltip,
   isUnavailableRarity,
 } from "../utils/rarityHelper";
+
+// Types imported from sprite store
+
+interface OrbLevelCarouselProps {
+  levels: Array<{
+    level: number;
+    damagePerPeg?: string;
+    critDamagePerPeg?: string;
+    description?: string;
+  }>;
+}
+
+const OrbLevelCarousel: React.FC<OrbLevelCarouselProps> = ({ levels }) => {
+  const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+
+  if (!levels || levels.length === 0) {
+    return null;
+  }
+
+  const currentLevel = levels[currentLevelIndex];
+  const hasMultipleLevels = levels.length > 1;
+
+  const goToPreviousLevel = () => {
+    setCurrentLevelIndex((prev) => (prev === 0 ? levels.length - 1 : prev - 1));
+  };
+
+  const goToNextLevel = () => {
+    setCurrentLevelIndex((prev) => (prev === levels.length - 1 ? 0 : prev + 1));
+  };
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Paper sx={{ p: 3 }} variant="outlined">
+        {/* Level Navigation Header */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 2,
+          }}
+        >
+          <IconButton
+            onClick={goToPreviousLevel}
+            disabled={!hasMultipleLevels}
+            size="small"
+            sx={{ visibility: hasMultipleLevels ? "visible" : "hidden" }}
+          >
+            <ArrowBackIos />
+          </IconButton>
+
+          <Typography
+            variant="h6"
+            color="primary"
+            sx={{
+              fontWeight: "bold",
+              textAlign: "center",
+              minWidth: "100px",
+            }}
+          >
+            Level {currentLevel.level}
+          </Typography>
+
+          <IconButton
+            onClick={goToNextLevel}
+            disabled={!hasMultipleLevels}
+            size="small"
+            sx={{ visibility: hasMultipleLevels ? "visible" : "hidden" }}
+          >
+            <ArrowForwardIos />
+          </IconButton>
+        </Box>
+
+        {/* Level Indicators (dots) */}
+        {hasMultipleLevels && (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              gap: 1,
+              mb: 2,
+            }}
+          >
+            {levels.map((_, index) => (
+              <Box
+                key={index}
+                onClick={() => setCurrentLevelIndex(index)}
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  backgroundColor:
+                    index === currentLevelIndex ? "primary.main" : "grey.300",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s ease",
+                  "&:hover": {
+                    backgroundColor:
+                      index === currentLevelIndex ? "primary.dark" : "grey.400",
+                  },
+                }}
+              />
+            ))}
+          </Box>
+        )}
+
+        {/* Level Description */}
+        {currentLevel.description && (
+          <Typography
+            variant="body2"
+            color="text.primary"
+            sx={{ whiteSpace: "pre-line" }}
+          >
+            <SpriteText>{currentLevel.description}</SpriteText>
+          </Typography>
+        )}
+        {/* Level Stats */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          {(currentLevel.damagePerPeg || currentLevel.critDamagePerPeg) && (
+            <Grid item xs={12}>
+              <Box sx={{ textAlign: "right" }}>
+                <Typography variant="h6" color="primary">
+                  {currentLevel.damagePerPeg || "0"} /{" "}
+                  {currentLevel.critDamagePerPeg || "0"}
+                </Typography>
+              </Box>
+            </Grid>
+          )}
+        </Grid>
+
+        {/* Navigation Help Text */}
+        {hasMultipleLevels && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              display: "block",
+              textAlign: "center",
+              mt: 2,
+            }}
+          >
+            Click arrows or dots to view different levels
+          </Typography>
+        )}
+      </Paper>
+    </Box>
+  );
+};
 
 // Types imported from sprite store
 
@@ -278,112 +431,29 @@ const EntitySpriteBrowser: React.FC = () => {
                     </Tooltip>
                   )}
                 </Typography>
-                {selectedEntity.description && (
-                  <Typography
-                    variant="body1"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    <SpriteText>{selectedEntity.description}</SpriteText>
-                  </Typography>
-                )}
-                {selectedEntity.effect && (
-                  <Typography variant="body2" color="text.secondary">
-                    <strong>Effect:</strong>{" "}
-                    <SpriteText>{selectedEntity.effect}</SpriteText>
-                  </Typography>
-                )}
-                {selectedEntity.type === "orb" && selectedEntity.orbType && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    <strong>Orb Type:</strong> {selectedEntity.orbType}
-                  </Typography>
-                )}
-                {/* Show damage summary for orbs */}
-                {selectedEntity.type === "orb" &&
-                  selectedEntity.levels &&
-                  selectedEntity.levels.length > 0 && (
-                    <Box sx={{ mt: 1, mb: 2 }}>
+                {selectedEntity.type !== "orb" ? (
+                  <>
+                    {selectedEntity.description && (
+                      <Typography
+                        variant="body1"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        <SpriteText>{selectedEntity.description}</SpriteText>
+                      </Typography>
+                    )}
+                    {selectedEntity.effect && (
                       <Typography variant="body2" color="text.secondary">
-                        <strong>Damage Range:</strong>{" "}
-                        {(() => {
-                          const firstLevel = selectedEntity.levels[0];
-                          const lastLevel =
-                            selectedEntity.levels[
-                              selectedEntity.levels.length - 1
-                            ];
-                          if (
-                            firstLevel?.damagePerPeg &&
-                            lastLevel?.damagePerPeg
-                          ) {
-                            return firstLevel.level === lastLevel.level
-                              ? `${firstLevel.damagePerPeg} damage/peg`
-                              : `${firstLevel.damagePerPeg} - ${lastLevel.damagePerPeg} damage/peg`;
-                          }
-                          return "N/A";
-                        })()}
+                        <strong>Effect:</strong>{" "}
+                        <SpriteText>{selectedEntity.effect}</SpriteText>
                       </Typography>
-                      {(() => {
-                        const firstLevel = selectedEntity.levels[0];
-                        const lastLevel =
-                          selectedEntity.levels[
-                            selectedEntity.levels.length - 1
-                          ];
-                        if (
-                          firstLevel?.critDamagePerPeg &&
-                          lastLevel?.critDamagePerPeg
-                        ) {
-                          return (
-                            <Typography variant="body2" color="text.secondary">
-                              <strong>Crit Range:</strong>{" "}
-                              {firstLevel.level === lastLevel.level
-                                ? `${firstLevel.critDamagePerPeg} crit/peg`
-                                : `${firstLevel.critDamagePerPeg} - ${lastLevel.critDamagePerPeg} crit/peg`}
-                            </Typography>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </Box>
-                  )}
+                    )}
+                  </>
+                ) : null}
                 {selectedEntity.type === "orb" &&
                   selectedEntity.levels &&
                   selectedEntity.levels.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="h6" gutterBottom>
-                        Orb Levels
-                      </Typography>
-                      <Grid container spacing={1}>
-                        {selectedEntity.levels.map((level) => (
-                          <Grid item xs={12} sm={6} md={4} key={level.level}>
-                            <Paper sx={{ p: 2 }} variant="outlined">
-                              <Typography
-                                variant="subtitle2"
-                                color="primary"
-                                gutterBottom
-                              >
-                                Level {level.level}
-                              </Typography>
-                              {level.damagePerPeg && (
-                                <Typography variant="body2">
-                                  <strong>Damage/Peg:</strong>{" "}
-                                  {level.damagePerPeg}
-                                </Typography>
-                              )}
-                              {level.critDamagePerPeg && (
-                                <Typography variant="body2">
-                                  <strong>Crit Damage/Peg:</strong>{" "}
-                                  {level.critDamagePerPeg}
-                                </Typography>
-                              )}
-                            </Paper>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    </Box>
+                    <OrbLevelCarousel levels={selectedEntity.levels} />
                   )}
               </Grid>
               <Grid item xs={12} md={4}>
@@ -470,82 +540,47 @@ const EntitySpriteBrowser: React.FC = () => {
                         sx={{ ml: 1 }}
                       />
                     </Typography>
-                  </Box>
-                </Box>
-                {entity.description && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      mb: 1,
-                    }}
-                  >
-                    <SpriteText>{entity.description}</SpriteText>
-                  </Typography>
-                )}
-                {/* Show orb-specific info in card preview */}
-                {entity.type === "orb" && entity.orbType && (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    display="block"
-                  >
-                    Type: {entity.orbType}
-                  </Typography>
-                )}
-                {entity.type === "orb" &&
-                  entity.levels &&
-                  entity.levels.length > 0 && (
-                    <>
+                    {entity.description && (
                       <Typography
-                        variant="caption"
+                        variant="body2"
                         color="text.secondary"
-                        display="block"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          mb: 1,
+                        }}
                       >
-                        Levels: {entity.levels.map((l) => l.level).join(", ")}
+                        <SpriteText>{entity.description}</SpriteText>
                       </Typography>
-                      {/* Show damage info for first level */}
-                      {entity.levels[0] && (
-                        <Box sx={{ mt: 0.5 }}>
-                          {entity.levels[0].damagePerPeg && (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              display="block"
-                            >
-                              Damage/Peg: {entity.levels[0].damagePerPeg}
-                            </Typography>
+                    )}
+                    {entity.type === "orb" &&
+                      entity.levels &&
+                      entity.levels.length > 0 && (
+                        <>
+                          {/* Show damage info for first level */}
+                          {entity.levels[0] && (
+                            <Box sx={{ mt: 0.5 }}>
+                              <Typography
+                                variant="caption"
+                                color="text.primary"
+                              >
+                                {entity.levels
+                                  .map(
+                                    (lvl) =>
+                                      `${lvl.damagePerPeg ?? 0}/${
+                                        lvl.critDamagePerPeg ?? 0
+                                      }`
+                                  )
+                                  .join(", ")}
+                              </Typography>
+                            </Box>
                           )}
-                          {entity.levels[0].critDamagePerPeg && (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              display="block"
-                            >
-                              Crit: {entity.levels[0].critDamagePerPeg}
-                            </Typography>
-                          )}
-                        </Box>
+                        </>
                       )}
-                    </>
-                  )}
-                <Box sx={{ mt: 1 }}>
-                  {(() => {
-                    const sprite = getSprite(entity);
-                    if (sprite) {
-                      return (
-                        <Chip label="1 sprite" size="small" color="success" />
-                      );
-                    }
-                    return (
-                      <Chip label="No sprites" size="small" color="default" />
-                    );
-                  })()}
+                  </Box>
                 </Box>
               </CardContent>
             </Card>

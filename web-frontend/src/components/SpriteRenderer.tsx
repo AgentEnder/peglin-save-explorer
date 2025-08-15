@@ -23,23 +23,19 @@ const SpriteRenderer: React.FC<SpriteRendererProps> = ({
   const imgRef = useRef<HTMLImageElement>(null);
 
   const hasFrameData =
+    sprite.isAtlas && // Only use frame data if this is explicitly an atlas
     sprite.frameWidth !== undefined &&
     sprite.frameHeight !== undefined &&
     sprite.frameX !== undefined &&
     sprite.frameY !== undefined &&
     sprite.frameWidth > 0 &&
     sprite.frameHeight > 0 &&
-    // Check if frame data is different from full sprite OR if we have explicit frame dimensions
+    // Additional checks for valid frame data
     (sprite.frameWidth !== sprite.width ||
       sprite.frameHeight !== sprite.height ||
       sprite.frameX !== 0 ||
       sprite.frameY !== 0 ||
-      // Also treat as frame data if the sprite has frameCount > 1 or calculated frames > 1
-      (sprite.width &&
-        sprite.height &&
-        Math.floor(sprite.width / sprite.frameWidth) *
-          Math.floor(sprite.height / sprite.frameHeight) >
-          1));
+      sprite.frameCount > 1);
 
   // Calculate display dimensions
   const frameWidth =

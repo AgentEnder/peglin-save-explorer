@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using peglin_save_explorer.Core;
 using peglin_save_explorer.Data;
 using peglin_save_explorer.Utils;
 
@@ -23,76 +24,6 @@ namespace peglin_save_explorer
         private static Dictionary<int, string> _characterClassMappings = new();
 
         private static System.Reflection.Assembly? _assembly = null;
-
-        // Fallback mappings for common game data
-        private static readonly Dictionary<int, string> FallbackRelicMappings = new()
-        {
-            { 1, "Unknown Relic 1" },
-            { 2, "Unknown Relic 2" },
-            { 3, "Unknown Relic 3" },
-            { 89, "Unknown Relic 89" },
-            { 170, "Unknown Relic 170" }
-        };
-
-        private static readonly Dictionary<int, string> FallbackRoomMappings = new()
-        {
-            { 0, "Starting Area" },
-            { 1, "Forest" },
-            { 2, "Mines" },
-            { 3, "Desert" },
-            { 4, "Castle" },
-            { 5, "Caverns" },
-            { 6, "Swamp" },
-            { 7, "Mountain" },
-            { 8, "Final Area" }
-        };
-
-        private static readonly Dictionary<int, string> FallbackBossMappings = new()
-        {
-            { 0, "Training Dummy" },
-            { 1, "Forest Guardian" },
-            { 2, "Slime King" },
-            { 3, "Minotaur" },
-            { 4, "Desert Sphinx" },
-            { 5, "Crystal Golem" },
-            { 6, "Shadow Beast" },
-            { 7, "Fire Dragon" },
-            { 8, "Ice Dragon" },
-            { 9, "Ancient Dragon" },
-            { 10, "Final Boss" }
-        };
-
-        private static readonly Dictionary<int, string> FallbackStatusEffectMappings = new()
-        {
-            { 0, "None" },
-            { 1, "Strength" },
-            { 2, "Poison" },
-            { 3, "Armor" },
-            { 4, "Ballwark" },
-            { 5, "Ballusion" },
-            { 6, "Muscircle" },
-            { 7, "Spinesse" },
-            { 8, "Ballance" },
-            { 9, "Vulnerable" },
-            { 10, "Blind" },
-            { 11, "Crit Boost" }
-        };
-
-        private static readonly Dictionary<int, string> FallbackSlimePegMappings = new()
-        {
-            { 0, "None" },
-            { 1, "Red Slime" },
-            { 2, "Blue Slime" },
-            { 3, "Green Slime" }
-        };
-
-        private static readonly Dictionary<int, string> FallbackCharacterClassMappings = new()
-        {
-            { 0, "Peglin" },
-            { 1, "Balladin" },
-            { 2, "Roundrel" },
-            { 3, "Spinventor" }
-        };
 
         /// <summary>
         /// Gets the human-readable name for a relic ID
@@ -328,27 +259,39 @@ namespace peglin_save_explorer
         /// </summary>
         public static void LoadGameDataMappings(string? peglinPath)
         {
+            // If no path provided, try to get the default path
+            if (string.IsNullOrEmpty(peglinPath))
+            {
+                var configManager = new ConfigurationManager();
+                peglinPath = configManager.GetEffectivePeglinPath(promptIfNotFound: false);
+                
+                if (string.IsNullOrEmpty(peglinPath))
+                {
+                    Logger.Warning("No Peglin path available for loading game data mappings");
+                    _mappingsLoaded = true; // Mark as loaded to prevent repeated attempts
+                    return;
+                }
+            }
+
             if (_mappingsLoaded && _lastGameDataPath == peglinPath)
             {
                 return; // Already loaded for this path
             }
 
-            Logger.Debug($"GameDataMappings: Loading mappings for path: {peglinPath ?? "none"}");
+            Logger.Debug($"GameDataMappings: Loading mappings for path: {peglinPath}");
 
-            // Initialize with fallback data
-            _relicMappings = new Dictionary<int, string>(FallbackRelicMappings);
-            _roomMappings = new Dictionary<int, string>(FallbackRoomMappings);
-            _bossMappings = new Dictionary<int, string>(FallbackBossMappings);
-            _statusEffectMappings = new Dictionary<int, string>(FallbackStatusEffectMappings);
-            _slimePegMappings = new Dictionary<int, string>(FallbackSlimePegMappings);
-            _characterClassMappings = new Dictionary<int, string>(FallbackCharacterClassMappings);
+            // Initialize empty - we'll only use reflected data
+            _relicMappings = new Dictionary<int, string>();
+            _roomMappings = new Dictionary<int, string>();
+            _bossMappings = new Dictionary<int, string>();
+            _statusEffectMappings = new Dictionary<int, string>();
+            _slimePegMappings = new Dictionary<int, string>();
+            _characterClassMappings = new Dictionary<int, string>();
 
-            if (!string.IsNullOrEmpty(peglinPath))
+            try
             {
-                try
-                {
-                    // Use the shared AssemblyAnalyzer to extract data
-                    var analysisResult = AssemblyAnalyzer.AnalyzePeglinAssembly(peglinPath);
+                // Use the shared AssemblyAnalyzer to extract data
+                var analysisResult = AssemblyAnalyzer.AnalyzePeglinAssembly(peglinPath);
 
                     if (analysisResult.Success && analysisResult.LoadedAssembly != null)
                     {
@@ -392,11 +335,10 @@ namespace peglin_save_explorer
                             Logger.Debug($"Loaded {_characterClassMappings.Count} character class mappings from assembly");
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Warning($"GameDataMappings: Error analyzing assembly: {ex.Message}");
-                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"GameDataMappings: Error analyzing assembly: {ex.Message}");
             }
 
             _mappingsLoaded = true;

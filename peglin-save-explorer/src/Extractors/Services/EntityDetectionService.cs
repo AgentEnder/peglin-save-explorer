@@ -45,10 +45,17 @@ namespace peglin_save_explorer.Extractors.Services
         {
             var matchCount = EnemyFields.Count(field => data.ContainsKey(field));
 
-            // Also check for specific patterns in values that indicate enemy data
-            if (data.ContainsKey("LocKey") && data["LocKey"] is string locKey)
+            // Also check for specific patterns in values that indicate enemy data (check both cases)
+            if (data.ContainsKey("locKey") && data["locKey"] is string locKeyLower)
             {
-                if (EnemyPatterns.Any(pattern => locKey.ToLowerInvariant().Contains(pattern)))
+                if (EnemyPatterns.Any(pattern => locKeyLower.ToLowerInvariant().Contains(pattern)))
+                {
+                    matchCount += 2; // Boost confidence for pattern match
+                }
+            }
+            else if (data.ContainsKey("LocKey") && data["LocKey"] is string locKeyUpper)
+            {
+                if (EnemyPatterns.Any(pattern => locKeyUpper.ToLowerInvariant().Contains(pattern)))
                 {
                     matchCount += 2; // Boost confidence for pattern match
                 }
@@ -104,19 +111,8 @@ namespace peglin_save_explorer.Extractors.Services
             var pachinkoBallCount = PachinkoBallFields.Count(field => data.ContainsKey(field));
             var hasRenderer = data.ContainsKey("_renderer");
 
-            // Debug logging for components that have any PachinkoBall fields
-            if (pachinkoBallCount > 0 || hasRenderer)
-            {
-                Console.WriteLine($"🔍 PachinkoBall check: renderer={hasRenderer}, fields={pachinkoBallCount}/5, keys={string.Join(",", data.Keys.Take(10))}");
-                Console.WriteLine($"   PachinkoBall fields found: {string.Join(", ", PachinkoBallFields.Where(f => data.ContainsKey(f)))}");
-            }
-
             // Must have _renderer field and at least 2 other PachinkoBall-specific fields
             var result = hasRenderer && pachinkoBallCount >= 3;
-            if (result)
-            {
-                Console.WriteLine($"✅ Detected PachinkoBall data!");
-            }
             return result;
         }
 
@@ -151,24 +147,6 @@ namespace peglin_save_explorer.Extractors.Services
             // Check for definitive orb data structures
             if (gameObjectData.RawData is Dictionary<string, object> rawData)
             {
-                // Debug: log structure for orb GameObjects
-                if (name.Contains("debuffOrb", StringComparison.OrdinalIgnoreCase) || name.Contains("debufforb", StringComparison.OrdinalIgnoreCase))
-                {
-                    Console.WriteLine($"\n🔍 {name} RawData structure:");
-                    Console.WriteLine($"   RawData keys: {string.Join(", ", rawData.Keys)}");
-                    foreach (var key in rawData.Keys)
-                    {
-                        if (rawData[key] is Dictionary<string, object> subDict)
-                        {
-                            Console.WriteLine($"   {key} -> Dictionary with keys: {string.Join(", ", subDict.Keys.Take(10))}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"   {key} -> {rawData[key]?.GetType().Name ?? "null"}");
-                        }
-                    }
-                }
-
                 // Look for ComponentData.OrbComponent structure which indicates actual orb data
                 if (rawData.TryGetValue("ComponentData", out var componentDataObj) &&
                     componentDataObj is Dictionary<string, object> componentData &&

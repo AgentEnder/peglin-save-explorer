@@ -141,43 +141,175 @@ namespace peglin_save_explorer.Extractors.Services
                     RawData = data // Preserve the raw data for debugging
                 };
 
+                // Extract localization key (case-insensitive check)
+                if (data.TryGetValue("locKey", out var locKeyLower))
+                {
+                    enemy.LocKey = locKeyLower?.ToString();
+                }
+                else if (data.TryGetValue("LocKey", out var locKeyUpper))
+                {
+                    enemy.LocKey = locKeyUpper?.ToString();
+                }
+
+                // Extract name from various sources
                 if (data.TryGetValue("EnglishDisplayName", out var displayName))
                 {
-                    enemy.Name = displayName?.ToString() ?? assetName ?? "Unknown Enemy";
-                }
-                else if (data.TryGetValue("LocKey", out var locKey))
-                {
-                    enemy.LocKey = locKey?.ToString();
-                    if (!string.IsNullOrEmpty(enemy.LocKey))
-                    {
-                        var localizedName = _localizationService.GetTranslation($"Enemies/{enemy.LocKey}");
-                        if (!string.IsNullOrWhiteSpace(localizedName))
-                        {
-                            enemy.Name = localizedName;
-                        }
-                    }
+                    enemy.Name = displayName?.ToString();
                 }
                 else if (data.TryGetValue("enemyName", out var enemyName))
                 {
-                    enemy.Name = enemyName?.ToString() ?? assetName ?? "Unknown Enemy";
+                    enemy.Name = enemyName?.ToString();
+                }
+                else if (!string.IsNullOrEmpty(enemy.LocKey))
+                {
+                    // Try to get localized name
+                    var localizedName = _localizationService.GetTranslation($"Enemies/{enemy.LocKey}");
+                    if (!string.IsNullOrWhiteSpace(localizedName))
+                    {
+                        enemy.Name = localizedName;
+                    }
+                    else
+                    {
+                        // Fallback: clean up the locKey to make a readable name
+                        enemy.Name = enemy.LocKey
+                            .Replace("_name", "")
+                            .Replace("_", " ")
+                            .Split(' ')
+                            .Select(word => char.ToUpper(word[0]) + word.Substring(1).ToLower())
+                            .Aggregate((a, b) => a + " " + b);
+                    }
                 }
 
-                if (data.TryGetValue("MaxHealth", out var maxHealth) && float.TryParse(maxHealth?.ToString(), out var maxHealthFloat))
+                // Final fallback to asset name
+                if (string.IsNullOrWhiteSpace(enemy.Name))
                 {
-                    enemy.Health = maxHealthFloat;
-                }
-                else if (data.TryGetValue("StartingHealth", out var startingHealth) && float.TryParse(startingHealth?.ToString(), out var startingHealthFloat))
-                {
-                    enemy.Health = startingHealthFloat;
+                    enemy.Name = assetName ?? "Unknown Enemy";
                 }
 
-                if (data.TryGetValue("MeleeAttackDamage", out var meleeAttack) && float.TryParse(meleeAttack?.ToString(), out var meleeAttackFloat))
+                // Extract description
+                if (!string.IsNullOrEmpty(enemy.LocKey))
                 {
-                    enemy.AttackDamage = meleeAttackFloat;
+                    // Try to get localized description using the locKey with _desc suffix
+                    var descKey = enemy.LocKey.Replace("_name", "_desc");
+                    if (!descKey.EndsWith("_desc"))
+                    {
+                        descKey = enemy.LocKey + "_desc";
+                    }
+                    var localizedDesc = _localizationService.GetTranslation($"Enemies/{descKey}");
+                    if (!string.IsNullOrWhiteSpace(localizedDesc))
+                    {
+                        enemy.Description = localizedDesc;
+                    }
                 }
-                else if (data.TryGetValue("DamagePerMeleeAttack", out var damagePerMelee) && float.TryParse(damagePerMelee?.ToString(), out var damagePerMeleeFloat))
+
+                // Extract lore and dev notes
+                if (!string.IsNullOrEmpty(enemy.LocKey))
                 {
-                    enemy.AttackDamage = damagePerMeleeFloat;
+                    // Extract lore text (lockey_lore)
+                    var loreKey = enemy.LocKey.Replace("_name", "_lore");
+                    if (!loreKey.EndsWith("_lore"))
+                    {
+                        loreKey = enemy.LocKey + "_lore";
+                    }
+                    var loreText = _localizationService.GetTranslation($"Enemies/{loreKey}");
+                    if (!string.IsNullOrWhiteSpace(loreText))
+                    {
+                        enemy.Lore = loreText;
+                    }
+
+                    // Extract dev notes (lockey_dev)
+                    var devKey = enemy.LocKey.Replace("_name", "_dev");
+                    if (!devKey.EndsWith("_dev"))
+                    {
+                        devKey = enemy.LocKey + "_dev";
+                    }
+                    var devText = _localizationService.GetTranslation($"Enemies/{devKey}");
+                    if (!string.IsNullOrWhiteSpace(devText))
+                    {
+                        enemy.DevNotes = devText;
+                    }
+                }
+
+                // Extract health values
+                if (data.TryGetValue("StartingHealth", out var startingHealth))
+                {
+                    enemy.Health = ParseFloatValue(startingHealth);
+                }
+                else if (data.TryGetValue("CurrentHealth", out var currentHealth))
+                {
+                    enemy.Health = ParseFloatValue(currentHealth);
+                }
+
+                if (data.TryGetValue("MaxHealth", out var maxHealth))
+                {
+                    enemy.MaxHealth = ParseFloatValue(maxHealth);
+                }
+                else if (enemy.Health.HasValue)
+                {
+                    enemy.MaxHealth = enemy.Health;
+                }
+
+                // Extract Cruciball health
+                if (data.TryGetValue("StartingHealthFirstCruciball", out var cruciballHealth))
+                {
+                    enemy.MaxHealthCruciball = ParseFloatValue(cruciballHealth);
+                }
+                else if (data.TryGetValue("MaxHealthCruciball", out var maxHealthCruciball))
+                {
+                    enemy.MaxHealthCruciball = ParseFloatValue(maxHealthCruciball);
+                }
+
+                // Extract attack damage values
+                if (data.TryGetValue("DamagePerMeleeAttack", out var damagePerMelee))
+                {
+                    enemy.MeleeAttackDamage = ParseFloatValue(damagePerMelee);
+                    enemy.AttackDamage = enemy.MeleeAttackDamage;
+                }
+                else if (data.TryGetValue("MeleeAttackDamage", out var meleeAttack))
+                {
+                    enemy.MeleeAttackDamage = ParseFloatValue(meleeAttack);
+                    enemy.AttackDamage = enemy.MeleeAttackDamage;
+                }
+
+                if (data.TryGetValue("DamagePerRangedAttack", out var damagePerRanged))
+                {
+                    enemy.RangedAttackDamage = ParseFloatValue(damagePerRanged);
+                }
+                else if (data.TryGetValue("RangedAttackDamage", out var rangedAttack))
+                {
+                    enemy.RangedAttackDamage = ParseFloatValue(rangedAttack);
+                }
+
+                // Extract enemy type (enemyTypes is often a float/enum value)
+                if (data.TryGetValue("enemyTypes", out var enemyTypes))
+                {
+                    // Convert enum value to string representation
+                    if (float.TryParse(enemyTypes?.ToString(), out var typeValue))
+                    {
+                        // Map common enemy type values
+                        enemy.Type = typeValue switch
+                        {
+                            0 => "Normal",
+                            1 => "Flying",
+                            2 => "Boss",
+                            3 => "MiniBoss",
+                            _ => $"Type_{typeValue}"
+                        };
+                    }
+                    else
+                    {
+                        enemy.Type = enemyTypes?.ToString() ?? "";
+                    }
+                }
+                else if (data.TryGetValue("Type", out var type))
+                {
+                    enemy.Type = type?.ToString() ?? "";
+                }
+
+                // Extract location
+                if (data.TryGetValue("location", out var location))
+                {
+                    enemy.Location = location?.ToString();
                 }
 
                 // Sanitize RawData for JSON serialization
