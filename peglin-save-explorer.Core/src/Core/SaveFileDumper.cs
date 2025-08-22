@@ -23,7 +23,7 @@ namespace peglin_save_explorer.Core
         private bool IsSuppressed()
         {
             // Check if console output should be suppressed (when in widget mode)
-            return Program.suppressConsoleOutput;
+            return ConsoleUtility.SuppressConsoleOutput;
         }
 
         public string DumpSaveFile(byte[] saveData)

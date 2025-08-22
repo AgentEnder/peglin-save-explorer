@@ -137,10 +137,14 @@ const Dashboard: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Dashboard
       </Typography>
-
       <Grid container spacing={3}>
         {/* Summary Cards */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
@@ -161,7 +165,12 @@ const Dashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
@@ -177,7 +186,12 @@ const Dashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
@@ -195,7 +209,12 @@ const Dashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 6,
+            md: 3
+          }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
@@ -212,7 +231,11 @@ const Dashboard: React.FC = () => {
         </Grid>
 
         {/* Charts */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Wins by Character Class
@@ -239,9 +262,7 @@ const Dashboard: React.FC = () => {
                   height={300}
                   slotProps={{
                     legend: {
-                      direction: "row",
-                      position: { vertical: "bottom", horizontal: "middle" },
-                      padding: 0,
+                      position: { vertical: "bottom", horizontal: "center" },
                     },
                   }}
                   margin={{ top: 20, bottom: 60, left: 60, right: 60 }}
@@ -251,7 +272,11 @@ const Dashboard: React.FC = () => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Average Damage by Class
@@ -283,14 +308,20 @@ const Dashboard: React.FC = () => {
         </Grid>
 
         {/* Recent Runs */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Recent Runs
             </Typography>
             <Grid container spacing={2}>
               {recentRuns.map((run) => (
-                <Grid item xs={12} sm={6} md={4} key={run.id}>
+                <Grid
+                  key={run.id}
+                  size={{
+                    xs: 12,
+                    sm: 6,
+                    md: 4
+                  }}>
                   <Card variant="outlined">
                     <CardActionArea onClick={() => navigate(`/runs/${encodeURIComponent(run.id)}`)}>
                       <CardContent>

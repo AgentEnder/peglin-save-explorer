@@ -99,10 +99,13 @@ const Statistics: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Statistics
       </Typography>
-
       <Grid container spacing={3}>
         {/* Class Statistics */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Win Rate by Character Class
@@ -133,7 +136,11 @@ const Statistics: React.FC = () => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Total Runs by Class
@@ -163,9 +170,7 @@ const Statistics: React.FC = () => {
                   height={350}
                   slotProps={{
                     legend: {
-                      direction: "row",
-                      position: { vertical: "bottom", horizontal: "middle" },
-                      padding: 0,
+                      position: { vertical: "bottom", horizontal: "center" },
                     },
                   }}
                   margin={{ top: 40, bottom: 80, left: 80, right: 80 }}
@@ -176,7 +181,11 @@ const Statistics: React.FC = () => {
         </Grid>
 
         {/* Orb Statistics */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Most Used Orbs
@@ -207,7 +216,11 @@ const Statistics: React.FC = () => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Orb Win Rates (Top 10)
@@ -239,7 +252,7 @@ const Statistics: React.FC = () => {
         </Grid>
 
         {/* Activity Over Time */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Runs Over Time
@@ -272,7 +285,13 @@ const Statistics: React.FC = () => {
 
         {/* Summary Cards */}
         {classData.map((cls) => (
-          <Grid item xs={12} sm={6} md={4} key={cls.className}>
+          <Grid
+            key={cls.className}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4
+            }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>

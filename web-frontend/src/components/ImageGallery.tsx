@@ -192,12 +192,10 @@ const ImageGallery: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Sprite Gallery
       </Typography>
-
       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
         Extracted sprites from Peglin game assets. Atlases contain multiple
         animation frames.
       </Typography>
-
       <Paper sx={{ mb: 3, p: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Chip
@@ -214,7 +212,6 @@ const ImageGallery: React.FC = () => {
           />
         </Stack>
       </Paper>
-
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
         <Tabs
           value={selectedTab}
@@ -226,18 +223,17 @@ const ImageGallery: React.FC = () => {
           <Tab label={`Atlases (${atlasCount})`} />
         </Tabs>
       </Box>
-
       <Grid container spacing={2}>
         {filteredSprites.map((sprite) => (
           <Grid
-            item
-            xs={12}
-            sm={6}
-            md={4}
-            lg={3}
             sx={{ imageRendering: "pixelated" }}
             key={sprite.id}
-          >
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4,
+              lg: 3
+            }}>
             <Card
               sx={{
                 cursor: "pointer",
@@ -322,7 +318,6 @@ const ImageGallery: React.FC = () => {
           </Grid>
         ))}
       </Grid>
-
       {filteredSprites.length === 0 && (
         <Box textAlign="center" py={4}>
           <Typography variant="h6" color="text.secondary">
@@ -333,7 +328,6 @@ const ImageGallery: React.FC = () => {
           </Typography>
         </Box>
       )}
-
       {/* Sprite Detail Dialog */}
       <Dialog
         open={dialogOpen}
@@ -357,7 +351,11 @@ const ImageGallery: React.FC = () => {
             </DialogTitle>
             <DialogContent>
               <Grid container spacing={3} sx={{ imageRendering: "pixelated" }}>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Box
                     component="img"
                     src={selectedSprite.url}
@@ -372,7 +370,11 @@ const ImageGallery: React.FC = () => {
                     }}
                   />
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <Stack spacing={2}>
                     <Box>
                       <Typography variant="h6" gutterBottom>
@@ -417,7 +419,13 @@ const ImageGallery: React.FC = () => {
                         <Box sx={{ maxHeight: "400px", overflow: "auto" }}>
                           <Grid container spacing={1}>
                             {animationData.frames.map((frame, index) => (
-                              <Grid item xs={12} sm={6} md={4} key={index}>
+                              <Grid
+                                key={index}
+                                size={{
+                                  xs: 12,
+                                  sm: 6,
+                                  md: 4
+                                }}>
                                 <Paper sx={{ p: 1, textAlign: "center" }}>
                                   <Box
                                     sx={{

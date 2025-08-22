@@ -89,8 +89,12 @@ class BuildScript {
 
   private cleanOutput() {
     console.log("🧹 Cleaning previous builds...");
-    fs.rmSync(this.outputDir, { recursive: true });
-    fs.mkdirSync(this.outputDir);
+    try {
+      fs.rmSync(this.outputDir, { recursive: true });
+      fs.mkdirSync(this.outputDir);
+    } catch (error) {
+      // Likely already deleted
+    }
   }
 
   private async buildFrontend(): Promise<void> {

@@ -222,14 +222,18 @@ const RunList: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Run History ({apiFilteredRuns.length} runs)
       </Typography>
-
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="h6" gutterBottom>
           Filters
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <FormControl fullWidth>
               <InputLabel>Character Class</InputLabel>
               <Select
@@ -252,7 +256,12 @@ const RunList: React.FC = () => {
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <FormControlLabel
               control={
                 <Checkbox
@@ -269,7 +278,12 @@ const RunList: React.FC = () => {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField
               fullWidth
               label="Start Date"
@@ -289,7 +303,12 @@ const RunList: React.FC = () => {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField
               fullWidth
               label="End Date"
@@ -309,7 +328,12 @@ const RunList: React.FC = () => {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField
               fullWidth
               label="Min Damage"
@@ -321,7 +345,12 @@ const RunList: React.FC = () => {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField
               fullWidth
               label="Max Damage"
@@ -333,7 +362,12 @@ const RunList: React.FC = () => {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField
               fullWidth
               label="Min Duration (minutes)"
@@ -345,7 +379,12 @@ const RunList: React.FC = () => {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 3
+            }}>
             <TextField
               fullWidth
               label="Max Duration (minutes)"
@@ -373,7 +412,6 @@ const RunList: React.FC = () => {
           </Alert>
         )}
       </Paper>
-
       {/* Data Grid */}
       <Paper sx={{ width: "100%", minHeight: 400 }}>
         <DataGrid

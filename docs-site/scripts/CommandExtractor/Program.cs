@@ -42,7 +42,7 @@ namespace CommandExtractor
             try
             {
                 var commands = ExtractCommands();
-                
+
                 var commandsData = new CommandsData
                 {
                     Commands = commands,
@@ -69,63 +69,16 @@ namespace CommandExtractor
         static List<CommandInfo> ExtractCommands()
         {
             var commands = new List<CommandInfo>();
-            
-            // Get the current assembly's location and use it to find the peglin-save-explorer assembly
-            var currentAssemblyPath = Assembly.GetExecutingAssembly().Location;
-            var currentDir = Path.GetDirectoryName(currentAssemblyPath)!;
-            
-            // Navigate from CommandExtractor location to the main project
-            // From: docs-site/scripts/CommandExtractor/bin/Debug/net9.0
-            // To: peglin-save-explorer/bin/Debug/net9.0
-            var repoRoot = currentDir;
-            while (!string.IsNullOrEmpty(repoRoot) && !Path.GetFileName(repoRoot).Equals("peglin-save-explorer"))
-            {
-                repoRoot = Path.GetDirectoryName(repoRoot);
-            }
-            
-            if (string.IsNullOrEmpty(repoRoot) || !Path.GetFileName(repoRoot).Equals("peglin-save-explorer"))
-            {
-                Console.Error.WriteLine("Could not find repo root");
-                return commands;
-            }
-            
-            // Try different runtime target folders
-            var baseBinPath = Path.Combine(repoRoot, "peglin-save-explorer", "bin", "Debug", "net9.0");
-            string assemblyPath = "";
-            
-            // Check for runtime-specific build first (e.g., osx-arm64)
-            var runtimeDirs = Directory.GetDirectories(baseBinPath).Where(d => !d.EndsWith(".dll") && !d.EndsWith(".exe"));
-            foreach (var runtimeDir in runtimeDirs)
-            {
-                var candidatePath = Path.Combine(runtimeDir, "peglin-save-explorer.dll");
-                if (File.Exists(candidatePath))
-                {
-                    assemblyPath = candidatePath;
-                    break;
-                }
-            }
-            
-            // Fallback to direct path
-            if (string.IsNullOrEmpty(assemblyPath))
-            {
-                assemblyPath = Path.Combine(baseBinPath, "peglin-save-explorer.dll");
-            }
-            
-            if (!File.Exists(assemblyPath))
-            {
-                Console.Error.WriteLine($"Assembly not found at: {assemblyPath}");
-                Console.Error.WriteLine($"Searched in: {baseBinPath}");
-                return commands;
-            }
-            
-            var assembly = Assembly.LoadFrom(assemblyPath);
-            Console.Error.WriteLine($"Loaded assembly: {assembly.GetName().Name}");
-            
-            // Get all command types from the loaded assembly
+
+            // Get the Core assembly directly since we have a project reference
+            var coreAssembly = typeof(peglin_save_explorer.Commands.ICommand).Assembly;
+            Console.Error.WriteLine($"Loaded assembly: {coreAssembly.GetName().Name}");
+
+            // Get all command types from the Core assembly
             Type[] allTypes;
             try
             {
-                allTypes = assembly.GetTypes();
+                allTypes = coreAssembly.GetTypes();
             }
             catch (ReflectionTypeLoadException ex)
             {
@@ -133,12 +86,12 @@ namespace CommandExtractor
                 allTypes = ex.Types.Where(t => t != null).ToArray()!;
                 Console.Error.WriteLine($"Warning: Some types failed to load, working with {allTypes.Length} types");
             }
-            
+
             var commandTypes = allTypes
                 .Where(t => t != null && t.IsClass && !t.IsAbstract && typeof(ICommand).IsAssignableFrom(t))
                 .OrderBy(t => t.Name)
                 .ToList();
-                
+
             Console.Error.WriteLine($"Found {commandTypes.Count} command types");
 
             foreach (var commandType in commandTypes)
@@ -154,7 +107,7 @@ namespace CommandExtractor
                         continue;
 
                     var command = commandInstance.CreateCommand();
-                    
+
                     var commandInfo = new CommandInfo
                     {
                         Id = commandType.Name.Replace("Command", "").ToLowerInvariant(),
@@ -165,7 +118,7 @@ namespace CommandExtractor
 
                     // Extract options using reflection
                     ExtractOptions(command, commandInfo);
-                    
+
                     // Generate a basic example
                     GenerateExample(commandInfo);
 
@@ -231,7 +184,7 @@ namespace CommandExtractor
             {
                 exampleCommand += " " + string.Join(" ", requiredFlags);
             }
-            
+
             commandInfo.Examples.Add(exampleCommand);
         }
     }

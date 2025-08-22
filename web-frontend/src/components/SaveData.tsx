@@ -204,7 +204,6 @@ const SaveData: React.FC = () => {
           <InfoIcon />
         </IconButton>
       </Box>
-
       {saveStatus && (
         <Alert
           severity={saveStatus.type}
@@ -214,16 +213,19 @@ const SaveData: React.FC = () => {
           {saveStatus.message}
         </Alert>
       )}
-
       <Grid container spacing={3}>
         {/* Overall Statistics */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Overall Statistics
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography color="textSecondary" gutterBottom>
@@ -233,7 +235,11 @@ const SaveData: React.FC = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography color="textSecondary" gutterBottom>
@@ -245,7 +251,11 @@ const SaveData: React.FC = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography color="textSecondary" gutterBottom>
@@ -257,7 +267,11 @@ const SaveData: React.FC = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography color="textSecondary" gutterBottom>
@@ -274,7 +288,11 @@ const SaveData: React.FC = () => {
         </Grid>
 
         {/* Best Run */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Best Run
@@ -316,7 +334,11 @@ const SaveData: React.FC = () => {
 
         {/* Player Statistics */}
         {playerStatistics && (
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
                 Player Statistics
@@ -324,7 +346,7 @@ const SaveData: React.FC = () => {
               <Grid container spacing={1}>
                 {Object.entries(playerStatistics.gameplayStats).map(
                   ([key, value]) => (
-                    <Grid item xs={6} key={key}>
+                    <Grid key={key} size={6}>
                       <Typography variant="body2" color="textSecondary">
                         {key}:
                       </Typography>
@@ -342,7 +364,11 @@ const SaveData: React.FC = () => {
         )}
 
         {/* Class Cruciball Levels */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Class Cruciball Levels
@@ -356,7 +382,12 @@ const SaveData: React.FC = () => {
                 const hasPlayed = level >= 0;
 
                 return (
-                  <Grid item xs={12} sm={6} key={className}>
+                  <Grid
+                    key={className}
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}>
                     <Card
                       variant="outlined"
                       sx={{
@@ -392,7 +423,7 @@ const SaveData: React.FC = () => {
         </Grid>
 
         {/* Class Statistics Table */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Character Class Statistics
@@ -493,7 +524,6 @@ const SaveData: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
-
       {/* Info Dialog */}
       <Dialog open={infoDialogOpen} onClose={() => setInfoDialogOpen(false)}>
         <DialogTitle>Save Data Information</DialogTitle>

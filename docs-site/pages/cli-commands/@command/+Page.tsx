@@ -31,7 +31,7 @@ export default function Page() {
                       key={flagIndex}
                       className="bg-gray-100 px-2 py-1 rounded text-sm font-mono"
                     >
-                      {flag}
+                      {String(flag)}
                     </code>
                   ))}
                   {option.required && (
@@ -41,14 +41,14 @@ export default function Page() {
                   )}
                   {option.defaultValue && (
                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                      Default: {option.defaultValue}
+                      Default: {String(option.defaultValue)}
                     </span>
                   )}
                 </div>
                 <p className="text-gray-600 text-sm mb-2">
-                  {option.description}
+                  {String(option.description)}
                 </p>
-                <p className="text-gray-500 text-xs">Type: {option.type}</p>
+                <p className="text-gray-500 text-xs">Type: {String(option.type)}</p>
               </div>
             ))}
           </div>

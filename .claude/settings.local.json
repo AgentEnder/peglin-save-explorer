@@ -33,7 +33,8 @@
       "Bash(jq:*)",
       "Bash(pkill:*)",
       "Bash(dotnet script:*)",
-      "Bash(./bin/Debug/net9.0/osx-arm64/peglin-save-explorer extract:*)"
+      "Bash(./bin/Debug/net9.0/osx-arm64/peglin-save-explorer extract:*)",
+      "Bash(./scripts/commit-submodule.sh:*)"
     ],
     "deny": [
       "Bash(timeout:*) "

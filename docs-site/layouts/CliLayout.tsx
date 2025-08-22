@@ -1,5 +1,6 @@
 import "@mantine/core/styles.css";
 import "./tailwind.css";
+import React from "react";
 
 import logoUrl from "../assets/logo.svg";
 import {
@@ -96,12 +97,12 @@ export default function CliLayout({ children }: { children: React.ReactNode }) {
             <div
               style={{ display: "flex", flexDirection: "column", gap: "4px" }}
             >
-              {commands.map((command) => (
+              {Array.isArray(commands) && commands.map((command) => (
                 <CliNavLink
-                  key={command.name}
+                  key={String(command.name)}
                   href={`/cli-commands/${command.name}`}
-                  label={command.name}
-                  description={command.description}
+                  label={String(command.name)}
+                  description={String(command.description)}
                 />
               ))}
             </div>

@@ -1,4 +1,6 @@
-import { execSync } from 'child_process';
+import { execSync } from "child_process";
+import { existsSync } from "fs";
+import path from "path";
 
 export interface OptionInfo {
   type: string;
@@ -23,6 +25,20 @@ export interface CommandsData {
   commandIds: string[];
 }
 
+export function findWorkspaceRoot(start: string): string {
+  let prev = "";
+  let next: string = start.replaceAll(/\\/g, "/");
+  while (next != prev) {
+    prev = next;
+    next = path.dirname(prev);
+
+    if (existsSync(path.join(next, "nx.json"))) {
+      return next;
+    }
+  }
+  throw new Error(`Could not find workspace root from ${start}`);
+}
+
 /**
  * Extract command data using our C# reflection-based tool
  * @returns {Promise<CommandsData>} - Command data from C# extractor
@@ -32,28 +48,39 @@ export async function extractCommandData(): Promise<CommandsData> {
     // Use import.meta.url to get the current file's directory and resolve paths from there
     const currentFileUrl = import.meta.url;
     const currentFilePath = new URL(currentFileUrl).pathname;
-    const currentDir = currentFilePath.substring(0, currentFilePath.lastIndexOf('/'));
-    
+    const repoRoot = findWorkspaceRoot(currentFilePath);
+
     // Navigate up to the repo root: docs-site/services -> docs-site -> repo root
-    const docsDir = currentDir.substring(0, currentDir.lastIndexOf('/'));
-    const repoRoot = docsDir.substring(0, docsDir.lastIndexOf('/'));
-    
-    const output = execSync('dotnet run --project docs-site/scripts/CommandExtractor', {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore'], // Ignore stderr to avoid debug output in JSON
-      cwd: repoRoot
+
+    // build first, so no build output is in json stream.
+    execSync("dotnet build docs-site/scripts/CommandExtractor", {
+      stdio: "ignore",
+      cwd: repoRoot,
     });
-    
+
+    const output = execSync(
+      "dotnet run --no-build --project docs-site/scripts/CommandExtractor",
+      {
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "ignore"], // Ignore stderr to avoid debug output in JSON
+        cwd: repoRoot,
+      }
+    );
+
     const data = JSON.parse(output) as CommandsData;
-    console.log(`Extracted ${data.commands.length} commands using C# reflection`);
     return data;
   } catch (error) {
-    console.error('Failed to extract command data:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      "Failed to extract command data:",
+      error instanceof Error ? error.message : "Unknown error"
+    );
+    console.error((error as any).stdout.toString());
+    console.error((error as any).stderr.toString());
     // Return empty data as fallback
     return {
       commands: [],
       commandsByName: {},
-      commandIds: []
+      commandIds: [],
     };
   }
 }

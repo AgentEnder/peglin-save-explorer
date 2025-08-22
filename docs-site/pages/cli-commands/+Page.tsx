@@ -59,7 +59,7 @@ export default function Page() {
                       key={idx}
                       className="bg-gray-100 px-2 py-1 rounded text-sm"
                     >
-                      {opt.flags[0]}
+                      {String(opt.flags[0] || '')}
                     </code>
                   ))}
                   {cmd.options.length > 3 && (
@@ -75,7 +75,7 @@ export default function Page() {
               <div>
                 <h3 className="font-semibold mb-1 text-sm">Example:</h3>
                 <code className="text-sm text-gray-700 bg-gray-50 px-2 py-1 rounded">
-                  {cmd.examples[0]}
+                  {String(cmd.examples[0] || '')}
                 </code>
               </div>
               <Link

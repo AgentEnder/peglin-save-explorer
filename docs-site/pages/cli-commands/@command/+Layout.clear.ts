@@ -1,1 +1,3 @@
-export { default } from "../../../layouts/CliLayout.js";
+import cliLayout from "../../../layouts/CliLayout.js";
+
+export default cliLayout;

@@ -1,0 +1,4 @@
+{
+  "name": "peglin-save-explorer",
+  "implicitDependencies": ["peglin-save-explorer-web"]
+}

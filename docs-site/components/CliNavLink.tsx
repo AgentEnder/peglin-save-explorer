@@ -19,8 +19,8 @@ export function CliNavLink({
   return (
     <MantineNavLink 
       href={href} 
-      label={label}
-      description={description}
+      label={String(label)}
+      description={description ? String(description) : undefined}
       active={isActive}
       style={{
         borderRadius: '4px',

@@ -1,5 +1,6 @@
 using System.CommandLine;
 using peglin_save_explorer.UI;
+using peglin_save_explorer.Utils;
 
 namespace peglin_save_explorer.Commands
 {
@@ -26,7 +27,7 @@ namespace peglin_save_explorer.Commands
         private static void Execute(FileInfo? file)
         {
             // Suppress console output to prevent logs from appearing before widget system starts
-            Program.SetConsoleOutputSuppression(true);
+            ConsoleUtility.SetConsoleOutputSuppression(true);
 
             try
             {
@@ -37,7 +38,7 @@ namespace peglin_save_explorer.Commands
             finally
             {
                 // Restore console output after widget session ends
-                Program.SetConsoleOutputSuppression(false);
+                ConsoleUtility.SetConsoleOutputSuppression(false);
             }
         }
     }

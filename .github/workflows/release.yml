@@ -1,23 +1,205 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version tag (e.g., v1.0.0)"
+      version_type:
+        description: "Version bump type"
         required: true
-        default: "v0.1.0"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - auto
+        default: "auto"
+      custom_version:
+        description: "Custom version (overrides version_type, e.g., v1.0.0)"
+        required: false
+
+permissions:
+  contents: write
+  packages: write
 
 env:
   DOTNET_VERSION: "9.0.x"
   NODE_VERSION: "20"
 
 jobs:
+  determine-version:
+    name: Determine Version and Create Tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version from commits
+        id: version
+        run: |
+          # Get current version from latest tag
+          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Current version: $CURRENT_VERSION"
+
+          # Remove 'v' prefix for calculations
+          CURRENT_VERSION_NUM=${CURRENT_VERSION#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION_NUM"
+
+          # Use custom version if provided
+          if [ -n "${{ github.event.inputs.custom_version }}" ]; then
+            NEW_VERSION="${{ github.event.inputs.custom_version }}"
+            if [[ ! "$NEW_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Error: Custom version must be in format vX.Y.Z"
+              exit 1
+            fi
+          else
+            # Analyze commits since last tag for automatic versioning
+            COMMITS_SINCE_TAG=$(git rev-list ${CURRENT_VERSION}..HEAD --count 2>/dev/null || git rev-list HEAD --count)
+            
+            if [ "${{ github.event.inputs.version_type }}" = "auto" ]; then
+              # Determine version type from commit messages
+              BREAKING_CHANGES=$(git log ${CURRENT_VERSION}..HEAD --grep="BREAKING CHANGE" --oneline | wc -l)
+              FEATURES=$(git log ${CURRENT_VERSION}..HEAD --grep="^feat" --oneline | wc -l)
+              FIXES=$(git log ${CURRENT_VERSION}..HEAD --grep="^fix" --oneline | wc -l)
+              
+              if [ $BREAKING_CHANGES -gt 0 ]; then
+                VERSION_TYPE="major"
+              elif [ $FEATURES -gt 0 ]; then
+                VERSION_TYPE="minor"
+              elif [ $FIXES -gt 0 ] || [ $COMMITS_SINCE_TAG -gt 0 ]; then
+                VERSION_TYPE="patch"
+              else
+                echo "No changes detected since last tag"
+                exit 1
+              fi
+            else
+              VERSION_TYPE="${{ github.event.inputs.version_type }}"
+            fi
+            
+            # Calculate new version
+            case $VERSION_TYPE in
+              major)
+                NEW_MAJOR=$((MAJOR + 1))
+                NEW_VERSION="v${NEW_MAJOR}.0.0"
+                ;;
+              minor)
+                NEW_MINOR=$((MINOR + 1))
+                NEW_VERSION="v${MAJOR}.${NEW_MINOR}.0"
+                ;;
+              patch)
+                NEW_PATCH=$((PATCH + 1))
+                NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+                ;;
+              *)
+                echo "Invalid version type: $VERSION_TYPE"
+                exit 1
+                ;;
+            esac
+          fi
+
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get current version from latest tag
+          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+
+          echo "Generating changelog from $CURRENT_VERSION to $NEW_VERSION"
+
+          # Initialize changelog
+          CHANGELOG="### What's Changed"$'\n'
+
+          # Get commits since last tag
+          if [ "$CURRENT_VERSION" = "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=format:"%h %s" --reverse)
+          else
+            COMMITS=$(git log ${CURRENT_VERSION}..HEAD --pretty=format:"%h %s" --reverse)
+          fi
+
+          # Categorize commits
+          FEATURES=""
+          FIXES=""
+          BREAKING=""
+          OTHER=""
+
+          while IFS= read -r commit; do
+            if [ -z "$commit" ]; then continue; fi
+            
+            HASH=$(echo "$commit" | cut -d' ' -f1)
+            MESSAGE=$(echo "$commit" | cut -d' ' -f2-)
+            
+            # Check for breaking changes
+            if git log --format=%B -n 1 $HASH | grep -q "BREAKING CHANGE"; then
+              BREAKING="${BREAKING}- $MESSAGE ($HASH)"$'\n'
+            # Check for features
+            elif echo "$MESSAGE" | grep -q "^feat"; then
+              CLEAN_MSG=$(echo "$MESSAGE" | sed 's/^feat[(:]//' | sed 's/^[^:]*: *//')
+              FEATURES="${FEATURES}- $CLEAN_MSG ($HASH)"$'\n'
+            # Check for fixes
+            elif echo "$MESSAGE" | grep -q "^fix"; then
+              CLEAN_MSG=$(echo "$MESSAGE" | sed 's/^fix[(:]//' | sed 's/^[^:]*: *//')
+              FIXES="${FIXES}- $CLEAN_MSG ($HASH)"$'\n'
+            # Other changes
+            else
+              OTHER="${OTHER}- $MESSAGE ($HASH)"$'\n'
+            fi
+          done <<< "$COMMITS"
+
+          # Build changelog sections
+          if [ -n "$BREAKING" ]; then
+            CHANGELOG="${CHANGELOG}"$'\n'"#### 🚨 Breaking Changes"$'\n'"$BREAKING"
+          fi
+
+          if [ -n "$FEATURES" ]; then
+            CHANGELOG="${CHANGELOG}"$'\n'"#### ✨ New Features"$'\n'"$FEATURES"
+          fi
+
+          if [ -n "$FIXES" ]; then
+            CHANGELOG="${CHANGELOG}"$'\n'"#### 🐛 Bug Fixes"$'\n'"$FIXES"
+          fi
+
+          if [ -n "$OTHER" ]; then
+            CHANGELOG="${CHANGELOG}"$'\n'"#### 🔧 Other Changes"$'\n'"$OTHER"
+          fi
+
+          # Add contributors section
+          CONTRIBUTORS=$(git log ${CURRENT_VERSION}..HEAD --pretty=format:"%an" | sort -u | grep -v "github-actions" | head -10)
+          if [ -n "$CONTRIBUTORS" ]; then
+            CHANGELOG="${CHANGELOG}"$'\n'"#### 👥 Contributors"$'\n'
+            while IFS= read -r contributor; do
+              if [ -n "$contributor" ]; then
+                CHANGELOG="${CHANGELOG}- @$contributor"$'\n'
+              fi
+            done <<< "$CONTRIBUTORS"
+          fi
+
+          # Save changelog to output (escape for JSON)
+          CHANGELOG_ESCAPED=$(echo "$CHANGELOG" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "changelog=$CHANGELOG_ESCAPED" >> $GITHUB_OUTPUT
+
+          echo "Generated changelog:"
+          echo "$CHANGELOG"
+
+      - name: Create and push tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+          echo "Created and pushed tag: $VERSION"
+
   build-all-platforms:
     name: Build All Platforms
+    needs: determine-version
     runs-on: ubuntu-latest
 
     steps:
@@ -39,14 +221,10 @@ jobs:
       - name: Install build dependencies
         run: npm install
 
-      - name: Determine version
+      - name: Use determined version
         id: version
         run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            VERSION="${{ github.ref_name }}"
-          else
-            VERSION="${{ github.event.inputs.version }}"
-          fi
+          VERSION="${{ needs.determine-version.outputs.version }}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
@@ -131,25 +309,51 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: build-all-platforms
+    needs: [determine-version, build-all-platforms]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           name: peglin-save-explorer-all-platforms
           path: release-assets/
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Deploy docs site
+        run: |
+          npm i
+          cd docs-site
+          npx nx deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ needs.determine-version.outputs.version }}
           files: release-assets/*
           body: |
-            ## Peglin Save Explorer ${{ github.ref_name }}
+            ## Peglin Save Explorer ${{ needs.determine-version.outputs.version }}
 
             Cross-platform release of Peglin Save Explorer with CLI and web interface.
+
+            ${{ needs.determine-version.outputs.changelog }}
 
             ### Download Options:
 

@@ -7,25 +7,48 @@
     "format": "biome format --write ."
   },
   "dependencies": {
-    "vike": "0.4.237-commit-92dc549",
+    "@mantine/core": "^8.2.5",
+    "@mantine/hooks": "^8.2.5",
     "@vitejs/plugin-react": "^5.0.0",
+    "isbot-fast": "^1.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "vike-react": "^0.6.5",
-    "@mantine/core": "^8.2.5",
-    "@mantine/hooks": "^8.2.5"
+    "vike": "0.4.237-commit-92dc549",
+    "vike-react": "^0.6.5"
   },
   "devDependencies": {
-    "typescript": "^5.9.2",
-    "vite": "^7.1.2",
     "@biomejs/biome": "2.2.0",
+    "@tailwindcss/vite": "^4.1.12",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
-    "tailwindcss": "^4.1.12",
-    "@tailwindcss/vite": "^4.1.12",
     "postcss": "^8.5.6",
     "postcss-preset-mantine": "^1.18.0",
-    "postcss-simple-vars": "^7.0.1"
+    "postcss-simple-vars": "^7.0.1",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2"
   },
-  "type": "module"
+  "type": "module",
+  "nx": {
+    "name": "docs-site",
+    "implicitDependencies": [
+      "peglin-save-explorer",
+      "CommandExtractor"
+    ],
+    "targets": {
+      "deploy": {
+        "executor": "nx-github-pages:deploy",
+        "options": {
+          "directory": "{projectRoot}/dist/client",
+          "user": {
+            "name": "github-actions[bot]",
+            "email": "github-actions[bot]@users.noreply.github.com"
+          }
+        },
+        "dependsOn": [
+          "build"
+        ]
+      }
+    }
+  }
 }

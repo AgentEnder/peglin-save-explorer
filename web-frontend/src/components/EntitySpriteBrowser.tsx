@@ -159,7 +159,7 @@ const OrbLevelCarousel: React.FC<OrbLevelCarouselProps> = ({ levels }) => {
         {/* Level Stats */}
         <Grid container spacing={2} sx={{ mb: 2 }}>
           {(currentLevel.damagePerPeg || currentLevel.critDamagePerPeg) && (
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Box sx={{ textAlign: "right" }}>
                 <Typography variant="h6" color="primary">
                   {currentLevel.damagePerPeg || "0"} /{" "}
@@ -311,10 +311,13 @@ const EntitySpriteBrowser: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Entity-Sprite Browser
       </Typography>
-
       <Paper sx={{ mb: 3, p: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <Autocomplete
               options={allEntities}
               getOptionLabel={(option) => option.name}
@@ -354,7 +357,11 @@ const EntitySpriteBrowser: React.FC = () => {
               isOptionEqualToValue={(option, value) => option.id === value.id}
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <FormControlLabel
               control={
                 <Switch
@@ -365,7 +372,11 @@ const EntitySpriteBrowser: React.FC = () => {
               label="Show only entities with sprites"
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid
+            size={{
+              xs: 12,
+              md: 6
+            }}>
             <FormControlLabel
               control={
                 <Switch
@@ -385,19 +396,21 @@ const EntitySpriteBrowser: React.FC = () => {
           </Grid>
         </Grid>
       </Paper>
-
       <Tabs value={selectedTab} onChange={handleTabChange} sx={{ mb: 2 }}>
         <Tab label={`Relics (${entitiesData.relics.length})`} />
         <Tab label={`Enemies (${entitiesData.enemies.length})`} />
         <Tab label={`Orbs (${entitiesData.orbs.length})`} />
         <Tab label={`All (${allEntities.length})`} />
       </Tabs>
-
       {selectedEntity && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={8}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 8
+                }}>
                 <Typography variant="h5" gutterBottom>
                   {selectedEntity.name}
                   <Chip
@@ -456,7 +469,11 @@ const EntitySpriteBrowser: React.FC = () => {
                     <OrbLevelCarousel levels={selectedEntity.levels} />
                   )}
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 4
+                }}>
                 <Typography variant="h6" gutterBottom>
                   Associated Sprites
                 </Typography>
@@ -488,10 +505,15 @@ const EntitySpriteBrowser: React.FC = () => {
           </CardContent>
         </Card>
       )}
-
       <Grid container spacing={2}>
         {filteredEntities.map((entity) => (
-          <Grid item xs={12} sm={6} md={4} key={entity.id}>
+          <Grid
+            key={entity.id}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: 4
+            }}>
             <Card
               sx={{ cursor: "pointer", height: "100%" }}
               onClick={() => setSelectedEntity(entity)}
@@ -587,7 +609,6 @@ const EntitySpriteBrowser: React.FC = () => {
           </Grid>
         ))}
       </Grid>
-
       {filteredEntities.length === 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>
           No entities found matching your search criteria.

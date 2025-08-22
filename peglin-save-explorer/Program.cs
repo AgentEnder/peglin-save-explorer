@@ -87,6 +87,7 @@ namespace peglin_save_explorer
         internal static void SetConsoleOutputSuppression(bool suppress)
         {
             suppressConsoleOutput = suppress;
+            ConsoleUtility.SetConsoleOutputSuppression(suppress);
             if (suppress)
             {
                 isInteractiveMode = true;

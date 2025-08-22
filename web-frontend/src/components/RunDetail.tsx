@@ -590,14 +590,12 @@ const RunDetail: React.FC = () => {
       >
         Back to Runs
       </Button>
-
       <Typography variant="h4" gutterBottom>
         Run Details
       </Typography>
-
       <Grid container spacing={3}>
         {/* Run Overview */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Paper sx={{ p: 3 }}>
             <Box
               display="flex"
@@ -614,7 +612,11 @@ const RunDetail: React.FC = () => {
             </Box>
 
             <Grid container spacing={2}>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Typography variant="body2" color="textSecondary">
                   Damage Dealt
                 </Typography>
@@ -622,7 +624,11 @@ const RunDetail: React.FC = () => {
                   {formatNumber(run.damageDealt)}
                 </Typography>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Typography variant="body2" color="textSecondary">
                   Duration
                 </Typography>
@@ -630,13 +636,21 @@ const RunDetail: React.FC = () => {
                   {formatDuration(run.duration)}
                 </Typography>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Typography variant="body2" color="textSecondary">
                   Final Level
                 </Typography>
                 <Typography variant="h6">{run.finalLevel}</Typography>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Typography variant="body2" color="textSecondary">
                   Cruciball Level
                 </Typography>
@@ -647,7 +661,11 @@ const RunDetail: React.FC = () => {
             <Divider sx={{ my: 2 }} />
 
             <Grid container spacing={2}>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Typography variant="body2" color="textSecondary">
                   Pegs Hit
                 </Typography>
@@ -655,7 +673,11 @@ const RunDetail: React.FC = () => {
                   {formatNumber(run.pegsHit)}
                 </Typography>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Typography variant="body2" color="textSecondary">
                   Coins Earned
                 </Typography>
@@ -663,7 +685,11 @@ const RunDetail: React.FC = () => {
                   {formatNumber(run.coinsEarned)}
                 </Typography>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Typography variant="body2" color="textSecondary">
                   Final HP
                 </Typography>
@@ -671,7 +697,11 @@ const RunDetail: React.FC = () => {
                   {run.finalHp}/{run.maxHp}
                 </Typography>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid
+                size={{
+                  xs: 6,
+                  sm: 3
+                }}>
                 <Typography variant="body2" color="textSecondary">
                   Date
                 </Typography>
@@ -695,7 +725,7 @@ const RunDetail: React.FC = () => {
         </Grid>
 
         {/* Relics */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Paper sx={{ p: 3 }}>
             <Box
               sx={{
@@ -725,7 +755,13 @@ const RunDetail: React.FC = () => {
                   {relicEntities.map((relic, index) => {
                     const sprite = getEntitySprite(relic!);
                     return (
-                      <Grid item xs={12} sm={6} md={4} key={index}>
+                      <Grid
+                        key={index}
+                        size={{
+                          xs: 12,
+                          sm: 6,
+                          md: 4
+                        }}>
                         <Card variant="outlined">
                           <CardContent
                             sx={{
@@ -800,7 +836,7 @@ const RunDetail: React.FC = () => {
         {/* Orbs */}
         {(Object.keys(run.orbStats || {}).length > 0 ||
           run.orbsUsed.length > 0) && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Paper sx={{ p: 3 }}>
               <Box
                 sx={{
@@ -838,7 +874,13 @@ const RunDetail: React.FC = () => {
                         "1";
 
                       return (
-                        <Grid item xs={12} sm={6} md={4} key={orbName}>
+                        <Grid
+                          key={orbName}
+                          size={{
+                            xs: 12,
+                            sm: 6,
+                            md: 4
+                          }}>
                           <Card
                             variant="outlined"
                             sx={{
@@ -926,7 +968,7 @@ const RunDetail: React.FC = () => {
                               {/* Stats section - always takes same height */}
                               <Box sx={{ mb: 2 }}>
                                 <Grid container spacing={1}>
-                                  <Grid item xs={4}>
+                                  <Grid size={4}>
                                     <Typography
                                       variant="body2"
                                       color="textSecondary"
@@ -937,7 +979,7 @@ const RunDetail: React.FC = () => {
                                       {formatNumber(orbData.damageDealt)}
                                     </Typography>
                                   </Grid>
-                                  <Grid item xs={4}>
+                                  <Grid size={4}>
                                     <Typography
                                       variant="body2"
                                       color="textSecondary"
@@ -948,7 +990,7 @@ const RunDetail: React.FC = () => {
                                       {formatNumber(orbData.timesFired)}
                                     </Typography>
                                   </Grid>
-                                  <Grid item xs={4}>
+                                  <Grid size={4}>
                                     <Typography
                                       variant="body2"
                                       color="textSecondary"
@@ -975,7 +1017,7 @@ const RunDetail: React.FC = () => {
                                   {(orbData.timesDiscarded > 0 ||
                                     orbData.timesRemoved > 0) && (
                                     <>
-                                      <Grid item xs={6}>
+                                      <Grid size={6}>
                                         <Typography
                                           variant="body2"
                                           color="textSecondary"
@@ -986,7 +1028,7 @@ const RunDetail: React.FC = () => {
                                           {orbData.timesDiscarded}
                                         </Typography>
                                       </Grid>
-                                      <Grid item xs={6}>
+                                      <Grid size={6}>
                                         <Typography
                                           variant="body2"
                                           color="textSecondary"
@@ -1025,11 +1067,11 @@ const RunDetail: React.FC = () => {
                   </Grid>
                 ) : (
                   // Fallback to simple chip display if detailed orb stats are not available
-                  <Box display="flex" flexWrap="wrap" gap={1}>
+                  (<Box display="flex" flexWrap="wrap" gap={1}>
                     {run.orbsUsed.map((orb, index) => (
                       <Chip key={index} label={orb} variant="outlined" />
                     ))}
-                  </Box>
+                  </Box>)
                 )
               )}
             </Paper>
@@ -1038,7 +1080,7 @@ const RunDetail: React.FC = () => {
 
         {/* Enemy Encounters */}
         {enemyEntitiesWithData.length > 0 && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Paper sx={{ p: 3 }}>
               <Box
                 sx={{
@@ -1065,7 +1107,13 @@ const RunDetail: React.FC = () => {
                       ? getEntitySprite(enemyItem.entity)
                       : null;
                     return (
-                      <Grid item xs={12} sm={6} md={4} key={index}>
+                      <Grid
+                        key={index}
+                        size={{
+                          xs: 12,
+                          sm: 6,
+                          md: 4
+                        }}>
                         <Card variant="outlined">
                           <CardContent
                             sx={{
@@ -1101,7 +1149,7 @@ const RunDetail: React.FC = () => {
                                 )}
 
                               <Grid container spacing={1} sx={{ mt: 1 }}>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                   <Typography
                                     variant="body2"
                                     color="textSecondary"
@@ -1112,7 +1160,7 @@ const RunDetail: React.FC = () => {
                                     {enemyItem.playData.encounterCount}x
                                   </Typography>
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                   <Typography
                                     variant="body2"
                                     color="textSecondary"
@@ -1123,7 +1171,7 @@ const RunDetail: React.FC = () => {
                                     {formatNumber(enemyItem.playData.damageDealt)}
                                   </Typography>
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                   <Typography
                                     variant="body2"
                                     color="textSecondary"
@@ -1136,7 +1184,7 @@ const RunDetail: React.FC = () => {
                                     )}
                                   </Typography>
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                   <Typography
                                     variant="body2"
                                     color="textSecondary"
@@ -1150,7 +1198,7 @@ const RunDetail: React.FC = () => {
                                 {enemyItem.entity && (
                                   <>
                                     {enemyItem.entity.maxHealth && (
-                                      <Grid item xs={6}>
+                                      <Grid size={6}>
                                         <Typography
                                           variant="body2"
                                           color="textSecondary"
@@ -1165,7 +1213,7 @@ const RunDetail: React.FC = () => {
                                       </Grid>
                                     )}
                                     {enemyItem.entity.location && (
-                                      <Grid item xs={6}>
+                                      <Grid size={6}>
                                         <Typography
                                           variant="body2"
                                           color="textSecondary"
@@ -1225,7 +1273,7 @@ const RunDetail: React.FC = () => {
 
         {/* Rooms Visited */}
         {run.visitedRoomsInfo && run.visitedRoomsInfo.length > 0 && (
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Paper sx={{ p: 3 }}>
               <Box
                 sx={{
@@ -1388,7 +1436,13 @@ const RunDetail: React.FC = () => {
                     {Object.entries(run.roomTypeStatistics)
                       .sort(([, countA], [, countB]) => countB - countA) // Sort by count descending
                       .map(([roomType, count]) => (
-                        <Grid item xs={6} sm={4} md={3} key={roomType}>
+                        <Grid
+                          key={roomType}
+                          size={{
+                            xs: 6,
+                            sm: 4,
+                            md: 3
+                          }}>
                           <Card variant="outlined" sx={{ textAlign: "center", p: 1 }}>
                             <Typography variant="body2" color="textSecondary">
                               {roomType}
@@ -1407,13 +1461,17 @@ const RunDetail: React.FC = () => {
         )}
 
         {/* Additional Stats */}
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Combat Stats
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   Shots Taken
                 </Typography>
@@ -1421,7 +1479,7 @@ const RunDetail: React.FC = () => {
                   {formatNumber(run.shotsTaken)}
                 </Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   Crit Shots
                 </Typography>
@@ -1429,7 +1487,7 @@ const RunDetail: React.FC = () => {
                   {formatNumber(run.critShotsTaken)}
                 </Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   Bombs Thrown
                 </Typography>
@@ -1437,7 +1495,7 @@ const RunDetail: React.FC = () => {
                   {formatNumber(run.bombsThrown)}
                 </Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   Damage Negated
                 </Typography>
@@ -1449,13 +1507,17 @@ const RunDetail: React.FC = () => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Peg Stats
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   Pegs Hit (Refresh)
                 </Typography>
@@ -1463,7 +1525,7 @@ const RunDetail: React.FC = () => {
                   {formatNumber(run.pegsHitRefresh)}
                 </Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   Pegs Hit (Crit)
                 </Typography>
@@ -1471,7 +1533,7 @@ const RunDetail: React.FC = () => {
                   {formatNumber(run.pegsHitCrit)}
                 </Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   Pegs Refreshed
                 </Typography>
@@ -1479,7 +1541,7 @@ const RunDetail: React.FC = () => {
                   {formatNumber(run.pegsRefreshed)}
                 </Typography>
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <Typography variant="body2" color="textSecondary">
                   Max Single Attack
                 </Typography>

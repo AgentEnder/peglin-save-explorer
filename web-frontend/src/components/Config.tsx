@@ -29,10 +29,13 @@ const Config: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Configuration
       </Typography>
-
       <Grid container spacing={3}>
         {/* Data Filtering */}
-        <Grid item xs={12} md={8}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 8
+          }}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Data Filtering
@@ -109,7 +112,11 @@ const Config: React.FC = () => {
         </Grid>
 
         {/* Current Settings Summary */}
-        <Grid item xs={12} md={4}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 4
+          }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -164,7 +171,7 @@ const Config: React.FC = () => {
         </Grid>
 
         {/* Information */}
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Alert severity="info">
             <Typography variant="body2">
               Configuration changes will automatically refresh your data and
