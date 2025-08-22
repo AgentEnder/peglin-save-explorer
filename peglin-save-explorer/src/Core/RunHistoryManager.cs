@@ -160,14 +160,25 @@ namespace peglin_save_explorer.Core
                 foreach (var run in currentRuns)
                 {
                     var hash = GenerateRunHash(run);
-                    run.Id = hash; // Use hash as ID for consistency
                     
-                    // Check if this run already exists in persistent storage
-                    if (!persistentRuns.Any(r => r.Id == hash))
+                    // Check if this run already exists in persistent storage by comparing hashes
+                    // Generate hash for each existing run to ensure proper comparison
+                    var isDuplicate = persistentRuns.Any(existingRun => 
                     {
+                        var existingHash = GenerateRunHash(existingRun);
+                        return existingHash == hash;
+                    });
+                    
+                    if (!isDuplicate)
+                    {
+                        run.Id = hash; // Use hash as ID for consistency
                         newRuns.Add(run);
                         persistentRuns.Add(run);
                         Logger.Debug($"Added new run to database: {run.Timestamp:yyyy-MM-dd HH:mm:ss} - {(run.Won ? "WIN" : "LOSS")}");
+                    }
+                    else
+                    {
+                        Logger.Debug($"Skipped duplicate run: {run.Timestamp:yyyy-MM-dd HH:mm:ss} - {(run.Won ? "WIN" : "LOSS")}");
                     }
                 }
                 

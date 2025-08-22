@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { spawn, SpawnOptions } from "child_process";
-import * as fs from "fs-extra";
+import * as fs from "node:fs";
 import * as path from "path";
 import * as os from "os";
 import archiver from "archiver";
@@ -87,10 +87,10 @@ class BuildScript {
     });
   }
 
-  private async cleanOutput(): Promise<void> {
+  private cleanOutput() {
     console.log("🧹 Cleaning previous builds...");
-    await fs.remove(this.outputDir);
-    await fs.ensureDir(this.outputDir);
+    fs.rmSync(this.outputDir, { recursive: true });
+    fs.mkdirSync(this.outputDir);
   }
 
   private async buildFrontend(): Promise<void> {
@@ -137,13 +137,13 @@ class BuildScript {
     const wwwrootDir = path.join(platformDir, "wwwroot");
     const frontendDistDir = path.join(this.webDir, "dist");
 
-    await fs.ensureDir(wwwrootDir);
-    await fs.copy(frontendDistDir, wwwrootDir);
+    fs.mkdirSync(wwwrootDir, { recursive: true });
+    fs.cpSync(frontendDistDir, wwwrootDir, { recursive: true });
   }
 
   private createWindowsScripts(platformDir: string): void {
     const scriptsDir = path.join(platformDir, "scripts");
-    fs.ensureDirSync(scriptsDir);
+    fs.mkdirSync(scriptsDir, { recursive: true });
 
     // open-web.bat
     const openWebScript = `@echo off
@@ -179,7 +179,7 @@ pause`;
 
   private createUnixScripts(platformDir: string): void {
     const scriptsDir = path.join(platformDir, "scripts");
-    fs.ensureDirSync(scriptsDir);
+    fs.mkdirSync(scriptsDir, { recursive: true });
 
     // open-web.sh
     const openWebScript = `#!/bin/bash
@@ -376,12 +376,9 @@ OS: ${os.platform()} ${os.arch()}`;
       const archiveName = `peglin-save-explorer-${platform.rid}.${platform.archiveExt}`;
       const archivePath = path.join(this.outputDir, archiveName);
 
-      if (
-        (await fs.pathExists(platformDir)) &&
-        (await fs.pathExists(archivePath))
-      ) {
-        const stats = await fs.stat(platformDir);
-        const archiveStats = await fs.stat(archivePath);
+      if (fs.existsSync(platformDir) && fs.existsSync(archivePath)) {
+        const stats = fs.statSync(platformDir);
+        const archiveStats = fs.statSync(archivePath);
         const sizeInMB = (archiveStats.size / 1024 / 1024).toFixed(1);
         console.log(`  - ${platform.name}: ${archiveName} (${sizeInMB} MB)`);
       }

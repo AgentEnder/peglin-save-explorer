@@ -1,10 +1,10 @@
 # .NET Core & .NET Framework
 
 # Build results
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-artifacts/
+**/[Bb]in/
+**/[Oo]bj/
+**/[Ll]og/
+**/artifacts/
 **/*.tsbuildinfo
 
 # User-specific files

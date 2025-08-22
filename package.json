@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsx build.ts",
     "build:dev": "tsx build.ts dev",
-    "build:release": "tsx build.ts"
+    "build:release": "tsx build.ts release"
   },
   "devDependencies": {
     "@types/archiver": "^6.0.3",

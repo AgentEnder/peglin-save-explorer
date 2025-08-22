@@ -52,6 +52,25 @@ namespace peglin_save_explorer.Commands
 
             var builder = WebApplication.CreateBuilder();
 
+            // Configure Kestrel with safer defaults for .NET 9
+            builder.WebHost.ConfigureKestrel(serverOptions =>
+            {
+                serverOptions.Limits.MaxConcurrentConnections = 100;
+                serverOptions.Limits.MaxConcurrentUpgradedConnections = 100;
+                serverOptions.Limits.MinRequestBodyDataRate = null;
+                serverOptions.Limits.MinResponseDataRate = null;
+                // Add connection timeout to prevent hanging connections
+                serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2);
+                serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30);
+            });
+
+            // Configure host lifetime and graceful shutdown
+            builder.Host.UseConsoleLifetime();
+            builder.Services.Configure<HostOptions>(options =>
+            {
+                options.ShutdownTimeout = TimeSpan.FromSeconds(30);
+            });
+
             // Detect if we're in development mode based on build configuration
 #if DEBUG
             var isDevelopment = true;
@@ -131,7 +150,7 @@ namespace peglin_save_explorer.Commands
                     }
 
                     var viteUrl = $"http://localhost:3000{context.Request.Path}{context.Request.QueryString}";
-                    using var httpClient = new HttpClient();
+                    using var httpClient = new HttpClient() { Timeout = TimeSpan.FromSeconds(10) };
 
                     try
                     {
@@ -805,9 +824,12 @@ namespace peglin_save_explorer.Commands
                 try
                 {
                     // Clear sprite cache to ensure fresh data on each request
-                    // (could be optimized further with cache invalidation logic)
-                    _spriteIdCache = null;
-                    _spriteNameCache = null;
+                    // Thread-safe cache invalidation
+                    lock (_spriteCacheLock)
+                    {
+                        _spriteIdCache = null;
+                        _spriteNameCache = null;
+                    }
 
                     var entities = new
                     {
@@ -828,7 +850,31 @@ namespace peglin_save_explorer.Commands
 
             Console.WriteLine("Press Ctrl+C to stop the server");
 
-            await app.RunAsync();
+            // Use proper host lifetime management with cancellation token
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
+            
+            // Register cleanup on cancellation
+            cts.Token.Register(() =>
+            {
+                StopViteDevServer();
+                Console.WriteLine("Shutting down web server...");
+            });
+
+            try
+            {
+                await app.RunAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when shutting down
+                Console.WriteLine("Web server shutdown complete.");
+            }
+            finally
+            {
+                // Ensure cleanup happens
+                StopViteDevServer();
+                _cancellationTokenSource?.Dispose();
+            }
         }
 
         private RunFilter CreateFilterFromQuery(IQueryCollection query)
@@ -1023,7 +1069,8 @@ namespace peglin_save_explorer.Commands
         /// <summary>
         /// Gets sprite reference using correlation data instead of parsing raw data
         /// </summary>
-        // Cache for sprite metadata lookups - initialized once per request
+        // Cache for sprite metadata lookups - thread-safe for concurrent access
+        private static readonly object _spriteCacheLock = new object();
         private static Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>? _spriteIdCache;
         private static Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>? _spriteNameCache;
 
@@ -1031,16 +1078,27 @@ namespace peglin_save_explorer.Commands
         {
             if (_spriteIdCache == null || _spriteNameCache == null)
             {
-                var allSprites = Data.SpriteCacheManager.GetCachedSprites();
-                _spriteIdCache = new Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>();
-                _spriteNameCache = new Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>();
-
-                foreach (var sprite in allSprites)
+                lock (_spriteCacheLock)
                 {
-                    if (sprite.Width > 0 && sprite.Height > 0)
+                    // Double-check pattern for thread safety
+                    if (_spriteIdCache == null || _spriteNameCache == null)
                     {
-                        _spriteIdCache.TryAdd(sprite.Id, sprite);
-                        _spriteNameCache.TryAdd(sprite.Name, sprite);
+                        var allSprites = Data.SpriteCacheManager.GetCachedSprites();
+                        var idCache = new Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>();
+                        var nameCache = new Dictionary<string, Data.SpriteCacheManager.SpriteMetadata>();
+
+                        foreach (var sprite in allSprites)
+                        {
+                            if (sprite.Width > 0 && sprite.Height > 0)
+                            {
+                                idCache.TryAdd(sprite.Id, sprite);
+                                nameCache.TryAdd(sprite.Name, sprite);
+                            }
+                        }
+
+                        // Atomic assignment
+                        _spriteIdCache = idCache;
+                        _spriteNameCache = nameCache;
                     }
                 }
             }
