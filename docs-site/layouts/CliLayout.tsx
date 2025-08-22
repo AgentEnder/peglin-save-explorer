@@ -12,6 +12,7 @@ import {
 } from "@mantine/core";
 import { NavLink } from "../components/NavLink";
 import { CliNavLink } from "../components/CliNavLink";
+import { Footer } from "../components/Footer";
 import { useData } from "vike-react/useData";
 import theme from "./theme.js";
 
@@ -110,6 +111,7 @@ export default function CliLayout({ children }: { children: React.ReactNode }) {
         </AppShell.Navbar>
 
         <AppShell.Main>{children}</AppShell.Main>
+        <Footer />
       </AppShell>
     </MantineProvider>
   );

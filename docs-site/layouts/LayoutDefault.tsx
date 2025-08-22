@@ -4,6 +4,7 @@ import "./tailwind.css";
 import logoUrl from "../assets/logo.svg";
 import { AppShell, Group, Image, MantineProvider } from "@mantine/core";
 import { NavLink } from "../components/NavLink";
+import { Footer } from "../components/Footer";
 import theme from "./theme.js";
 
 export default function LayoutDefault({
@@ -61,6 +62,7 @@ export default function LayoutDefault({
             {children}
           </div>
         </AppShell.Main>
+        <Footer />
       </AppShell>
     </MantineProvider>
   );

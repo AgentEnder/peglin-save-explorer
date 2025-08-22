@@ -18,7 +18,15 @@ export default function Page() {
             <div>
               <h3 className="text-lg font-semibold mb-2">Download the Latest Release</h3>
               <p className="text-gray-600 mb-3">
-                Download the appropriate version for your operating system from the GitHub releases page.
+                Download the appropriate version for your operating system from the{" "}
+                <a
+                  href="https://github.com/AgentEnder/peglin-save-explorer/releases"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  GitHub releases page
+                </a>.
               </p>
               <ul className="space-y-2 text-gray-600">
                 <li>• <strong>Windows:</strong> peglin-save-explorer-win-x64.zip</li>
