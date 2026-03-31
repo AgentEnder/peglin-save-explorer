@@ -1,9 +1,13 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "plugins": ["@nx-dotnet/core"],
+  "plugins": [
+    "@nx-dotnet/core"
+  ],
   "targetDefaults": {
     "build": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     }
   }
 }
